@@ -18,7 +18,6 @@ mongoose.connect(process.env.MONGO_URL)
 app.use(express.json());
 
 
-
 // Routes
 app.use('/', require('./routes/autoBollardRoute'))
 app.use('/', require('./routes/autoPPERoute'))
@@ -34,4 +33,4 @@ app.use('/', require('./routes/autoRentalRoute'));
 const port = process.env.PORT || 8000;
 
 // Start server
-app.listen(port, () => console.log(`Server is running on port ${port}`));
+app.listen(port, '0.0.0.0', () => console.log(`Server is running on port ${port}`));

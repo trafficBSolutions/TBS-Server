@@ -10,7 +10,7 @@ const fs = require('fs'); // Import the 'fs' module for file system operations
 router.use(
     cors({
         credentials: true,
-        origin: 'http://localhost:5173'
+        origin: 'https://tbs-client.netlify.app'
     })
 );
 
