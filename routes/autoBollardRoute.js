@@ -8,7 +8,7 @@ const { submitBollardWheel } = require('../controllers/autoBollardControl');
 router.use(
     cors({
         credentials: true,
-        origin: 'https://tbs-client.netlify.app'
+        origin: 'https://trafficbarriersolutions.com'
     })
 );
 
