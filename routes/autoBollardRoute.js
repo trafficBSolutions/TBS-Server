@@ -8,7 +8,7 @@ const { submitBollardWheel } = require('../controllers/autoBollardControl');
 router.use(
     cors({
         credentials: true,
-        origin: 'https://trafficbarriersolutions.com'
+        origin: 'https://www.trafficbarriersolutions.com'
     })
 );
 
