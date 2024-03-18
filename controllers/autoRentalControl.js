@@ -202,7 +202,7 @@ const submitRental = async (req, res) => {
                         font-style: normal;
                         margin-top: 40px;
                         font-size: 60px;
-                        ">Equipment Options:</h1>
+                        ">Equipment Selections:</h1>
                         <p style="
                         color:#000000;
                         font-family: 'Kairos W04 Extended Bold';
