@@ -161,7 +161,7 @@ const submitPPE = async (req, res) => {
                         font-style: normal;
                         margin-top: 20px;
                         font-size: 40px;
-                        ">Address: <p style="
+                        ">Company Address: <p style="
                         margin-top: 10px;
                         font-size: 30px;
                         font-family: Arial, Helvetica, sans-serif;
