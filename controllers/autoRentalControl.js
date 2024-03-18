@@ -154,7 +154,7 @@ const submitRental = async (req, res) => {
                         font-style: normal;
                         margin-top: 40px;
                         font-size: 60px;
-                        ">Job Site Address:</h1>
+                        ">Company Address:</h1>
         
                         <p style="
                         font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
