@@ -209,7 +209,7 @@ const submitSign = async (req, res) => {
                         font-style: normal;
                         margin-top: 40px;
                         font-size: 60px;
-                        ">Sign Options:</h1>
+                        ">Sign Selections:</h1>
                         
                         <p style="
                         color:#000000;
