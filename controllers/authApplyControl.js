@@ -68,7 +68,7 @@ const submitApplication = async (req, res) => {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
             bcc: { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-            subject: 'Job Application Request',
+            subject: 'JOB APPLICATION REQUEST',
             html: `
             <!DOCTYPE html>
             <html lang="en">
