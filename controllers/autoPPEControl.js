@@ -196,6 +196,15 @@ const submitPPE = async (req, res) => {
                         font-size: 30px;
                         font-family: Arial, Helvetica, sans-serif;
                         ">${zip}</p></p>
+
+                        <h1 style="
+                        color:#000000;
+                        font-family: 'Kairos W04 Extended Bold';
+                        font-style: normal;
+                        margin-top: 40px;
+                        font-size: 60px;
+                        ">PPE Selections:</h1>
+                        
                         <p style="
                         color:#000000;
                         font-family: 'Kairos W04 Extended Bold';
