@@ -166,8 +166,8 @@ const submitApplication = async (req, res) => {
                         font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
                         line-height: 26px;
                         ">At TBS, we greatly value your commitment to safety and efficiency on our roadways. We wanted to inform you that your Job Application has been successfully submitted. Thank you for taking proactive steps to ensure smooth traffic flow and the safety of all involved.
-                        Our team will now review the job thoroughly to ensure it meets all necessary requirements and standards according to the MUTCD and DOT regulations. If any further information or revisions are needed, we will promptly reach out to you.
-                        We appreciate your cooperation in this matter and look forward to working together to maintain a safe and organized environment.
+                        Our team will now review your resume. If any further information or revisions are needed, we will promptly reach out to you.
+                        We appreciate your interest in TBS and look forward to working together to maintain a safe and organized environment.
                         </h1>
                         <h1 style="margin-top: 20px;
                                 font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
