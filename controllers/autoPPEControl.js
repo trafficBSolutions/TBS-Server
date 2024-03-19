@@ -244,8 +244,9 @@ const submitPPE = async (req, res) => {
                         margin-top: 80px;
                         font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
                         line-height: 26px;
-                        ">At TBS, we greatly value your commitment to safety and efficiency on our roadways. We wanted to inform you that your Personal Protective Equipment Request has been successfully submitted. Thank you for taking proactive steps to ensure smooth traffic flow and the safety of all involved.
-                        Our team will now review the job thoroughly to ensure it meets all necessary requirements and standards according to the MUTCD and DOT regulations. If any further information or revisions are needed, we will promptly reach out to you.
+                        ">At TBS, we greatly value your commitment to safety and efficiency on our roadways. We wanted to inform you that your Personal Protective Equipment Request has been successfully submitted. Thank you for taking proactive steps to ensure your
+                        team/company has protection with your company logos and names. This means a lot for the safety of your employees and workers for your company.
+                        Our team will now review your request thoroughly to ensure how we will design your equipment. If any further information or revisions are needed, we will promptly reach out to you.
                         We appreciate your cooperation in this matter and look forward to working together to maintain a safe and organized environment.
                         </h1>
                         <h1 style="margin-top: 20px;
