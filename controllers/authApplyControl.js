@@ -174,6 +174,7 @@ const submitApplication = async (req, res) => {
                                 font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
                                 line-height: 26px;">
                                     WARNING:</h1>
+                                    <h1 style="
                                     color: #000000;
                                 font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
                                 line-height: 26px;">
