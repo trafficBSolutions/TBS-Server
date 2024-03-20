@@ -178,7 +178,7 @@ const submitApplication = async (req, res) => {
                                 font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
                                 line-height: 26px;">
                                     You will not be able to submit again! Once your email and phone number have been submitted,
-                                    you won't be able to submit using your email and your phone number!</h1>
+                                    you won't be able to submit using this email and phone number again!</h1>
                         <h1 style="margin-top: 20px;
                                 font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
                                 line-height: 26px;">
