@@ -170,6 +170,16 @@ const submitApplication = async (req, res) => {
                         We appreciate your interest in TBS and look forward to working together to maintain a safe and organized environment.
                         </h1>
                         <h1 style="margin-top: 20px;
+                        color: #ff0000;
+                                font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
+                                line-height: 26px;">
+                                    WARNING:</h1>
+                                    color: #000000;
+                                font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
+                                line-height: 26px;">
+                                    You will not be able to submit again! Once your email and phone number have been submitted,
+                                    you won't be able to submit using your email and your phone number!</h1>
+                        <h1 style="margin-top: 20px;
                                 font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
                                 line-height: 26px;">
                                     Best Regards,</h1>
