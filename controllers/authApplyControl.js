@@ -1,5 +1,6 @@
 const Application = require('../models/applyuser');
 const transporter = require('../utils/emailConfig');
+const transporter2 = require('../utils/emailConfig'); // Assuming you have a separate transporter for the second email
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 
@@ -225,6 +226,16 @@ const submitApplication = async (req, res) => {
             attachments
         };
 
+        // Sending email using transporter2
+        transporter2.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.log('Error sending email notification:', error);
+            } else {
+                console.log('Email notification sent:', info.response);
+            }
+        });
+
+        // Sending email using transporter (you might want to keep this if you still need it)
         transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.log('Error sending email notification:', error);
@@ -232,6 +243,7 @@ const submitApplication = async (req, res) => {
                 console.log('Email notification sent:', info.response);
             }
         });
+        
         return res.json(newApp);
     } catch (error) {
         if (error.code === 11000) {
@@ -246,6 +258,10 @@ const submitApplication = async (req, res) => {
             error: 'Internal Server Error'
         });
     }
+};
+
+module.exports = {
+    submitApplication
 };
 
 module.exports = {
