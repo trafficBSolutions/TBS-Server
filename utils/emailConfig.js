@@ -21,5 +21,23 @@ const transporter = nodemailer.createTransport({
         rejectUnauthorized: true
     }
 });
+const transporter2 = nodemailer.createTransport({
+    service: 'gmail',
+    secure: true,
+    logger: true,
+    debug: true,
+    secureConnection: false,
+    auth: {
+        user: process.env.EMAIL_USER_2, // Change to your environment variable name for the second email
+        pass: process.env.EMAIL_PASS_2 // Change to your environment variable name for the second email
+    },
+    tls: {
+        rejectUnauthorized: true
+    }
+});
 
-module.exports = transporter;
+module.exports = {
+    transporter,
+    transporter2
+    // Add more transporters as needed
+};
