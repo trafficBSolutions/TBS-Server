@@ -1,6 +1,8 @@
 const Application = require('../models/applyuser');
 const transporter = require('../utils/emailConfig');
+const transporter2 = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
+const userEmail = 'tbsolutions4@gmail.com';
 
 const submitApplication = async (req, res) => {
     try {
@@ -67,7 +69,11 @@ const submitApplication = async (req, res) => {
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
-            bcc: { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+            bcc: [
+                { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+                { address: 'tbsolutions4@gmail.com' }, // Add the second Gmail address to BCC
+                { address: transporter2.options.auth.user }, // Use transporter2's email address from its options
+            ],
             subject: 'JOB APPLICATION REQUEST',
             html: `
             <!DOCTYPE html>
