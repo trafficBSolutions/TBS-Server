@@ -1,6 +1,5 @@
 const Application = require('../models/applyuser');
-const transporter = require('../utils/emailConfig');
-const transporter2 = require('../utils/emailConfig'); // Assuming you have a separate transporter for the second email
+const transporter2 = require('../utils/emailConfig'); // Use transporter2 only
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 
@@ -226,17 +225,8 @@ const submitApplication = async (req, res) => {
             attachments
         };
 
-        // Sending email using transporter2
+        // Sending email using transporter2 only
         transporter2.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log('Error sending email notification:', error);
-            } else {
-                console.log('Email notification sent:', info.response);
-            }
-        });
-
-        // Sending email using transporter (you might want to keep this if you still need it)
-        transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.log('Error sending email notification:', error);
             } else {
@@ -264,6 +254,3 @@ module.exports = {
     submitApplication
 };
 
-module.exports = {
-    submitApplication
-};
