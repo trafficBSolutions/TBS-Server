@@ -71,8 +71,7 @@ const submitApplication = async (req, res) => {
             to: email,
             bcc: [
                 { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                { address: 'tbsolutions4@gmail.com' }, // Add the second Gmail address to BCC
-                { address: transporter2.options.auth.user }, // Use transporter2's email address from its options
+                { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
             ],
             subject: 'JOB APPLICATION REQUEST',
             html: `
@@ -227,6 +226,13 @@ const submitApplication = async (req, res) => {
         };
 
         transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.log('Error sending email notification:', error);
+            } else {
+                console.log('Email notification sent:', info.response);
+            }
+        });
+        transporter2.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.log('Error sending email notification:', error);
             } else {
