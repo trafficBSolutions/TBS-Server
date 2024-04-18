@@ -1,6 +1,5 @@
 const Application = require('../models/applyuser');
 const transporter = require('../utils/emailConfig');
-const transporter2 = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 
@@ -227,13 +226,6 @@ const submitApplication = async (req, res) => {
         };
 
         transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log('Error sending email notification:', error);
-            } else {
-                console.log('Email notification sent:', info.response);
-            }
-        });
-        transporter2.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.log('Error sending email notification:', error);
             } else {
