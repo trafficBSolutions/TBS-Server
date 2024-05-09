@@ -37,6 +37,22 @@ const transporter2 = nodemailer.createTransport({
     }
 });
 
+const transporter3 = nodemailer.createTransport({
+    service: 'gmail',
+    secure: true,
+    logger: true,
+    debug: true,
+    secureConnection: false,
+    auth: {
+        user: process.env.EMAIL_USER_3,
+        pass: process.env.EMAIL_PASS_3
+    },
+    tls: {
+        rejectUnauthorized: true
+    }
+});
+
 module.exports = 
     transporter,
-    transporter2;
+    transporter2,
+    transporter3;
