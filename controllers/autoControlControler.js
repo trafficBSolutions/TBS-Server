@@ -1,7 +1,8 @@
 const ControlUser = require('../models/controluser');
-const transporter2 = require('../utils/emailConfig'); // Use transporter2 only
+const transporter3 = require('../utils/emailConfig'); // Use transporter2 only
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
+const mainEmail = 'tbsolutions3@gmail.com';
 
 const submitTrafficControlJob = async (req, res) => {
     try {
@@ -65,6 +66,7 @@ const submitTrafficControlJob = async (req, res) => {
             bcc: [
                 { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
                 { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
+                { name: 'Bryson Davis', address: mainEmail }
             ],
             subject: 'TRAFFIC CONTROL JOB REQUEST',
             html: `
@@ -268,7 +270,7 @@ const submitTrafficControlJob = async (req, res) => {
         };
 
         // Send email
-        transporter2.sendMail(mailOptions, (error, info) => {
+        transporter3.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.log('Error sending email notification:', error);
             } else {
