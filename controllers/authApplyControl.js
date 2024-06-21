@@ -55,14 +55,14 @@ const submitApplication = async (req, res) => {
             });
         }
 
-        // Contact details for William L Rowell Traffic and Barrier Solutions, LLC
+        // Contact details for Carson Speer Traffic and Barrier Solutions, LLC
         const contactInfo = `
-            <p>Contact Information:</p>
-            <p>William L Rowell</p>
+            <p>Traffic Control Manager:</p>
+            <p>Carson Speer</p>
             <p>Traffic and Barrier Solutions. LLC</p>
             <p>723 N Wall Street</p>
             <p>Calhoun, GA 30701</p>
-            <p>Cell: 706-879-0106</p>
+            <p>Cell: 706-581-4465</p>
             <p>Website: <a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
         `;
 
