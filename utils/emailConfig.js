@@ -52,7 +52,23 @@ const transporter3 = nodemailer.createTransport({
     }
 });
 
+const transporter4 = nodemailer.createTransport({
+    service: 'gmail',
+    secure: true,
+    logger: true,
+    debug: true,
+    secureConnection: false,
+    auth: {
+        user: process.env.EMAIL_USER_4,
+        pass: process.env.EMAIL_PASS_4
+    },
+    tls: {
+        rejectUnauthorized: true
+    }
+});
+
 module.exports = 
     transporter,
     transporter2,
-    transporter3;
+    transporter3,
+    transporter4;
