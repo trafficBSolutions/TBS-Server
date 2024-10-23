@@ -104,7 +104,7 @@ const submitApplication = async (req, res) => {
                             >Dear ${first},</h1>
                         <h1 style="margin-top: 5px;
                             font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Your Job Application submission has been received successfully! We will be with you within 48 hours!</h1>
+                            >Your Job Application submission has been received successfully! We will be with you as soon as possible!</h1>
                         
                         <h1 style="
                         color:#000000;
