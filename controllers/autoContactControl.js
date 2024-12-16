@@ -1,6 +1,9 @@
 const ContactUser = require('../models/contactuser');
 const transporter4 = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
+const userEmail = 'tbsolutions4@gmail.com';
+const mainEmail = 'tbsolutions3@gmail.com';
+const foreemail = 'tbsolutions55@gmail.com';
 const submitContact = async (req, res) => {
     try {
         const { first, last, company, email, phone, message } = req.body;
@@ -30,7 +33,9 @@ const submitContact = async (req, res) => {
             to: email,
             bcc: [
                 { name: 'Traffic & Barrier Solutions LLC', address: myEmail },
-                 
+                { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
+                { name: 'Bryson Davis', address: mainEmail },
+                { name: 'Jonkell Tolbert', address: foreemail }
             ],
             subject: `TBS CONTACT MESSAGE FROM ${first} ${last}`,
             html: `
