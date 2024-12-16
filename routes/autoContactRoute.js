@@ -7,7 +7,7 @@ const { submitContact } = require('../controllers/autoContactControl');
 router.use(
     cors({
         credentials: true,
-        origin: 'http://localhost:5173'
+        origin: 'https://www.trafficbarriersolutions.com'
     })
 );
 
