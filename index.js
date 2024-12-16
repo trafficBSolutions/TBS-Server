@@ -26,7 +26,7 @@ app.use('/', require('./routes/autoControlRoute'));
 app.use('/', require('./routes/autoPlanRoute'));
 app.use('/', require('./routes/autoApplyRoute'));
 app.use('/', require('./routes/autoRentalRoute'));
-
+app.use('/', require('./routes/autoContactRoute'));
 
 
 // Define port
