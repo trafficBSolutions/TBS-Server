@@ -287,7 +287,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
       margin-top: 10px;
       font-size: 30px;
       font-family: Arial, Helvetica, sans-serif;
-      ">Applicate didn't add employment history.</p>`;
+      ">Applicant didn't add employment history.</p>`;
 
 
         // Contact details for Carson Speer Traffic and Barrier Solutions, LLC
