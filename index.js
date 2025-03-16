@@ -24,7 +24,7 @@ app.use('/', require('./routes/autoPPERoute'))
 app.use('/', require('./routes/autoSignRoute'));
 app.use('/', require('./routes/autoControlRoute'));
 app.use('/', require('./routes/autoPlanRoute'));
-app.use('/', require('./routes/autoApplyRoute'));
+app.use('/', require('./routes/autoApplyNew'));
 app.use('/', require('./routes/autoRentalRoute'));
 app.use('/', require('./routes/autoContactRoute'));
 
