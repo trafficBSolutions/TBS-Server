@@ -21,7 +21,7 @@ const transporter = nodemailer.createTransport({
         rejectUnauthorized: true
     }
 });
-
+/*
 const transporter2 = nodemailer.createTransport({
     service: 'gmail',
     secure: true,
@@ -66,9 +66,11 @@ const transporter4 = nodemailer.createTransport({
         rejectUnauthorized: true
     }
 });
-
+*/
 module.exports = 
     transporter,
+    /*
     transporter2,
     transporter3,
     transporter4;
+    */
