@@ -538,7 +538,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
     if (error.code === 11000) {
       return res.status(400).json({
         error: "Duplicate email or phone",
-        message: `Application has already been submitted with this email and/or phone number. Please call <a href="tel:+17062630175">(706) 263-0175</a> if you're a former TBS employee requesting for your job back. Otherwise, please wait until we review your application.`
+        message: `Application has already been submitted with this email and/or phone number. Please call (706) 263-0175 if you're a former TBS employee requesting for your job back. Otherwise, please wait until we review your application.`
       });
     }
 
