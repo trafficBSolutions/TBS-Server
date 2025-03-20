@@ -543,7 +543,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
     }
 
     console.log(error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error! Please report any submission errors to William Rowell: (706) 879-0106 to fix the issue on your application." });
   }
 };
 // ✅ Function to generate PDF
