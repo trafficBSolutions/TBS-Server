@@ -6,15 +6,34 @@ const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const submitContact = async (req, res) => {
     try {
-        const { first, last, company, email, phone, message } = req.body;
+        const { first, last, company, email, phone, message, token } = req.body;
 
         // Log request body to debug missing fields
         console.log(req.body);
 
-        // Check for required fields
-        if (!first || !last || !company || !email || !phone || !message) {
-            return res.status(400).json({ error: "All fields are required" });
-        }
+if (!token) {
+    return res.status(400).json({ error: 'reCAPTCHA token is missing.' });
+}
+
+// ✅ Verify reCAPTCHA with Google
+const secretKey = process.env.RECAPTCHA_SECRET_KEY; // <-- store your secret key in .env
+const verifyUrl = `https://www.google.com/recaptcha/api/siteverify`;
+
+const { data } = await axios.post(verifyUrl, null, {
+    params: {
+        secret: secretKey,
+        response: token
+    }
+});
+
+if (!data.success || data.score < 0.4) {
+    return res.status(400).json({ error: 'Failed reCAPTCHA verification.' });
+}
+
+// Required field check
+if (!first || !last || !company || !email || !phone || !message) {
+    return res.status(400).json({ error: "All fields are required" });
+}
 
         // Create user record
         const newUser = await ContactUser.create({
