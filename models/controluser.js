@@ -9,10 +9,6 @@ const controlUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    company: {
-        type: String,
-        required: true
-    },
     email: {
         type: String,
         required: true
@@ -21,7 +17,34 @@ const controlUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-
+    jobDate: {
+        type: Date,
+        required: true
+    },
+    company: {
+        type: String,
+        required: true
+    },
+    coordinator: {
+        type: String,
+        required: true
+    },
+    time: {
+        type: String,
+        required: true
+    },
+    project: {
+        type: String,
+        required: true
+        },
+        flagger: {
+        type: String,
+        required: true
+    },
+    equipment: {
+        type: [String],
+        required: true
+    },
     address: {
         type: String,
         required: true
@@ -38,15 +61,6 @@ const controlUserSchema = new mongoose.Schema({
     },
     zip: { 
         type: String,
-        required: true
-     },
-
-    location: {
-        lat: Number, 
-        lng: Number
-      },
-    structureimg: { 
-        type: String, // Assuming you store the file path or URL if a structure image is provided
         required: true
      },
     message: {
