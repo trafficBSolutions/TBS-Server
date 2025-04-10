@@ -8,58 +8,42 @@ const foreemail = 'tbsolutions55@gmail.com';
 const submitTrafficControlJob = async (req, res) => {
     try {
         const {
-            first,
+      first,
             last,
-            company,
             email,
             phone,
+            jobDate,
+            company,
+            coordinator,
+            time,
+            project,
+            flagger,
+            equipment,
             address,
             city,
             state,
             zip,
-            location,
             message
         } = req.body;
-
-        const lat = req.body.lat;
-        const lng = req.body.lng;
-        const mapsUrl = `https://www.google.com/maps/search/?api=API_KEY&query=${lat},${lng}`;
-
-        // Ensure that file upload exists
-        if (!req.files || !req.files['structureimg'] || !req.files['structureimg'][0]) {
-            return res.status(400).json({
-                error: "Structure image is missing"
-            });
-        }
-
-        const structureImg = req.files['structureimg'][0].filename;
-
-        // Validate email address
-        const isValidEmail = /\S+@\S+\.\S+/.test(email);
-        if (!isValidEmail) {
-            return res.status(400).json({
-                error: "Invalid email address"
-            });
-        }
-
         // Create user record
         const newUser = await ControlUser.create({
             first,
             last,
-            company,
             email,
             phone,
+            jobDate,
+            company,
+            coordinator,
+            time,
+            project,
+            flagger,
+            equipment,
             address,
             city,
             state,
             zip,
-            location,
-            structureimg: structureImg,
             message
         });
-
-       
-
         // Compose email options
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
@@ -70,7 +54,7 @@ const submitTrafficControlJob = async (req, res) => {
                 { name: 'Bryson Davis', address: mainEmail },
                 { name: 'Jonkell Tolbert', address: foreemail }
             ],
-            subject: 'TRAFFIC CONTROL JOB REQUEST',
+           subject: 'TRAFFIC CONTROL JOB REQUEST',
             html: `
             <!DOCTYPE html>
             <html lang="en">
@@ -132,16 +116,6 @@ const submitTrafficControlJob = async (req, res) => {
                         font-style: normal;
                         margin-top: 20px;
                         font-size: 40px;
-                        ">Company: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${company}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
                         ">Email: <p style="
                         margin-top: 10px;
                         font-size: 30px;
@@ -157,7 +131,76 @@ const submitTrafficControlJob = async (req, res) => {
                         font-size: 30px;
                         font-family: Arial, Helvetica, sans-serif;
                         ">${phone}</p></p>
-        
+                        <p style="
+                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
+                        font-style: normal;
+                        margin-top: 20px;
+                        font-size: 40px;
+                        ">Job Date: <p style="
+                        margin-top: 10px;
+                        font-size: 30px;
+                        font-family: Arial, Helvetica, sans-serif;
+                        ">${jobDate}</p></p>
+                        <p style="
+                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
+                        font-style: normal;
+                        margin-top: 20px;
+                        font-size: 40px;
+                        ">Company: <p style="
+                        margin-top: 10px;
+                        font-size: 30px;
+                        font-family: Arial, Helvetica, sans-serif;
+                        ">${company}</p></p>
+                        <p style="
+                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
+                        font-style: normal;
+                        margin-top: 20px;
+                        font-size: 40px;
+                        ">Coordinator: <p style="
+                        margin-top: 10px;
+                        font-size: 30px;
+                        font-family: Arial, Helvetica, sans-serif;
+                        ">${coordinator}</p></p>
+                        <p style="
+                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
+                        font-style: normal;
+                        margin-top: 20px;
+                        font-size: 40px;
+                        ">Time of Arrival: <p style="
+                        margin-top: 10px;
+                        font-size: 30px;
+                        font-family: Arial, Helvetica, sans-serif;
+                        ">${time}</p></p>
+                        <p style="
+                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
+                        font-style: normal;
+                        margin-top: 20px;
+                        font-size: 40px;
+                        ">Project/Task Number: <p style="
+                        margin-top: 10px;
+                        font-size: 30px;
+                        font-family: Arial, Helvetica, sans-serif;
+                        ">${project}</p></p>
+                        <p style="
+                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
+                        font-style: normal;
+                        margin-top: 20px;
+                        font-size: 40px;
+                        ">Flaggers: <p style="
+                        margin-top: 10px;
+                        font-size: 30px;
+                        font-family: Arial, Helvetica, sans-serif;
+                        ">${flagger}</p></p>
+                        <p style="
+                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
+                        font-style: normal;
+                        margin-top: 20px;
+                        font-size: 40px;
+                        ">Equipment: <p style="
+                        margin-top: 10px;
+                        font-size: 30px;
+                        font-family: Arial, Helvetica, sans-serif;
+                        ">${equipment}</p></p>
                         <h1 style="
                         color:#000000;
                         font-family: 'Kairos W04 Extended Bold';
@@ -265,10 +308,6 @@ const submitTrafficControlJob = async (req, res) => {
                         </form>
                         </body>
             </html>`,
-            attachments: [{
-                filename: structureImg,
-                path: `./files/${structureImg}`
-            }]
         };
 
         // Send email
