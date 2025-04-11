@@ -34,7 +34,14 @@ router.delete('/cancel-job/:id', async (req, res) => {
       const mailOptions = {
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
         to: job.email,
-        bcc: myEmail,
+        bcc: [
+                { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+                 
+                { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
+                { name: 'Bryson Davis', address: mainEmail },
+                { name: 'Jonkell Tolbert', address: foreemail }
+                
+            ],
         subject: 'TRAFFIC CONTROL JOB CANCELLED',
         html: `
           <h2>Traffic Control Job Cancelled</h2>
