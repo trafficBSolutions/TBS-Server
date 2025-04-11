@@ -8,8 +8,7 @@ const foreemail = 'tbsolutions55@gmail.com';
 const submitTrafficControlJob = async (req, res) => {
     try {
         const {
-      first,
-            last,
+            name,
             email,
             phone,
             jobDate,
@@ -25,13 +24,45 @@ const submitTrafficControlJob = async (req, res) => {
             zip,
             message
         } = req.body;
-        // Create user record
+
+        // Parse the job date
+        const submittedDate = new Date(jobDate);
+        
+        // Convert to EST timezone for consistent date comparison
+        const estOptions = { timeZone: 'America/New_York' };
+        const estDateStr = submittedDate.toLocaleDateString('en-US', estOptions);
+        const [month, day, year] = estDateStr.split('/').map(Number);
+        
+        // Create EST midnight for the job date
+        const estMidnight = new Date(Date.UTC(year, month - 1, day));
+        
+        // Count jobs for the same EST date
+        const startOfDay = new Date(estMidnight);
+        const endOfDay = new Date(estMidnight);
+        endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+        
+        const jobCount = await ControlUser.countDocuments({
+            jobDate: { 
+                $gte: startOfDay,
+                $lt: endOfDay
+            }
+        });
+
+        if (jobCount >= 10) {
+            return res.status(400).json({ error: 'Job limit reached for the selected date' });
+        }
+        const jobDateFormatted = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }).format(new Date(jobDate));
+        // Create user record with the EST midnight date
         const newUser = await ControlUser.create({
-            first,
-            last,
+            name,
             email,
             phone,
-            jobDate,
+            jobDate: estMidnight, // Store consistent UTC date
             company,
             coordinator,
             time,
@@ -44,276 +75,59 @@ const submitTrafficControlJob = async (req, res) => {
             zip,
             message
         });
+        const cancelUrl = `http://localhost:5173/cancel-job/${newUser._id}`;
+
         // Compose email options
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
-            bcc: [
+             bcc: [
                 { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
                 { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
                 { name: 'Bryson Davis', address: mainEmail },
                 { name: 'Jonkell Tolbert', address: foreemail }
             ],
-           subject: 'TRAFFIC CONTROL JOB REQUEST',
+            subject: 'TRAFFIC CONTROL JOB REQUEST',
             html: `
-            <!DOCTYPE html>
-            <html lang="en">
-                    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #e7e7e7;">
-                <form style="background-color: #e7e7e7; flex-direction: column; align-items: center; justify-content: center;" action="#" method="post">
-                    <header style="background-color: #efad76;">
-                    <h2 style="margin-top: 20px;
-                    font-size: 50px;
-                    text-align: center;
-                    font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                    color:#000000;"
-                    >TRAFFIC & BARRIER SOLUTIONS, LLC</h2>
-                    </header>
-                   
-                    <h2 style="margin-top: 20px;
-                    font-size: 47px;
-                    text-align: center;
-                    font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                    color:#000000;"
-                    >TRAFFIC CONTROL JOB REQUEST</h2>
-                            <div style="margin-bottom: 15px;">
-                        <h1 style="margin-top: 10px;
-                                    font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Dear ${first},</h1>
-                        <h1 style="margin-top: 5px;
-                            font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Your traffic control job submission has been received successfully! We will be with you within 48 hours!</h1>
-                        
-                        <h1 style="
-                        color:#000000;
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 40px;
-                        font-size: 60px;
-                        ">Contact Info:</h1>
-        
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">First Name: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${first}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Last Name: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${last}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Email: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${email}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Phone: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${phone}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Job Date: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${jobDate}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Company: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${company}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Coordinator: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${coordinator}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Time of Arrival: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${time}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Project/Task Number: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${project}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Flaggers: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${flagger}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Equipment: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${equipment}</p></p>
-                        <h1 style="
-                        color:#000000;
-                        font-family: 'Kairos W04 Extended Bold';
-                        font-style: normal;
-                        margin-top: 40px;
-                        font-size: 60px;
-                        ">Job Site Address:</h1>
-        
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Address: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${address}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">City: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${city}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">State: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${state}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Zip: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${zip}</p></p>
-                        <p style="
-                        color:#000000;
-                        font-family: 'Kairos W04 Extended Bold';
-                        font-style: normal;
-                        margin-top: 40px;
-                        font-size: 60px;
-                        ">Message:</p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        "> <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${message}</p></p>
-                        <h1 style="
-                        margin-top: 80px;
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        line-height: 26px;
-                        ">At TBS, we greatly value your commitment to safety and efficiency on our roadways. We wanted to inform you that your Traffic Control Job has been successfully submitted. Thank you for taking proactive steps to ensure smooth traffic flow and the safety of all involved.
-                        Our team will now review the job thoroughly to ensure it meets all necessary requirements and standards according to the MUTCD and DOT regulations. If any further information or revisions are needed, we will promptly reach out to you.
-                        We appreciate your cooperation in this matter and look forward to working together to maintain a safe and organized environment.
-                        </h1>
-                        <h1 style="margin-top: 20px;
-                                font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                                line-height: 26px;">
-                                    Best Regards,</h1>
-                        <h1 style="
-                        font-size: 30px;
-                        margin-top: 20px;
-                        font-family: 'Kairos W04 Extended Bold, Arial, Helvetica, sans-serif;
-                        line-height: 30px;
-                        ">Bryson Davis: 706-263-0175</h1>
-                        <div style="padding-top: 10px;">
-                            <h3 style="
-                            font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                            font-style: normal;
-                            margin-top: 20px;
-                            font-size: 40px;
-                            color:#000000;
-                            ">Contact Information:</h3>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Bryson C Davis</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Traffic and Barrier Solutions, LLC</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >723 N Wall Street</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Calhoun, GA 30701</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Cell: 706-263-0175</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;">Website: <a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></h1>
-                        </div>
-                        </div>
-                        </form>
-                        </body>
-            </html>`,
-        };
-
+            <html>
+              <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+                <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+                  <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB REQUEST</h1>
+                  
+                  <p>Hi <strong>${name}</strong>,</p>
+                  <p>Your traffic control job has been submitted successfully. Your job will be scheduled on ${jobDateFormatted} at ${time}.
+                  If you have any questions or concerns regarding your job, please call (706) 263-0175.</p>
+          
+                  <h3>Summary:</h3>
+                  <ul>
+                    <li><strong>Job Date:</strong> ${jobDateFormatted}</li>
+                    <li><strong>Company:</strong> ${company}</li>
+                    <li><strong>Coordinator:</strong> ${coordinator}</li>
+                    <li><strong>Time:</strong> ${time}</li>
+                    <li><strong>Project/Task:</strong> ${project}</li>
+                    <li><strong>Flaggers:</strong> ${flagger}</li>
+                    <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
+                    <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
+                  </ul>
+          
+                  <h3>Additional Info:</h3>
+                  <p>${message}</p>
+          
+                  <p>If you need to cancel this job, click here:</p>
+                  <p><a href="${cancelUrl}" style="color: #d9534f;">Cancel Job</a></p>
+          
+                  <hr style="margin: 20px 0;">
+                  <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+                </div>
+              </body>
+            </html>
+            `
+          };
+          
         // Send email
-        transporter4.sendMail(mailOptions, (error, info) => {
+        transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
-                console.log('Error sending email notification:', error);
+                console.error('Error sending email notification:', error);
             } else {
                 console.log('Email notification sent:', info.response);
             }
@@ -335,4 +149,3 @@ const submitTrafficControlJob = async (req, res) => {
 module.exports = {
     submitTrafficControlJob
 };
-
