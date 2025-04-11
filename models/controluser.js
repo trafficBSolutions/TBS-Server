@@ -1,11 +1,7 @@
 const mongoose = require('mongoose');
 
 const controlUserSchema = new mongoose.Schema({
-    first: {
-        type: String,
-        required: true
-    },
-    last: {
+    name: {
         type: String,
         required: true
     },
