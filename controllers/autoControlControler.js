@@ -76,7 +76,7 @@ const submitTrafficControlJob = async (req, res) => {
             zip,
             message
         });
-        const cancelUrl = `http://localhost:5173/cancel-job/${newUser._id}`;
+        const cancelUrl = `https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}`;
 
         // Compose email options
         const mailOptions = {
