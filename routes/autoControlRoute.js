@@ -6,6 +6,9 @@ const { submitTrafficControlJob } = require('../controllers/autoControlControler
 const transporter = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 const ControlUser = require('../models/controluser'); // Import your model
+const userEmail = 'tbsolutions4@gmail.com';
+const mainEmail = 'tbsolutions3@gmail.com';
+const foreemail = 'tbsolutions55@gmail.com';
 // Middleware
 router.use(
     cors({
