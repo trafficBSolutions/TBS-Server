@@ -45,7 +45,7 @@ router.delete('/cancel-job/:id', async (req, res) => {
           <p><strong>Project:</strong> ${job.project}</p>
           <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
           <hr>
-          <p>If you want to reschedule, please <a href="http://localhost:5173/trafficcontrol">resubmit your request here</a>.</p>
+          <p>If you want to reschedule, please <a href="https://www.trafficbarriersolutions.com/trafficcontrol">resubmit your request here</a>.</p>
           <p>— TBS Admin Team</p>
         `
       };
