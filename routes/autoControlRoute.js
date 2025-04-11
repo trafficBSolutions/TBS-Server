@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const { submitTrafficControlJob } = require('../controllers/autoControlControler');
 const transporter = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
+const ControlUser = require('../models/controluser'); // Import your model
 // Middleware
 router.use(
     cors({
