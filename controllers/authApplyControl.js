@@ -1,3 +1,4 @@
+/*
 const Application = require('../models/applyuser');
 const transporter4 = require('../utils/emailConfig'); // Use transporter2 only
 const myEmail = 'tbsolutions9@gmail.com';
@@ -257,4 +258,4 @@ const submitApplication = async (req, res) => {
 module.exports = {
     submitApplication
 };
-
+*/
