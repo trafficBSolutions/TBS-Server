@@ -219,7 +219,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
     </div>
   </body>
 </html>
-`
+`,
             attachments
         };
 
