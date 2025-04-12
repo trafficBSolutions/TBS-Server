@@ -314,58 +314,66 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
                 */
             ],
             subject: 'JOB APPLICATION REQUEST',
-          html: `
+         html: `
 <!DOCTYPE html>
 <html lang="en">
-  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #e7e7e7;">
-    <div style="background-color: #efad76; padding: 20px; text-align: center;">
-      <h1 style="margin: 0; font-size: 32px;">TRAFFIC & BARRIER SOLUTIONS, LLC</h1>
-    </div>
+  <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7;">
+    <div style="max-width: 800px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 8px;">
+      <header style="background-color: #efad76; padding: 15px; text-align: center;">
+        <h1 style="margin: 0; font-size: 28px;">Traffic & Barrier Solutions, LLC</h1>
+        <h2 style="margin-top: 5px; font-size: 22px;">Job Application Received</h2>
+      </header>
 
-    <div style="padding: 20px;">
-      <h2 style="font-size: 26px; text-align: center;">✅ JOB APPLICATION RECEIVED</h2>
-      <p style="font-size: 16px;">Dear ${first},</p>
-      <p style="font-size: 16px;">Thank you for submitting your application. Our team will review your submission and reach out if needed.</p>
+      <p>Dear ${first},</p>
+      <p>Thank you for applying for the <strong>${position}</strong> position. We have received your application and will review it shortly.</p>
 
-      <h3 style="margin-top: 20px; font-size: 20px;">Contact Info:</h3>
-      <p><strong>First Name:</strong> ${first}</p>
-      <p><strong>Last Name:</strong> ${last}</p>
+      <h3>Applicant Details</h3>
+      <p><strong>Name:</strong> ${first} ${last}</p>
       <p><strong>Email:</strong> ${email}</p>
       <p><strong>Phone:</strong> ${phone}</p>
-
-      <h3 style="margin-top: 20px; font-size: 20px;">Position & Skills</h3>
-      <p><strong>Position:</strong> ${position}</p>
       <p><strong>Languages:</strong> ${languages}</p>
       <p><strong>Skills:</strong> ${skills}</p>
 
-      <h3 style="margin-top: 20px; font-size: 20px;">Education History</h3>
-      ${educationHtml}
+      <h3>Education History</h3>
+      ${formattedEducation.length ? formattedEducation.map(edu => `
+        <p><strong>School:</strong> ${edu.school}</p>
+        <p><strong>Start:</strong> ${edu.startMonth} ${edu.startYear} | <strong>End:</strong> ${edu.endMonth} ${edu.endYear}</p>
+        <hr style="border: 0; border-top: 1px solid #ccc;">
+      `).join('') : '<p>No education history provided.</p>'}
 
-      <h3 style="margin-top: 20px; font-size: 20px;">Background History</h3>
-      ${backgroundHtml}
+      <h3>Background History</h3>
+      ${formattedBackground.length ? formattedBackground.map(bg => `
+        <p><strong>Charge Type:</strong> ${bg.type}</p>
+        <p><strong>Charge:</strong> ${bg.charge}</p>
+        <p><strong>Date:</strong> ${bg.date}</p>
+        <p><strong>Explanation:</strong> ${bg.explanation}</p>
+        <hr style="border: 0; border-top: 1px solid #ccc;">
+      `).join('') : '<p>Applicant has a clean background.</p>'}
 
-      <h3 style="margin-top: 20px; font-size: 20px;">Employment History</h3>
-      ${employmentHtml}
+      <h3>Employment History</h3>
+      ${formattedWorkHistory.length ? formattedWorkHistory.map(job => `
+        <p><strong>Employer:</strong> ${job.employerName}</p>
+        <p><strong>Address:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
+        <p><strong>Phone:</strong> ${job.phone}</p>
+        <p><strong>Job Duties:</strong> ${job.duties}</p>
+        <p><strong>Currently Employed:</strong> ${job.currentlyEmployed ? 'Yes' : 'No'}</p>
+        ${job.reasonForLeaving ? `<p><strong>Reason for Leaving:</strong> ${job.reasonForLeaving}</p>` : ''}
+        <p><strong>May We Contact:</strong> ${job.mayContact}</p>
+        <hr style="border: 0; border-top: 1px solid #ccc;">
+      `).join('') : '<p>No work history provided.</p>'}
 
-      <h3 style="margin-top: 20px; font-size: 20px;">Message</h3>
+      <h3>Message</h3>
       <p>${message}</p>
 
-      <h3 style="margin-top: 20px; font-size: 20px; color: red;">⚠️ WARNING</h3>
-      <p style="font-size: 16px;">You will not be able to submit again using the same email or phone number.</p>
+      <h4 style="margin-top: 30px; color: red;">⚠️ Warning:</h4>
+      <p>You cannot re-apply using the same email and phone number. Please contact us at (706) 263-0175 for updates.</p>
 
-      <hr style="margin: 30px 0; border: none; border-top: 1px solid #aaa;">
-
-      <h3 style="font-size: 20px;">Contact Information</h3>
-      <p style="font-size: 16px;"><strong>Carson Speer</strong><br>
-      Traffic and Barrier Solutions, LLC<br>
-      1995 Dews Pond Rd SE<br>
-      Calhoun, GA 30701<br>
-      Cell: 706-581-4465<br>
-      Website: <a href="http://www.trafficbarriersolutions.com">trafficbarriersolutions.com</a></p>
+      <p style="margin-top: 30px;">Best regards,</p>
+      <p><strong>Carson Speer</strong><br>Traffic Control Manager<br>Traffic and Barrier Solutions, LLC<br>Calhoun, GA 30701</p>
     </div>
   </body>
 </html>
-`,
+`
             attachments
         };
 
