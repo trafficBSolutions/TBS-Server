@@ -314,214 +314,58 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
                 
             ],
             subject: 'JOB APPLICATION REQUEST',
-            html: `
-            <!DOCTYPE html>
-            <html lang="en">
-                    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #e7e7e7;">
-                <form style="background-color: #e7e7e7; flex-direction: column; align-items: center; justify-content: center;" action="#" method="post">
-                    <header style="background-color: #efad76;">
-                    <h2 style="margin-top: 20px;
-                    font-size: 50px;
-                    text-align: center;
-                    font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                    color:#000000;"
-                    >TRAFFIC & BARRIER SOLUTIONS, LLC</h2>
-                    </header>
-                   
-                    <h2 style="margin-top: 20px;
-                    font-size: 47px;
-                    text-align: center;
-                    font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                    color:#000000;"
-                    >JOB APPLICATION REQUEST</h2>
-                            <div style="margin-bottom: 15px;">
-                        <h1 style="margin-top: 10px;
-                                    font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Dear ${first},</h1>
-                        <h1 style="margin-top: 5px;
-                            font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Your Job Application submission has been received successfully! We will be with you as soon as possible!</h1>
-                        
-                        <h1 style="
-                        color:#000000;
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 40px;
-                        font-size: 60px;
-                        ">Contact Info:</h1>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">First Name: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${first}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Last Name: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${last}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Email: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${email}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Phone: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${phone}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Education History: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${educationHtml}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Position: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${position}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Background History: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${backgroundHtml}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Language: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${languages}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Skills: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${skills}</p></p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        ">Employment History: <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${employmentHtml}</p></p>
-                        <p style="
-                        color:#000000;
-                        font-family: 'Kairos W04 Extended Bold';
-                        font-style: normal;
-                        margin-top: 40px;
-                        font-size: 60px;
-                        ">Message:</p>
-                        <p style="
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        font-style: normal;
-                        margin-top: 20px;
-                        font-size: 40px;
-                        "> <p style="
-                        margin-top: 10px;
-                        font-size: 30px;
-                        font-family: Arial, Helvetica, sans-serif;
-                        ">${message}</p></p>
-                        <h1 style="
-                        margin-top: 80px;
-                        font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                        line-height: 26px;
-                        ">At TBS, we greatly value your commitment to safety and efficiency on our roadways. We wanted to inform you that your Job Application has been successfully submitted. Thank you for taking proactive steps to ensure smooth traffic flow and the safety of all involved.
-                        Our team will now review your resume. If any further information or revisions are needed, we will promptly reach out to you.
-                        We appreciate your interest in TBS and look forward to working together to maintain a safe and organized environment.
-                        </h1>
-                        <h1 style="margin-top: 20px;
-                        color: #ff0000;
-                                font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                                line-height: 26px;">
-                                    WARNING:</h1>
-                                    <h1 style="
-                                    color: #000000;
-                                font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                                line-height: 26px;">
-                                    You will not be able to submit again! Once your email and phone number have been submitted,
-                                    you won't be able to submit using this email and phone number again!</h1>
-                        <h1 style="margin-top: 20px;
-                                font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                                line-height: 26px;">
-                                    Best Regards,</h1>
-                        <h1 style="
-                        font-size: 30px;
-                        margin-top: 20px;
-                        font-family: 'Kairos W04 Extended Bold, Arial, Helvetica, sans-serif;
-                        line-height: 30px;
-                        ">Bryson Davis: 706-263-0175</h1>
-                        <div style="padding-top: 10px;">
-                            <h3 style="
-                            font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-                            font-style: normal;
-                            margin-top: 20px;
-                            font-size: 40px;
-                            color:#000000;
-                            ">Contact Information:</h3>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Bryson C Davis</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Traffic and Barrier Solutions, LLC</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >723 N Wall Street</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Calhoun, GA 30701</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;"
-                            >Cell: 706-263-0175</h1>
-                            <h1 style= "font-family: 'Moveo Sans w00 Regular', Arial, Helvetica, sans-serif;">Website: <a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></h1>
-                        </div>
-                        </div>
-                        </form>
-                        </body>
-                        ${contactInfo}
-            </html>`
-                
-            ,
+          html: `
+<!DOCTYPE html>
+<html lang="en">
+  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #e7e7e7;">
+    <div style="background-color: #efad76; padding: 20px; text-align: center;">
+      <h1 style="margin: 0; font-size: 32px;">TRAFFIC & BARRIER SOLUTIONS, LLC</h1>
+    </div>
+
+    <div style="padding: 20px;">
+      <h2 style="font-size: 26px; text-align: center;">✅ JOB APPLICATION RECEIVED</h2>
+      <p style="font-size: 16px;">Dear ${first},</p>
+      <p style="font-size: 16px;">Thank you for submitting your application. Our team will review your submission and reach out if needed.</p>
+
+      <h3 style="margin-top: 20px; font-size: 20px;">Contact Info:</h3>
+      <p><strong>First Name:</strong> ${first}</p>
+      <p><strong>Last Name:</strong> ${last}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Phone:</strong> ${phone}</p>
+
+      <h3 style="margin-top: 20px; font-size: 20px;">Position & Skills</h3>
+      <p><strong>Position:</strong> ${position}</p>
+      <p><strong>Languages:</strong> ${languages}</p>
+      <p><strong>Skills:</strong> ${skills}</p>
+
+      <h3 style="margin-top: 20px; font-size: 20px;">Education History</h3>
+      ${educationHtml}
+
+      <h3 style="margin-top: 20px; font-size: 20px;">Background History</h3>
+      ${backgroundHtml}
+
+      <h3 style="margin-top: 20px; font-size: 20px;">Employment History</h3>
+      ${employmentHtml}
+
+      <h3 style="margin-top: 20px; font-size: 20px;">Message</h3>
+      <p>${message}</p>
+
+      <h3 style="margin-top: 20px; font-size: 20px; color: red;">⚠️ WARNING</h3>
+      <p style="font-size: 16px;">You will not be able to submit again using the same email or phone number.</p>
+
+      <hr style="margin: 30px 0; border: none; border-top: 1px solid #aaa;">
+
+      <h3 style="font-size: 20px;">Contact Information</h3>
+      <p style="font-size: 16px;"><strong>Carson Speer</strong><br>
+      Traffic and Barrier Solutions, LLC<br>
+      1995 Dews Pond Rd SE<br>
+      Calhoun, GA 30701<br>
+      Cell: 706-581-4465<br>
+      Website: <a href="http://www.trafficbarriersolutions.com">trafficbarriersolutions.com</a></p>
+    </div>
+  </body>
+</html>
+`,
             attachments
         };
 
