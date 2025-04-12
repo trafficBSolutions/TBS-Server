@@ -1,11 +1,11 @@
 const Apply = require("../models/newapply");
 const transporter4 = require("../utils/emailConfig");
 const myEmail = "tbsolutions9@gmail.com";
-/*
+
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
-*/
+
 const fs = require("fs");
 const PDFDocument = require("pdfkit");
 const path = require("path");
@@ -140,7 +140,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
         const contactInfo = `
             <p>Traffic Control Manager:</p>
             <p>Carson Speer</p>
-            <p>Traffic and Barrier Solutions. LLC</p>
+            <p>Traffic & Barrier Solutions, LLC</p>
             <p>1995 Dews Pond Rd SE</p>
             <p>Calhoun, GA 30701</p>
             <p>Cell: (706) 581-4465</p>
@@ -153,11 +153,11 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
             to: email,
             bcc: [
                 { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                /*
+                
                 { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
                 { name: 'Bryson Davis', address: mainEmail },
                 { name: 'Jonkell Tolbert', address: foreemail }
-                */
+                
             ],
             subject: 'JOB APPLICATION REQUEST',
          html: `
