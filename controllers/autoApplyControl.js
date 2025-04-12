@@ -141,9 +141,9 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
             <p>Traffic Control Manager:</p>
             <p>Carson Speer</p>
             <p>Traffic and Barrier Solutions. LLC</p>
-            <p>723 N Wall Street</p>
+            <p>1995 Dews Pond Rd SE</p>
             <p>Calhoun, GA 30701</p>
-            <p>Cell: 706-581-4465</p>
+            <p>Cell: (706) 581-4465</p>
             <p>Website: <a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
         `;
         
@@ -215,7 +215,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
       <p>You cannot re-apply using the same email and phone number. Please contact us at (706) 263-0175 for updates.</p>
 
       <p style="margin-top: 30px;">Best regards,</p>
-      <p><strong>Carson Speer</strong><br>Traffic Control Manager<br>Traffic and Barrier Solutions, LLC<br>Calhoun, GA 30701</p>
+      ${contactInfo}
     </div>
   </body>
 </html>
