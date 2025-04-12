@@ -107,189 +107,35 @@ console.log("Cover File:", coverFilename);
     }
 // Attach the generated PDF
 attachments.push({ filename: pdfFilename, path: pdfPath });
-    const educationHtml = formattedEducation.length
-    ? formattedEducation.map(edu => `
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>School:</b> ${edu.school}</p>
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Start:</b> ${edu.startMonth} ${edu.startYear}</p>
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>End:</b> ${edu.endMonth} ${edu.endYear}</p><br>
-    `).join("")
-    : `<p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      ">No education history provided.</p>`;
-  
+  const educationHtml = formattedEducation.length
+  ? formattedEducation.map(edu => `
+    <p><strong>School:</strong> ${edu.school}<br>
+    <strong>Start:</strong> ${edu.startMonth} ${edu.startYear}<br>
+    <strong>End:</strong> ${edu.endMonth} ${edu.endYear}</p>
+  `).join("")
+  : `<p>No education history provided.</p>`;
+
   const backgroundHtml = formattedBackground.length
-    ? formattedBackground.map(conviction => `
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Charge Type:</b> ${conviction.type}</p>
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Charge:</b> ${conviction.charge}</p>
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Date:</b> ${conviction.date}</p>
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Explanation:</b> ${conviction.explanation}</p><br>
-    `).join("")
-    : `<p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      ">Applicant has clean background.</p>`;
+  ? formattedBackground.map(conviction => `
+    <p><strong>Charge Type:</strong> ${conviction.type}<br>
+    <strong>Charge:</strong> ${conviction.charge}<br>
+    <strong>Date:</strong> ${conviction.date}<br>
+    <strong>Explanation:</strong> ${conviction.explanation}</p>
+  `).join("")
+  : `<p>Applicant has a clean background.</p>`;
+
   
   const employmentHtml = formattedWorkHistory.length
-    ? formattedWorkHistory.map(job => `
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Employer:</b> ${job.employerName}</p>
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Address:</b> ${job.address}, ${job.city}, ${job.state}, ${job.zip}</p>
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Phone:</b> ${job.phone}</p>
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Job Duties:</b> ${job.duties}</p>
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Currently Employed:</b> ${job.currentlyEmployed ? "Yes" : "No"}</p>
-      ${job.reasonForLeaving ? `<p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>Reason for Leaving:</b> ${job.reasonForLeaving}</p>` : ""}
-      <p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      "><b>May We Contact?:</b> ${job.mayContact}</p><br>
-    `).join("")
-    : `<p style="
-      font-family: 'Kairos W04 Extended Bold', Arial, Helvetica, sans-serif;
-      font-style: normal;
-      margin-top: 20px;
-      font-size: 40px;
-      "> <p style="
-      margin-top: 10px;
-      font-size: 30px;
-      font-family: Arial, Helvetica, sans-serif;
-      ">Applicant didn't add employment history.</p>`;
-
-
+  ? formattedWorkHistory.map(job => `
+    <p><strong>Employer:</strong> ${job.employerName}<br>
+    <strong>Address:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}<br>
+    <strong>Phone:</strong> ${job.phone}<br>
+    <strong>Job Duties:</strong> ${job.duties}<br>
+    <strong>Currently Employed:</strong> ${job.currentlyEmployed ? "Yes" : "No"}<br>
+    ${job.reasonForLeaving ? `<strong>Reason for Leaving:</strong> ${job.reasonForLeaving}<br>` : ""}
+    <strong>May We Contact?:</strong> ${job.mayContact}</p>
+  `).join("")
+  : `<p>No employment history provided.</p>`;
         // Contact details for Carson Speer Traffic and Barrier Solutions, LLC
         const contactInfo = `
             <p>Traffic Control Manager:</p>
