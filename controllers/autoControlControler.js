@@ -1,5 +1,5 @@
 const ControlUser = require('../models/controluser');
-const transporter4 = require('../utils/emailConfig'); // Use transporter2 only
+const transporter6 = require('../utils/emailConfig'); // Use transporter2 only
 const myEmail = 'tbsolutions9@gmail.com';
 
 const userEmail = 'tbsolutions4@gmail.com';
@@ -130,7 +130,7 @@ const submitTrafficControlJob = async (req, res) => {
           };
           
         // Send email
-        transporter4.sendMail(mailOptions, (error, info) => {
+        transporter6.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.error('Error sending email notification:', error);
             } else {
