@@ -5,6 +5,7 @@ const myEmail = "tbsolutions9@gmail.com";
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
+const formanmail = 'tbsolutions77@gmail.com';
 
 const fs = require("fs");
 const PDFDocument = require("pdfkit");
@@ -156,8 +157,8 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
                 
                 { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
                 { name: 'Bryson Davis', address: mainEmail },
-                { name: 'Jonkell Tolbert', address: foreemail }
-                
+                { name: 'Jonkell Tolbert', address: foreemail },
+                { name: 'Salvador Gonzalez', address: foremanmail }
             ],
             subject: 'JOB APPLICATION REQUEST',
          html: `
