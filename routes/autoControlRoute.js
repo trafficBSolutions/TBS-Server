@@ -3,7 +3,7 @@ const router = express.Router();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { submitTrafficControlJob } = require('../controllers/autoControlControler');
-const transporter4 = require('../utils/emailConfig');
+const transporter6 = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 const ControlUser = require('../models/controluser'); // Import your model
 const userEmail = 'tbsolutions4@gmail.com';
@@ -65,7 +65,7 @@ router.delete('/cancel-job/:id', async (req, res) => {
       };
   
       // ✅ Send the cancellation email
-      transporter4.sendMail(mailOptions, (err, info) => {
+      transporter6.sendMail(mailOptions, (err, info) => {
         if (err) {
           console.error('Error sending cancellation email:', err);
         } else {
