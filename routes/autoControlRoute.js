@@ -9,6 +9,7 @@ const ControlUser = require('../models/controluser'); // Import your model
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
+const formanmail = 'tbsolutions77@gmail.com';
 // Middleware
 router.use(
     cors({
@@ -42,7 +43,8 @@ router.delete('/cancel-job/:id', async (req, res) => {
                  
                 { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
                 { name: 'Bryson Davis', address: mainEmail },
-                { name: 'Jonkell Tolbert', address: foreemail }
+                { name: 'Jonkell Tolbert', address: foreemail },
+                { name: 'Savador Gonzalez', address: formanmail}
                 
             ],
         subject: 'TRAFFIC CONTROL JOB CANCELLED',
