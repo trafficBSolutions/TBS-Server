@@ -5,7 +5,7 @@ const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
-
+const foremanmail = 'tbsolutions77@gmail.com
 const submitTrafficControlJob = async (req, res) => {
     try {
         const {
@@ -87,8 +87,8 @@ const submitTrafficControlJob = async (req, res) => {
                  
                 { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
                 { name: 'Bryson Davis', address: mainEmail },
-                { name: 'Jonkell Tolbert', address: foreemail }
-                
+                { name: 'Jonkell Tolbert', address: foreemail },
+                { name: 'Salvador Gonzalez', address: foremanmail }
             ],
             subject: 'TRAFFIC CONTROL JOB REQUEST',
             html: `
