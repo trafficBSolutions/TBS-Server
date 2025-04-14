@@ -80,9 +80,24 @@ const transporter5 = nodemailer.createTransport({
         rejectUnauthorized: true
     }
 });
+const transporter6 = nodemailer.createTransport({
+    service: 'gmail',
+    secure: true,
+    logger: true,
+    debug: true,
+    secureConnection: false,
+    auth: {
+        user: process.env.EMAIL_USER_6,
+        pass: process.env.EMAIL_PASS_6
+    },
+    tls: {
+        rejectUnauthorized: true
+    }
+});
 module.exports = 
     transporter,
     transporter2,
     transporter3,
     transporter4,
-    transporter5;
+    transporter5,
+    transporter6;
