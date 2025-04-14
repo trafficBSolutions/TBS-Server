@@ -1,5 +1,5 @@
 const Apply = require("../models/newapply");
-const transporter4 = require("../utils/emailConfig");
+const transporter6 = require("../utils/emailConfig");
 const myEmail = "tbsolutions9@gmail.com";
 
 const userEmail = 'tbsolutions4@gmail.com';
@@ -226,7 +226,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
             attachments
         };
 
-    transporter4.sendMail(mailOptions, (error, info) => {
+    transporter6.sendMail(mailOptions, (error, info) => {
       if (error) {
         console.log("Error sending email notification:", error);
       } else {
