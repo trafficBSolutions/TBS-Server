@@ -120,5 +120,29 @@ router.get('/jobs/full-dates', async (req, res) => {
     res.status(500).json({ error: "Failed to fetch full job dates" });
   }
 });
+// 📅 Get all jobs for a given month and year
+router.get('/jobs/month', async (req, res) => {
+  try {
+    const { month, year } = req.query;
 
+    if (!month || !year) {
+      return res.status(400).json({ error: 'Month and year are required' });
+    }
+
+    const monthInt = parseInt(month, 10) - 1; // JS months are 0-indexed
+    const yearInt = parseInt(year, 10);
+
+    const start = new Date(Date.UTC(yearInt, monthInt, 1));
+    const end = new Date(Date.UTC(yearInt, monthInt + 1, 1));
+
+    const jobs = await ControlUser.find({
+      jobDate: { $gte: start, $lt: end }
+    });
+
+    res.json(jobs);
+  } catch (err) {
+    console.error("Error fetching monthly jobs:", err);
+    res.status(500).json({ error: 'Failed to fetch monthly jobs' });
+  }
+});
 module.exports = router;
