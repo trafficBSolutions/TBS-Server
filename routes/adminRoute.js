@@ -43,24 +43,30 @@ router.post('/admin/register', async (req, res) => {
 // Login Admin
 router.post('/admin/login', async (req, res) => {
   const { email, password } = req.body;
-  const userAgent = req.headers['user-agent'];
-
+  console.log('Login attempt with:', email);
+  
   try {
     const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(401).json({ message: 'Invalid email or password' });
-
+    if (!admin) {
+      console.log('Admin not found with email:', email);
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+    
+    console.log('Admin found, comparing passwords');
     const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid email or password' });
-
-    const sessionToken = uuid.v4(); // unique per login
-    const jwtToken = jwt.sign({ id: admin._id, sessionToken }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
-    // Save the session
-    admin.sessions.push({ token: sessionToken, userAgent });
-    await admin.save();
-
-    res.status(200).json({ token: jwtToken, email: admin.email, firstName: admin.firstName });
+    console.log('Password match result:', isMatch);
+    
+    if (!isMatch) {
+      console.log('Password does not match');
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+    
+    console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
+    
+    res.status(200).json({ token, email: admin.email, firstName: admin.firstName });
   } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
