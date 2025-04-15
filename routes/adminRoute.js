@@ -4,6 +4,7 @@ const Admin = require('../models/Admin');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const verifyAdmin = require('../middleware/verifyAdmin'); // ✅ import middleware
 router.use(
     cors({
         credentials: true,
@@ -67,6 +68,15 @@ router.post('/admin/login', async (req, res) => {
     res.status(200).json({ token, email: admin.email, firstName: admin.firstName });
   } catch (err) {
     console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+router.get('/admin/dashboard-data', verifyAdmin, async (req, res) => {
+  try {
+    // Only reaches here if token is valid & session matches
+    const adminInfo = req.admin; // comes from verifyAdmin
+    res.status(200).json({ message: `Hello, ${adminInfo.firstName}` });
+  } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 });
