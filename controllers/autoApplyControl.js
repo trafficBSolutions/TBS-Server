@@ -5,7 +5,7 @@ const myEmail = "tbsolutions9@gmail.com";
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
-const formanmail = 'tbsolutions77@gmail.com';
+const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
 
 const fs = require("fs");
