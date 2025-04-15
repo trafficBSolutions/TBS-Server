@@ -79,7 +79,31 @@ router.delete('/cancel-job/:id', async (req, res) => {
       res.status(500).json({ error: 'Failed to cancel job' });
     }
   });
+router.get('/jobs', async (req, res) => {
+  try {
+    const { date } = req.query; // Expected format: YYYY-MM-DD
 
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required' });
+    }
+
+    const [year, month, day] = date.split('-').map(Number);
+    const estMidnight = new Date(Date.UTC(year, month - 1, day));
+
+    const startOfDay = new Date(estMidnight);
+    const endOfDay = new Date(estMidnight);
+    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+    const jobs = await ControlUser.find({
+      jobDate: { $gte: startOfDay, $lt: endOfDay }
+    });
+
+    res.json(jobs);
+  } catch (err) {
+    console.error("Error fetching jobs for selected date:", err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 // 📅 Fetch Fully Booked Job Dates (10 or more)
 router.get('/jobs/full-dates', async (req, res) => {
   try {
