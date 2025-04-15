@@ -83,4 +83,22 @@ router.post('/admin/reset-password', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+router.post('/admin/logout', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ message: 'No token provided' });
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const admin = await Admin.findById(decoded.id);
+
+    // Remove the specific session
+    admin.sessions = admin.sessions.filter(s => s.token !== decoded.sessionToken);
+    await admin.save();
+
+    res.status(200).json({ message: 'Logged out from this device' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error during logout' });
+  }
+});
 module.exports = router;
