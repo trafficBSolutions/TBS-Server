@@ -107,7 +107,7 @@ const submitTrafficControlJob = async (req, res) => {
           .map(job => {
             return job.jobDates.map(jobDateObj => {
               const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
-              return `<li><a href="http://localhost:5173/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
+              return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
             }).join('');
           })
           .join('');
