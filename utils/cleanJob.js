@@ -21,4 +21,3 @@ cron.schedule('0 2 * * 1', async () => {
     console.error('[CLEANUP ERROR]', err);
   }
 });
-is keeps running as long as your server runs
