@@ -150,6 +150,32 @@ router.get('/jobs/month', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch monthly jobs' });
   }
 });
+// 📅 Get fully booked dates (10 jobs or more per day)
+router.get('/jobs/full-dates', async (req, res) => {
+  try {
+    const pipeline = [
+      { $unwind: "$jobDates" },
+      { $match: { "jobDates.cancelled": false } },
+      {
+        $group: {
+          _id: "$jobDates.date",
+          count: { $sum: 1 }
+        }
+      },
+      { $match: { count: { $gte: 10 } } }
+    ];
+
+    const result = await ControlUser.aggregate(pipeline);
+    const fullDates = result.map(r =>
+      new Date(r._id).toISOString().split('T')[0] // Format: YYYY-MM-DD
+    );
+
+    res.json(fullDates);
+  } catch (err) {
+    console.error("Failed to fetch full dates:", err);
+    res.status(500).json({ error: 'Failed to fetch full dates' });
+  }
+});
 
 
 module.exports = router;
