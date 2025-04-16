@@ -11,10 +11,12 @@ const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const formanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
+
 // Middleware
 router.use(
     cors({
         credentials: true,
+        /*origin: 'http://localhost:5173' // Make sure this matches your frontend */
         origin: 'https://www.trafficbarriersolutions.com'
     })
 );
@@ -35,24 +37,30 @@ router.delete('/cancel-job/:id', async (req, res) => {
       job.cancelled = true;
       job.cancelledAt = new Date();
       await job.save();
+  
       // ✅ Compose cancellation email
+      const formattedDates = job.jobDates.map(d =>
+        new Date(d.date).toLocaleDateString('en-US')
+      ).join(', ');
+      
       const mailOptions = {
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
         to: job.email,
         bcc: [
-                { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                 
-                { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
-                { name: 'Bryson Davis', address: mainEmail },
-                { name: 'Jonkell Tolbert', address: foreemail },
-                { name: 'Salvador Gonzalez', address: formanmail},
-                { name: 'Damien Diskey', address: damienemail}
-            ],
+          { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+           
+          { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
+          { name: 'Bryson Davis', address: mainEmail },
+          { name: 'Jonkell Tolbert', address: foreemail },
+          { name: 'Salvador Gonzalez', address: formanmail},
+          { name: 'Damien Diskey', address: damienemail}
+        
+      ],
         subject: 'TRAFFIC CONTROL JOB CANCELLED',
         html: `
           <h2>Traffic Control Job Cancelled</h2>
           <p>Dear ${job.name},</p>
-          <p>Your traffic control job scheduled for <strong>${new Date(job.jobDate).toLocaleDateString()}</strong> has been cancelled successfully.</p>
+          <p>Your traffic control job scheduled for <strong>${formattedDates}</strong> has been cancelled successfully.</p>
           <hr>
           <p><strong>Company:</strong> ${job.company}</p>
           <p><strong>Coordinator:</strong> ${job.coordinator}</p>
@@ -63,6 +71,7 @@ router.delete('/cancel-job/:id', async (req, res) => {
           <p>— TBS Admin Team</p>
         `
       };
+      
   
       // ✅ Send the cancellation email
       transporter6.sendMail(mailOptions, (err, info) => {
@@ -78,6 +87,9 @@ router.delete('/cancel-job/:id', async (req, res) => {
       res.status(500).json({ error: 'Failed to cancel job' });
     }
   });
+
+// 📅 Fetch Fully Booked Job Dates (10 or more)
+// 📋 Fetch jobs for a specific date (in EST)
 router.get('/jobs', async (req, res) => {
   try {
     const { date } = req.query; // Expected format: YYYY-MM-DD
@@ -94,53 +106,18 @@ router.get('/jobs', async (req, res) => {
     endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
     const jobs = await ControlUser.find({
-      jobDate: { $gte: startOfDay, $lt: endOfDay }
+      jobDates: {
+        $elemMatch: {
+          date: { $gte: startOfDay, $lt: endOfDay },
+          cancelled: false
+        }
+      }      
     });
 
     res.json(jobs);
   } catch (err) {
     console.error("Error fetching jobs for selected date:", err);
     res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-// 📅 Fetch Fully Booked Job Dates (10 or more)
-router.get('/jobs/full-dates', async (req, res) => {
-  try {
-    // Get all jobs from the database
-    const jobs = await ControlUser.find({});
-    
-    // Group jobs by date in EST timezone
-    const dateCountMap = {};
-    
-    jobs.forEach(job => {
-      // Convert UTC date to EST date string (YYYY-MM-DD)
-      const date = new Date(job.jobDate);
-      
-      // Format date to EST timezone string
-      const estDate = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).format(date);
-      
-      // Convert MM/DD/YYYY to YYYY-MM-DD
-      const [month, day, year] = estDate.split('/');
-      const formattedDate = `${year}-${month}-${day}`;
-      
-      // Count jobs by date
-      dateCountMap[formattedDate] = (dateCountMap[formattedDate] || 0) + 1;
-    });
-    
-    // Find dates with 10 or more jobs
-    const fullDates = Object.entries(dateCountMap)
-      .filter(([_, count]) => count >= 10)
-      .map(([date]) => date);
-    
-    res.json(fullDates);
-  } catch (error) {
-    console.error("Error fetching full dates:", error);
-    res.status(500).json({ error: "Failed to fetch full job dates" });
   }
 });
 // 📅 Get all jobs for a given month and year
@@ -159,7 +136,12 @@ router.get('/jobs/month', async (req, res) => {
     const end = new Date(Date.UTC(yearInt, monthInt + 1, 1));
 
     const jobs = await ControlUser.find({
-      jobDate: { $gte: start, $lt: end }
+      jobDates: {
+        $elemMatch: {
+          date: { $gte: start, $lt: end },
+          cancelled: false
+        }
+      }      
     });
 
     res.json(jobs);
@@ -168,4 +150,6 @@ router.get('/jobs/month', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch monthly jobs' });
   }
 });
+
+
 module.exports = router;
