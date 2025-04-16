@@ -62,7 +62,15 @@ const controlUserSchema = new mongoose.Schema({
     message: {
         type: String,
         required: true
-    }
+    },
+        cancelled: {
+        type: Boolean,
+        default: false
+      },
+      cancelledAt: {
+        type: Date,
+        default: null
+      }
 });
 
 const ControlUser = mongoose.model('ControlUser', controlUserSchema);
