@@ -28,13 +28,13 @@ router.post('/trafficcontrol', submitTrafficControlJob);
 router.delete('/cancel-job/:id', async (req, res) => {
     try {
       const { id } = req.params;
+
+      const job = await ControlUser.findById(id);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
   
-      const job = await ControlUser.findByIdAndDelete(id);
-  
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found or already cancelled' });
-      }
-  
+      job.cancelled = true;
+      job.cancelledAt = new Date();
+      await job.save();
       // ✅ Compose cancellation email
       const mailOptions = {
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
@@ -72,10 +72,9 @@ router.delete('/cancel-job/:id', async (req, res) => {
           console.log('Cancellation email sent:', info.response);
         }
       });
-  
-      res.status(200).json({ message: 'Job cancelled and email sent.' });
-    } catch (error) {
-      console.error('Error cancelling job:', error);
+      res.status(200).json({ message: 'Job marked as cancelled' });
+    } catch (err) {
+      console.error('Error cancelling job:', err);
       res.status(500).json({ error: 'Failed to cancel job' });
     }
   });
