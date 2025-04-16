@@ -162,7 +162,7 @@ const submitTrafficControlJob = async (req, res) => {
           };
           
         // Send email
-        transporter.sendMail(mailOptions, (error, info) => {
+        transporter6.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.error('Error sending email notification:', error);
             } else {
