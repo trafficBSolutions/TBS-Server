@@ -28,7 +28,7 @@ app.use('/', require('./routes/autoApplyNew'));
 app.use('/', require('./routes/autoRentalRoute'));
 app.use('/', require('./routes/autoContactRoute'));
 app.use('/', require('./routes/adminRoute'));
-
+require('./utils/cleanJob'); 
 // Define port
 const port = process.env.PORT || 8000;
 
