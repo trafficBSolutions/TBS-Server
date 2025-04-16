@@ -28,70 +28,100 @@ const submitTrafficControlJob = async (req, res) => {
         } = req.body;
 
         // Parse the job date
-        const submittedDate = new Date(jobDate);
-        
-        // Convert to EST timezone for consistent date comparison
-        const estOptions = { timeZone: 'America/New_York' };
-        const estDateStr = submittedDate.toLocaleDateString('en-US', estOptions);
-        const [month, day, year] = estDateStr.split('/').map(Number);
-        
-        // Create EST midnight for the job date
-        const estMidnight = new Date(Date.UTC(year, month - 1, day));
-        
-        // Count jobs for the same EST date
-        const startOfDay = new Date(estMidnight);
-        const endOfDay = new Date(estMidnight);
-        endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
-        
-        const jobCount = await ControlUser.countDocuments({
-            jobDate: { 
+        if (!Array.isArray(jobDate) || jobDate.length === 0) {
+            return res.status(400).json({ error: 'No job dates provided' });
+          }
+          
+          const failedDates = [];
+          const scheduledDates = [];
+          
+          for (const dateStr of jobDate) {
+            const submittedDate = new Date(dateStr);
+          
+            if (isNaN(submittedDate.getTime())) {
+              failedDates.push(dateStr);
+              continue;
+            }
+          
+            const estOptions = { timeZone: 'America/New_York' };
+            const estDateStr = submittedDate.toLocaleDateString('en-US', estOptions);
+            const [month, day, year] = estDateStr.split('/').map(Number);
+          
+            const estMidnight = new Date(Date.UTC(year, month - 1, day));
+            const startOfDay = new Date(estMidnight);
+            const endOfDay = new Date(estMidnight);
+            endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+          
+            const jobCount = await ControlUser.countDocuments({
+              jobDate: {
                 $gte: startOfDay,
                 $lt: endOfDay
+              }
+            });
+          
+            if (jobCount >= 10) {
+              failedDates.push(estDateStr);
+            } else {
+              scheduledDates.push(estMidnight);
             }
-        });
-
-        if (jobCount >= 10) {
-            return res.status(400).json({ error: 'Job limit reached for the selected date' });
-        }
-        const jobDateFormatted = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'America/New_York',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-          }).format(new Date(jobDate));
-        // Create user record with the EST midnight date
-        const newUser = await ControlUser.create({
-            name,
-            email,
-            phone,
-            jobDate: estMidnight, // Store consistent UTC date
-            company,
-            coordinator,
-            time,
-            project,
-            flagger,
-            equipment,
-            address,
-            city,
-            state,
-            zip,
-            message
-        });
-        const cancelUrl = `https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}`;
-
+          }
+          if (scheduledDates.length === 0) {
+            return res.status(400).json({ error: `All selected job dates are full. Try again later.` });
+          }
+          const jobDateFormatted = scheduledDates.map(d =>
+            new Intl.DateTimeFormat('en-US', {
+              timeZone: 'America/New_York',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            }).format(d)
+          );          
+          const createdJobs = [];
+          for (const dateObj of scheduledDates) {
+            const newUser = await ControlUser.create({
+                name,
+                email,
+                phone,
+                company,
+                coordinator,
+                time,
+                project,
+                flagger,
+                equipment,
+                address,
+                city,
+                state,
+                zip,
+                message,
+                jobDates: [
+                  {
+                    date: dateObj,
+                    cancelled: false,
+                    cancelledAt: null
+                  }
+                ]
+              });
+            createdJobs.push(newUser);
+          }       
+          const cancelLinks = createdJobs
+          .map(job => {
+            return job.jobDates.map(jobDateObj => {
+              const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
+              return `<li><a href="http://localhost:5173/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
+            }).join('');
+          })
+          .join('');
+           
         // Compose email options
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
-             bcc: [
-                { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                 
-                { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
-                { name: 'Bryson Davis', address: mainEmail },
-                { name: 'Jonkell Tolbert', address: foreemail },
-                { name: 'Salvador Gonzalez', address: foremanmail },
-                { name: 'Damien Diskey', address: damienemail }
-            ],
+            { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+          { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
+          { name: 'Bryson Davis', address: mainEmail },
+          { name: 'Jonkell Tolbert', address: foreemail },
+          { name: 'Salvador Gonzalez', address: formanmail},
+          { name: 'Damien Diskey', address: damienemail}
             subject: 'TRAFFIC CONTROL JOB REQUEST',
             html: `
             <html>
@@ -100,7 +130,10 @@ const submitTrafficControlJob = async (req, res) => {
                   <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB REQUEST</h1>
                   
                   <p>Hi <strong>${name}</strong>,</p>
-                  <p>Your traffic control job has been submitted successfully. Your job will be scheduled on ${jobDateFormatted} at ${time}.
+                  Your job has been scheduled on the following date(s):<br>
+                        <ul>
+                            ${scheduledDates.map(d => `<li>${d.toLocaleDateString('en-US')}</li>`).join('')}
+                    </ul>
                   If you have any questions or concerns regarding your job, please call (706) 263-0175.</p>
           
                   <h3>Summary:</h3>
@@ -118,9 +151,8 @@ const submitTrafficControlJob = async (req, res) => {
                   <h3>Additional Info:</h3>
                   <p>${message}</p>
           
-                  <p>If you need to cancel this job, click here:</p>
-                  <p><a href="${cancelUrl}" style="color: #d9534f;">Cancel Job</a></p>
-          
+                  <h3>If you need to cancel a date, use the link for that specific day:</h3>
+                        <ul>${cancelLinks}</ul>
                   <hr style="margin: 20px 0;">
                   <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
                 </div>
@@ -130,7 +162,7 @@ const submitTrafficControlJob = async (req, res) => {
           };
           
         // Send email
-        transporter6.sendMail(mailOptions, (error, info) => {
+        transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.error('Error sending email notification:', error);
             } else {
@@ -140,9 +172,9 @@ const submitTrafficControlJob = async (req, res) => {
 
         const response = {
             message: 'Traffic Control Job submitted successfully',
-            newUser: newUser // Include the newUser object in the response
+            scheduledDates: scheduledDates.map(d => d.toISOString().split('T')[0]),
+            createdJobs
         };
-
         res.status(201).json(response);
 
     } catch (error) {
