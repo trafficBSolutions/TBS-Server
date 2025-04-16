@@ -120,7 +120,7 @@ const submitTrafficControlJob = async (req, res) => {
                   { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
                   { name: 'Bryson Davis', address: mainEmail },
           { name: 'Jonkell Tolbert', address: foreemail },
-          { name: 'Salvador Gonzalez', address: formanmail},
+          { name: 'Salvador Gonzalez', address: foremanmail},
           { name: 'Damien Diskey', address: damienemail}],
             subject: 'TRAFFIC CONTROL JOB REQUEST',
             html: `
