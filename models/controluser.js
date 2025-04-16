@@ -13,10 +13,11 @@ const controlUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    jobDate: {
-        type: Date,
-        required: true
-    },
+    jobDates: [{
+        date: Date,
+        cancelled: { type: Boolean, default: false },
+        cancelledAt: Date
+      }],
     company: {
         type: String,
         required: true
@@ -63,7 +64,7 @@ const controlUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-        cancelled: {
+    cancelled: {
         type: Boolean,
         default: false
       },
