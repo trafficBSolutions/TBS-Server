@@ -81,7 +81,7 @@ const submitPlan = async (req, res) => {
           
                   <h3>Summary:</h3>
                   <ul>
-                    <li><strong>Coordinator:</strong> ${name}</li>
+                    <li><strong>Coordinator:</strong> ${first} ${last}</li>
                     <li><strong>Email:</strong> ${email}</li>
                     <li><strong>Phone:</strong> ${phone}</li>
                     <li><strong>Company:</strong> ${company}</li>
