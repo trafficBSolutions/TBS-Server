@@ -106,7 +106,7 @@ const submitPlan = async (req, res) => {
         <p style="margin-top: 30px;">Thank you,<br>The TBS Admin Team</p>
       </body>
     </html>
-  ``,
+  `,
             attachments: []
         };
 
