@@ -75,7 +75,7 @@ const submitPlan = async (req, res) => {
                 <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
                   <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL PLAN REQUEST</h1>
                   
-                  <p>Hi <strong>${name}</strong>,</p>
+                  <p>Hi <strong>${first}</strong>,</p>
                   Your plan has been submitted! <br>
                   If you have any questions or concerns regarding your plan, please call (706) 263-0175.</p>
           
