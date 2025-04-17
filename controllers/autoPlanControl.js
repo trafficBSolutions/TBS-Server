@@ -69,44 +69,33 @@ const submitPlan = async (req, res) => {
                 { name: 'Jonkell Tolbert', address: foreemail }
             ],
             subject: 'TRAFFIC CONTROL PLAN REQUEST',
-              html: `
-    <html>
-      <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px; color: #333;">
-        <h2 style="text-align: center; color: #000;">Traffic & Barrier Solutions, LLC</h2>
-        <h3 style="text-align: center;">Traffic Control Plan Submission Confirmation</h3>
-
-        <p>Hi ${first},</p>
-
-        <p>Thank you for submitting your traffic control plan. We have received your request and will follow up within 48 hours.</p>
-
-        <h4 style="margin-top: 30px;">Submission Details:</h4>
-        <ul>
-          <li><strong>Name:</strong> ${first} ${last}</li>
-          <li><strong>Company:</strong> ${company}</li>
-          <li><strong>Email:</strong> ${email}</li>
-          <li><strong>Phone:</strong> ${phone}</li>
-          <li><strong>Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
-          <li><strong>Message:</strong> ${message}</li>
-        </ul>
-
-        <p>If you have any questions, changes, or concerns, please call (706) 263-0175</a>.</p>
-
-        <hr style="margin: 40px 0;">
-
-        <h4>Contact Info:</h4>
-        <p>
-          Bryson Davis<br>
-          Traffic & Barrier Solutions, LLC<br>
-          1995 Dews Pond Rd SE<br>
-          Calhoun, GA 30701<br>
-          Phone: <a href="tel:7062630175">(706) 263-0175</a><br>
-          Website: <a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a>
-        </p>
-
-        <p style="margin-top: 30px;">Thank you,<br>The TBS Admin Team</p>
-      </body>
-    </html>
-  `,
+              html:`
+            <html>
+              <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+                <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+                  <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL PLAN REQUEST</h1>
+                  
+                  <p>Hi <strong>${name}</strong>,</p>
+                  Your plan has been submitted! <br>
+                  If you have any questions or concerns regarding your plan, please call (706) 263-0175.</p>
+          
+                  <h3>Summary:</h3>
+                  <ul>
+                    <li><strong>Coordinator:</strong> ${name}</li>
+                    <li><strong>Email:</strong> ${email}</li>
+                    <li><strong>Phone:</strong> ${phone}</li>
+                    <li><strong>Company:</strong> ${company}</li>
+                    <li><strong>Job/Project Number:</strong> ${project}</li>
+                    <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
+                  </ul>
+                  <h3>Additional Info:</h3>
+                  <p>${message}</p>
+          
+                  <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+                </div>
+              </body>
+            </html>
+            `,
             attachments: []
         };
 
