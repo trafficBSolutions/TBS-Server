@@ -1,12 +1,13 @@
 const ControlUser = require('../models/controluser');
-const transporter6 = require('../utils/emailConfig'); // Use transporter2 only
+const transporter = require('../utils/emailConfig'); // Use transporter2 only
 const myEmail = 'tbsolutions9@gmail.com';
-
+/*
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
+*/
 const submitTrafficControlJob = async (req, res) => {
     try {
         const {
@@ -117,11 +118,14 @@ const submitTrafficControlJob = async (req, res) => {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
             bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+                  /*
                   { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
                   { name: 'Bryson Davis', address: mainEmail },
           { name: 'Jonkell Tolbert', address: foreemail },
           { name: 'Salvador Gonzalez', address: foremanmail},
-          { name: 'Damien Diskey', address: damienemail}],
+          { name: 'Damien Diskey', address: damienemail}
+          */
+                 ],
             subject: 'TRAFFIC CONTROL JOB REQUEST',
             html: `
             <html>
@@ -161,7 +165,7 @@ const submitTrafficControlJob = async (req, res) => {
           };
           
         // Send email
-        transporter6.sendMail(mailOptions, (error, info) => {
+        transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.error('Error sending email notification:', error);
             } else {
