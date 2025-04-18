@@ -144,6 +144,7 @@ const submitTrafficControlJob = async (req, res) => {
                   <ul>
                     <li><strong>Company:</strong> ${company}</li>
                     <li><strong>Coordinator:</strong> ${coordinator}</li>
+                    <li><strong>Phone:</strong> ${phone}</li>
                     <li><strong>Time:</strong> ${time}</li>
                     <li><strong>Project/Task:</strong> ${project}</li>
                     <li><strong>Flaggers:</strong> ${flagger}</li>
