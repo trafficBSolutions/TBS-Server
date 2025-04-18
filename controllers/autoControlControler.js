@@ -138,7 +138,6 @@ const submitTrafficControlJob = async (req, res) => {
           
                   <h3>Summary:</h3>
                   <ul>
-                    <li><strong>Job Date:</strong> ${jobDateFormatted}</li>
                     <li><strong>Company:</strong> ${company}</li>
                     <li><strong>Coordinator:</strong> ${coordinator}</li>
                     <li><strong>Time:</strong> ${time}</li>
