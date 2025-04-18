@@ -64,6 +64,7 @@ router.delete('/cancel-job/:id', async (req, res) => {
           <hr>
           <p><strong>Company:</strong> ${job.company}</p>
           <p><strong>Coordinator:</strong> ${job.coordinator}</p>
+          <p><strong>Phone:</strong> ${job.phone}</p>
           <p><strong>Project:</strong> ${job.project}</p>
           <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
           <hr>
