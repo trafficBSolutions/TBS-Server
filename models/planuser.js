@@ -1,15 +1,7 @@
 const mongoose = require('mongoose');
 
 const planUserSchema = new mongoose.Schema({
-    first: {
-        type: String,
-        required: true
-    },
-    last: {
-        type: String,
-        required: true
-    },
-    company: {
+    name: {
         type: String,
         required: true
     },
@@ -21,7 +13,14 @@ const planUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-
+    company: {
+        type: String,
+        required: true
+    },
+    project: {
+        type: String,
+        required: true
+    },
     address: {
         type: String,
         required: true
@@ -40,17 +39,10 @@ const planUserSchema = new mongoose.Schema({
         type: String,
         required: true
      },
-
-    location: {
-        lat: Number, 
-        lng: Number
-      },
-    structurefile: {
-        type: String // Assuming you store the file path or URL if a structure file is provided
+    structureFile: {
+        type: String, // Assuming you store the file path or URL if a structure file is provided
+        required: true
     },
-    structureimg: { 
-        type: String // Assuming you store the file path or URL if a structure image is provided
-     },
     message: {
         type: String,
         required: true
