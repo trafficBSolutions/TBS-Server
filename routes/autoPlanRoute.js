@@ -42,8 +42,7 @@ const upload = multer({
         fileSize: 1024 * 1024 * 5, // 5MB file size limit
     },
 }).fields([
-    { name: 'structurefile', maxCount: 1 },
-    { name: 'structureimg', maxCount: 1 }
+    { name: 'structure', maxCount: 1 }
 ]);
 
 // Use bodyParser to parse URL-encoded and JSON data
