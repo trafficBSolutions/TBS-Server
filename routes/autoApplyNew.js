@@ -56,5 +56,14 @@ router.post('/applynow', (req, res, next) => {
         next();
     });
 }, submitApply);
+const Apply = require('../models/newapply');
 
+router.get('/apply/all', async (req, res) => {
+  try {
+    const applicants = await Apply.find().sort({ _id: -1 }); // newest first
+    res.json(applicants);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve applicants.' });
+  }
+});
 module.exports = router;
