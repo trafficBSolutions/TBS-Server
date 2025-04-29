@@ -29,6 +29,10 @@ app.use('/', require('./routes/autoRentalRoute'));
 app.use('/', require('./routes/autoContactRoute'));
 app.use('/', require('./routes/adminRoute'));
 require('./utils/cleanJob'); 
+const path = require('path');
+app.use('/forms', express.static(path.join(__dirname, 'forms')));
+app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
+
 // Define port
 const port = process.env.PORT || 8000;
 
