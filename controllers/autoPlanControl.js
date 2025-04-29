@@ -1,10 +1,11 @@
 const PlanUser = require('../models/planuser');
 const transporter4 = require('../utils/emailConfig'); // Use transporter2 only
 const myEmail = 'tbsolutions9@gmail.com';
+/*
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
-
+*/
 const submitPlan = async (req, res) => {
     try {
         const {
