@@ -51,5 +51,14 @@ router.use(bodyParser.json());
 
 // Define routes under /apply path
 router.post('/trafficplanning', upload, submitPlan);
+const Plan = require('../models/planuser');
 
+router.get('/plan/all', async (req, res) => {
+  try {
+    const plan = await Plan.find().sort({ _id: -1 }); // newest first
+    res.json(plan);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve applicants.' });
+  }
+});
 module.exports = router;
