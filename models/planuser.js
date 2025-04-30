@@ -43,7 +43,12 @@ const planUserSchema = new mongoose.Schema({
         type: String, // Assuming you store the file path or URL if a structure file is provided
         required: true
     },
+
     message: {
+        type: String,
+        required: true
+    },
+    terms : {
         type: String,
         required: true
     }
