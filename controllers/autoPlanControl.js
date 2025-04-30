@@ -101,7 +101,7 @@ const submitPlan = async (req, res) => {
                 path: `./files/${structure}`
             });
         }
-        transporter.sendMail(mailOptions, (error, info) => {
+        transporter4.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.error('Error sending email notification:', error);
             } else {
