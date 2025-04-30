@@ -18,7 +18,8 @@ const submitPlan = async (req, res) => {
             city,
             state,
             zip,
-            message
+            message,
+            terms
         } = req.body;
         let structure;
 
@@ -44,7 +45,8 @@ const submitPlan = async (req, res) => {
             state,
             zip,
             structure: structure,
-            message
+            message,
+            terms
         });
         const attachments = [];
         if (structure) {
@@ -55,12 +57,12 @@ const submitPlan = async (req, res) => {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
             bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                  { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
-                  { name: 'Bryson Davis', address: mainEmail },
-          { name: 'Jonkell Tolbert', address: foreemail },
-          { name: 'Salvador Gonzalez', address: foremanmail},
-          { name: 'Damien Diskey', address: damienemail}
-                 ],
+                { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
+                { name: 'Bryson Davis', address: mainEmail },
+        { name: 'Jonkell Tolbert', address: foreemail },
+        { name: 'Salvador Gonzalez', address: foremanmail},
+        { name: 'Damien Diskey', address: damienemail}
+               ],
             subject: 'TRAFFIC CONTROL PLAN REQUEST',
             html: `
             <html>
@@ -82,6 +84,7 @@ const submitPlan = async (req, res) => {
                     <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
                   </ul>
                   <h3>Additional Info:</h3>
+                  <p>Terms & Conditions: ${terms}</p>
                   <p>${message}</p>
           
                   <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
@@ -98,7 +101,7 @@ const submitPlan = async (req, res) => {
                 path: `./files/${structure}`
             });
         }
-        transporter4.sendMail(mailOptions, (error, info) => {
+        transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.error('Error sending email notification:', error);
             } else {
