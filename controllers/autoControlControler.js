@@ -1,5 +1,5 @@
 const ControlUser = require('../models/controluser');
-const transporter = require('../utils/emailConfig'); // Use transporter2 only
+const transporter = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 
 const userEmail = 'tbsolutions4@gmail.com';
@@ -21,6 +21,7 @@ const submitTrafficControlJob = async (req, res) => {
             project,
             flagger,
             equipment,
+            terms,
             address,
             city,
             state,
@@ -89,6 +90,7 @@ const submitTrafficControlJob = async (req, res) => {
                 project,
                 flagger,
                 equipment,
+                terms,
                 address,
                 city,
                 state,
@@ -103,7 +105,17 @@ const submitTrafficControlJob = async (req, res) => {
                 ]
               });
             createdJobs.push(newUser);
-          }       
+          }      
+        /*
+          const cancelLinks = createdJobs
+          .map(job => {
+            return job.jobDates.map(jobDateObj => {
+              const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
+              return `<li><a href="http://localhost:5173/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
+            }).join('');
+          })
+          .join('');
+          */
           const cancelLinks = createdJobs
           .map(job => {
             return job.jobDates.map(jobDateObj => {
@@ -112,20 +124,18 @@ const submitTrafficControlJob = async (req, res) => {
             }).join('');
           })
           .join('');
-           
+          
         // Compose email options
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
             bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                  
-                  { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
-                  { name: 'Bryson Davis', address: mainEmail },
-          { name: 'Jonkell Tolbert', address: foreemail },
-          { name: 'Salvador Gonzalez', address: foremanmail},
-          { name: 'Damien Diskey', address: damienemail}
-        
-                 ],
+              { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
+              { name: 'Bryson Davis', address: mainEmail },
+      { name: 'Jonkell Tolbert', address: foreemail },
+      { name: 'Salvador Gonzalez', address: foremanmail},
+      { name: 'Damien Diskey', address: damienemail}
+             ],
             subject: 'TRAFFIC CONTROL JOB REQUEST',
             html: `
             <html>
@@ -151,8 +161,8 @@ const submitTrafficControlJob = async (req, res) => {
                     <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
                     <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
                   </ul>
-          
                   <h3>Additional Info:</h3>
+                  <p>Terms & Conditions: ${terms}</p>
                   <p>${message}</p>
           
                   <h3>If you need to cancel a date, use the link for that specific day:</h3>
