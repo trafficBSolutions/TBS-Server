@@ -42,6 +42,10 @@ const controlUserSchema = new mongoose.Schema({
         type: [String],
         required: true
     },
+    terms: {
+        type: String,
+        required: true
+    },
     address: {
         type: String,
         required: true
