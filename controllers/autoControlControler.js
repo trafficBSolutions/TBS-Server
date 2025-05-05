@@ -17,6 +17,8 @@ const submitTrafficControlJob = async (req, res) => {
             jobDate,
             company,
             coordinator,
+            siteContact,
+            site,
             time,
             project,
             flagger,
@@ -86,6 +88,8 @@ const submitTrafficControlJob = async (req, res) => {
                 phone,
                 company,
                 coordinator,
+                siteContact,
+                site,
                 time,
                 project,
                 flagger,
@@ -105,7 +109,7 @@ const submitTrafficControlJob = async (req, res) => {
                 ]
               });
             createdJobs.push(newUser);
-          }      
+          }       
         /*
           const cancelLinks = createdJobs
           .map(job => {
@@ -130,6 +134,7 @@ const submitTrafficControlJob = async (req, res) => {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
             bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+                  
               { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
               { name: 'Bryson Davis', address: mainEmail },
       { name: 'Jonkell Tolbert', address: foreemail },
@@ -154,7 +159,9 @@ const submitTrafficControlJob = async (req, res) => {
                   <ul>
                     <li><strong>Company:</strong> ${company}</li>
                     <li><strong>Coordinator:</strong> ${coordinator}</li>
-                    <li><strong>Phone:</strong> ${phone}</li>
+                    <li><strong>Coordinator Phone:</strong> ${phone}</li>
+                    <li><strong>On-Site Contact:</strong> ${siteContact}</li>
+                    <li><strong>On-Site Phone:</strong> ${site}</li>
                     <li><strong>Time:</strong> ${time}</li>
                     <li><strong>Project/Task:</strong> ${project}</li>
                     <li><strong>Flaggers:</strong> ${flagger}</li>
