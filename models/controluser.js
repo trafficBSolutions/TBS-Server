@@ -26,6 +26,12 @@ const controlUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    siteContact: {
+        type: String,
+    },
+    site: {
+        type: String,
+    },
     time: {
         type: String,
         required: true
