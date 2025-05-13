@@ -6,18 +6,18 @@ const { submitTrafficControlJob } = require('../controllers/autoControlControler
 const transporter6 = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 const ControlUser = require('../models/controluser'); // Import your model
-
+/*
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const formanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
-
+*/
 // Middleware
 router.use(
     cors({
         credentials: true,
-        /*origin: 'http://localhost:5173' // Make sure this matches your frontend*/
+        /* origin: 'http://localhost:5173' // Make sure this matches your frontend*/
         origin: 'https://www.trafficbarriersolutions.com'
     })
 );
@@ -72,8 +72,8 @@ const formattedDates = job.jobDates.map(d =>
   new Date(d.date).toLocaleDateString('en-US')
 ).join(', ');
 
+/*
 // Dynamic links for update & cancel
-      /*
 const cancelLink = `http://localhost:5173/cancel-job/${job._id}`;
 const updateLink = `http://localhost:5173/manage-job/${job._id}`;
 */
@@ -93,27 +93,37 @@ const mailOptions = {
           { name: 'Damien Diskey', address: damienemail}
            
       ],
-  subject: 'UPDATED TRAFFIC CONTROL JOB',
-  html: `
-    <h2>Updated Traffic Control Job</h2>
-    <p>Dear ${job.name},</p>
-    <p>Your job has been successfully updated. Here is the current job info:</p>
-    <ul>
-      <li><strong>Date(s):</strong> ${formattedDates}</li>
-      <li><strong>Company:</strong> ${job.company}</li>
-      <li><strong>Coordinator:</strong> ${job.coordinator}</li>
-      <li><strong>Phone:</strong> ${job.phone}</li>
-      <li><strong>Project:</strong> ${job.project}</li>
-      <li><strong>Job Site:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</li>
-    </ul>
-    <h3>Need to update again or cancel?</h3>
-    <ul>
-      <li><a href="${updateLink}">Update This Job Again</a></li>
-      <li><a href="${cancelLink}">Cancel This Job</a></li>
-    </ul>
-    <p>If anything looks incorrect, please call (706) 263-0175 immediately.</p>
-    <p>— TBS Admin Team</p>
-  `
+  subject: 'TRAFFIC CONTROL JOB UPDATED',
+html: `
+  <h2>Updated Traffic Control Job</h2>
+  <p>Dear ${job.name},</p>
+  <p>Your job has been successfully updated. Here is the current job info:</p>
+
+  <h3>Updated Date(s):</h3>
+  <ul>
+    ${job.jobDates.map(jobDateObj => {
+      const dateStr = new Date(jobDateObj.date).toLocaleDateString('en-US');
+      const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
+      const cancelDateLink = `https://www.trafficbarriersolutions.com/cancel-job/${job._id}?date=${isoStr}`;
+      return `<li>${dateStr} – <a href="${cancelDateLink}">Cancel this date</a></li>`;
+    }).join('')}
+  </ul>
+
+  <p><strong>Company:</strong> ${job.company}</p>
+  <p><strong>Coordinator:</strong> ${job.coordinator}</p>
+  <p><strong>Phone:</strong> ${job.phone}</p>
+  <p><strong>Project:</strong> ${job.project}</p>
+  <p><strong>Job Site:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
+
+  <h3>Need to update again or cancel the whole job?</h3>
+  <ul>
+    <li><a href="${updateLink}">Update Entire Job</a></li>
+    <li><a href="${cancelLink}">Cancel Entire Job</a></li>
+  </ul>
+
+  <p>If anything looks incorrect, please call (706) 263-0175 immediately.</p>
+  <p>— TBS Admin Team</p>
+`
 };
 
 transporter6.sendMail(mailOptions, (err, info) => {
@@ -133,25 +143,27 @@ transporter6.sendMail(mailOptions, (err, info) => {
 
 // 🗑️ Cancel a job by ID
 router.delete('/cancel-job/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
+  try {
+    const { id } = req.params;
+    const { date } = req.query;
 
-      const job = await ControlUser.findById(id);
-      if (!job) return res.status(404).json({ error: 'Job not found' });
-  
-      job.cancelled = true;
-      job.cancelledAt = new Date();
-      await job.save();
-  
-      // ✅ Compose cancellation email
-      const formattedDates = job.jobDates.map(d =>
-        new Date(d.date).toLocaleDateString('en-US')
-      ).join(', ');
-      
-      const mailOptions = {
-        from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-        to: job.email,
-        bcc: [
+    const job = await ControlUser.findById(id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+
+    // If no ?date provided, cancel the whole job (existing logic)
+if (!date) {
+  job.cancelled = true;
+  job.cancelledAt = new Date();
+  await job.save();
+
+  const formattedDates = job.jobDates.map(d =>
+    new Date(d.date).toLocaleDateString('en-US')
+  ).join(', ');
+
+  const fullCancelEmail = {
+    from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+    to: job.email,
+    bcc: [
           { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
            
           { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
@@ -159,40 +171,105 @@ router.delete('/cancel-job/:id', async (req, res) => {
           { name: 'Jonkell Tolbert', address: foreemail },
           { name: 'Salvador Gonzalez', address: formanmail},
           { name: 'Damien Diskey', address: damienemail}
-    
+        
       ],
-        subject: 'TRAFFIC CONTROL JOB CANCELLED',
-        html: `
-          <h2>Traffic Control Job Cancelled</h2>
-          <p>Dear ${job.name},</p>
-          <p>Your traffic control job scheduled for <strong>${formattedDates}</strong> has been cancelled successfully.</p>
-          <hr>
-          <p><strong>Company:</strong> ${job.company}</p>
-          <p><strong>Coordinator:</strong> ${job.coordinator}</p>
-          <p><strong>Phone:</strong> ${job.phone}</p>
-          <p><strong>Project:</strong> ${job.project}</p>
-          <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
-          <hr>
-          <p>If you want to reschedule, please <a href="https://www.trafficbarriersolutions.com/trafficcontrol">resubmit your request here</a>.</p>
-          <p>— TBS Admin Team</p>
-        `
-      };
-      
-  
-      // ✅ Send the cancellation email
-      transporter6.sendMail(mailOptions, (err, info) => {
-        if (err) {
-          console.error('Error sending cancellation email:', err);
-        } else {
-          console.log('Cancellation email sent:', info.response);
-        }
-      });
-      res.status(200).json({ message: 'Job marked as cancelled' });
-    } catch (err) {
-      console.error('Error cancelling job:', err);
-      res.status(500).json({ error: 'Failed to cancel job' });
+    subject: 'TRAFFIC CONTROL JOB CANCELLED',
+    html: `
+      <h2>Traffic Control Job Cancelled</h2>
+      <p>Dear ${job.name},</p>
+      <p>Your traffic control job scheduled for the following date(s) has been cancelled:</p>
+      <ul>${job.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}</ul>
+      <p><strong>Project:</strong> ${job.project}</p>
+      <p><strong>Coordinator:</strong> ${job.coordinator}</p>
+      <p><strong>Company:</strong> ${job.company}</p>
+      <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
+      <p>If this was a mistake, please <a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">resubmit or update the job</a>.</p>
+      <p>— TBS Admin Team</p>
+    `
+  };
+
+  transporter6.sendMail(fullCancelEmail, (err, info) => {
+    if (err) {
+      console.error('Error sending full cancellation email:', err);
+    } else {
+      console.log('Full cancellation email sent:', info.response);
     }
   });
+
+  return res.status(200).json({ message: 'Entire job cancelled' });
+}
+
+
+// ✅ Parse ISO string date
+const targetDate = new Date(date);
+const dateIndex = job.jobDates.findIndex(d =>
+  new Date(d.date).toDateString() === targetDate.toDateString()
+);
+
+if (dateIndex === -1) {
+  return res.status(404).json({ error: 'Job date not found in record' });
+}
+
+// Cancel just the one date
+job.jobDates[dateIndex].cancelled = true;
+job.jobDates[dateIndex].cancelledAt = new Date();
+
+// Check if all dates are now cancelled
+const allCancelled = job.jobDates.every(d => d.cancelled);
+job.cancelled = allCancelled;
+job.cancelledAt = allCancelled ? new Date() : null;
+
+await job.save();
+
+// Use the correct date object from the array
+const formatted = new Date(job.jobDates[dateIndex].date).toLocaleDateString('en-US');
+    // ✉️ Email notification for single-date cancel
+    const cancelDateMail = {
+      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+      to: job.email,
+      bcc: [
+          { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+           
+          { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
+          { name: 'Bryson Davis', address: mainEmail },
+          { name: 'Jonkell Tolbert', address: foreemail },
+          { name: 'Salvador Gonzalez', address: formanmail},
+          { name: 'Damien Diskey', address: damienemail}
+           
+      ],
+      subject: 'TRAFFIC CONTROL DATE CANCELLED',
+      html: `
+        <h2>Job Date Cancelled</h2>
+        <p>Dear ${job.name},</p>
+        <p>The following job date has been cancelled:</p>
+        <ul><li><strong>${formatted}</strong></li></ul>
+
+        <p><strong>Project:</strong> ${job.project}</p>
+        <p><strong>Company:</strong> ${job.company}</p>
+        <p><strong>Coordinator:</strong> ${job.coordinator}</p>
+        <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
+
+        <p>If this was a mistake, please <a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">update your job again</a> or call (706) 263-0175.</p>
+        <p>— TBS Admin Team</p>
+      `
+    };
+
+    transporter6.sendMail(cancelDateMail, (err, info) => {
+      if (err) {
+        console.error('Error sending partial cancel email:', err);
+      } else {
+        console.log('Single date cancel email sent:', info.response);
+      }
+    });
+
+    res.status(200).json({ message: `Cancelled job date: ${formatted}` });
+
+  } catch (err) {
+    console.error('Error cancelling date:', err);
+    res.status(500).json({ error: 'Failed to cancel job date' });
+  }
+});
+
 
 // 📅 Fetch Fully Booked Job Dates (10 or more)
 // 📋 Fetch jobs for a specific date (in EST)
