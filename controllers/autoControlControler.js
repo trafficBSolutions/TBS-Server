@@ -119,6 +119,9 @@ const submitTrafficControlJob = async (req, res) => {
             }).join('');
           })
           .join('');
+          const manageLinks = createdJobs.map(job => {
+  return `<li><a href="http://localhost:5173/manage-job/${job._id}">Edit this job</a></li>`;
+}).join('');
           */
           const cancelLinks = createdJobs
           .map(job => {
@@ -128,7 +131,9 @@ const submitTrafficControlJob = async (req, res) => {
             }).join('');
           })
           .join('');
-          
+          const manageLinks = createdJobs.map(job => {
+  return `<li><a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">Edit this job</a></li>`;
+}).join('');
         // Compose email options
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
