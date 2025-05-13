@@ -176,10 +176,11 @@ const submitTrafficControlJob = async (req, res) => {
                   <h3>Additional Info:</h3>
                   <p>Terms & Conditions: ${terms}</p>
                   <p>${message}</p>
-          
+                  <h3>If you need to edit your job, click here</h3>
+          <ul>${manageLinks}</ul>
                   <h3>If you need to cancel a date, use the link for that specific day:</h3>
                         <ul>${cancelLinks}</ul>
-<ul>${manageLinks}</ul>
+
                   <hr style="margin: 20px 0;">
                   <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
                 </div>
