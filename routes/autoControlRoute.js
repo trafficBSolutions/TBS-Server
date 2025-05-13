@@ -342,23 +342,22 @@ router.get('/jobs/full-dates', async (req, res) => {
       { $match: { "jobDates.cancelled": false } },
       {
         $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$jobDates.date" }
-          },
+          _id: "$jobDates.date",
           count: { $sum: 1 }
         }
       },
-      { $match: { count: { $gte: 10 } } },
-      { $project: { _id: 0, date: "$_id" } }
+      { $match: { count: { $gte: 10 } } }
     ];
 
-    const fullDates = await ControlUser.aggregate(pipeline);
-    const dateList = fullDates.map(d => d.date); // e.g., ['2025-05-14', '2025-05-17']
+    const result = await ControlUser.aggregate(pipeline);
+    const fullDates = result.map(r =>
+      new Date(r._id).toISOString().split('T')[0] // Format: YYYY-MM-DD
+    );
 
-    res.json(dateList);
+    res.json(fullDates);
   } catch (err) {
-    console.error("Error fetching full job dates:", err);
-    res.status(500).json({ error: 'Failed to fetch fully booked dates' });
+    console.error("Failed to fetch full dates:", err);
+    res.status(500).json({ error: 'Failed to fetch full dates' });
   }
 });
 
