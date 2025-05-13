@@ -132,9 +132,11 @@ const jobCount = await ControlUser.countDocuments({
             }).join('');
           })
           .join('');
-          const manageLinks = createdJobs.map(job => {
-  return `<li><a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">Edit this job</a></li>`;
-}).join('');
+const manageLinks = createdJobs.map(job =>
+        job.jobDates.map(jobDateObj => {
+          const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
+  return `<li><a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">${dateString} – Edit this job</a></li>`;
+}).join('')).join('');
         // Compose email options
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
