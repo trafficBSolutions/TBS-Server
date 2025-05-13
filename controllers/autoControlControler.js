@@ -56,13 +56,14 @@ const submitTrafficControlJob = async (req, res) => {
             const endOfDay = new Date(estMidnight);
             endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
           
-            const jobCount = await ControlUser.countDocuments({
-              jobDate: {
-                $gte: startOfDay,
-                $lt: endOfDay
-              }
-            });
-          
+const jobCount = await ControlUser.countDocuments({
+  jobDates: {
+    $elemMatch: {
+      date: { $gte: startOfDay, $lt: endOfDay },
+      cancelled: false
+    }
+  }
+});
             if (jobCount >= 10) {
               failedDates.push(estDateStr);
             } else {
