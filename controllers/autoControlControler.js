@@ -179,12 +179,22 @@ const submitTrafficControlJob = async (req, res) => {
           
                   <h3>If you need to cancel a date, use the link for that specific day:</h3>
                         <ul>${cancelLinks}</ul>
+<ul>${manageLinks}</ul>
                   <hr style="margin: 20px 0;">
                   <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
                 </div>
               </body>
             </html>
-            `
+            `,
+                  attachments: [
+        {
+          filename: 'TBSPDF7.png',
+          path: path.join(__dirname, '..', 'public', 'TBSPDF7.png'),
+          cid: 'tbslogo',
+          contentDisposition: 'inline',
+          contentType: 'image/png'
+        }
+      ]
           };
           
         // Send email
