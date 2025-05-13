@@ -1,7 +1,7 @@
 const ControlUser = require('../models/controluser');
 const transporter = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
-
+const path = require('path'); 
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
