@@ -6,6 +6,7 @@ const { submitTrafficControlJob } = require('../controllers/autoControlControler
 const transporter6 = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 const ControlUser = require('../models/controluser'); // Import your model
+
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
@@ -16,7 +17,7 @@ const damienemail = 'tbsolutions14@gmail.com';
 router.use(
     cors({
         credentials: true,
-        /*origin: 'http://localhost:5173' // Make sure this matches your frontend */
+        /*origin: 'http://localhost:5173' // Make sure this matches your frontend*/
         origin: 'https://www.trafficbarriersolutions.com'
     })
 );
@@ -26,6 +27,110 @@ router.use(bodyParser.json());
 
 // 🚦 Job Submission
 router.post('/trafficcontrol', submitTrafficControlJob);
+// PATCH /manage-job/:id – update jobDates only
+// ✅ Get a specific job by ID
+// Add this route to fetch a specific job by ID
+router.get('/trafficcontrol/:id', async (req, res) => {
+  try {
+    const job = await ControlUser.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    res.json(job);
+  } catch (err) {
+    console.error('Error fetching job:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Add this route to update a job
+router.patch('/manage-job/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { updatedJob } = req.body;
+
+    if (!updatedJob || typeof updatedJob !== 'object') {
+      return res.status(400).json({ error: 'Invalid or missing job data' });
+    }
+
+    const job = await ControlUser.findById(id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+
+    // ✅ Safely update job fields
+    Object.keys(updatedJob).forEach(key => {
+      if (key !== '_id') {
+        job[key] = updatedJob[key];
+      }
+    });
+job.updatedAt = new Date();
+await job.save();
+
+
+    // Email logic here (optional)
+// Format updated job dates
+const formattedDates = job.jobDates.map(d =>
+  new Date(d.date).toLocaleDateString('en-US')
+).join(', ');
+
+// Dynamic links for update & cancel
+      /*
+const cancelLink = `http://localhost:5173/cancel-job/${job._id}`;
+const updateLink = `http://localhost:5173/manage-job/${job._id}`;
+*/
+const cancelLink = `https://www.trafficbarriersolutions.com/cancel-job/${job._id}`;
+const updateLink = `https://www.trafficbarriersolutions.com/manage-job/${job._id}`;
+
+const mailOptions = {
+  from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+  to: job.email,
+  bcc: [
+          { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+           
+          { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
+          { name: 'Bryson Davis', address: mainEmail },
+          { name: 'Jonkell Tolbert', address: foreemail },
+          { name: 'Salvador Gonzalez', address: formanmail},
+          { name: 'Damien Diskey', address: damienemail}
+           
+      ],
+  subject: 'UPDATED TRAFFIC CONTROL JOB',
+  html: `
+    <h2>Updated Traffic Control Job</h2>
+    <p>Dear ${job.name},</p>
+    <p>Your job has been successfully updated. Here is the current job info:</p>
+    <ul>
+      <li><strong>Date(s):</strong> ${formattedDates}</li>
+      <li><strong>Company:</strong> ${job.company}</li>
+      <li><strong>Coordinator:</strong> ${job.coordinator}</li>
+      <li><strong>Phone:</strong> ${job.phone}</li>
+      <li><strong>Project:</strong> ${job.project}</li>
+      <li><strong>Job Site:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</li>
+    </ul>
+    <h3>Need to update again or cancel?</h3>
+    <ul>
+      <li><a href="${updateLink}">Update This Job Again</a></li>
+      <li><a href="${cancelLink}">Cancel This Job</a></li>
+    </ul>
+    <p>If anything looks incorrect, please call (706) 263-0175 immediately.</p>
+    <p>— TBS Admin Team</p>
+  `
+};
+
+transporter6.sendMail(mailOptions, (err, info) => {
+  if (err) {
+    console.error('Error sending update email:', err);
+  } else {
+    console.log('Update email sent:', info.response);
+  }
+});
+
+    res.status(200).json({ message: 'Job updated successfully', job });
+  } catch (err) {
+    console.error('Error updating job:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // 🗑️ Cancel a job by ID
 router.delete('/cancel-job/:id', async (req, res) => {
     try {
@@ -54,7 +159,7 @@ router.delete('/cancel-job/:id', async (req, res) => {
           { name: 'Jonkell Tolbert', address: foreemail },
           { name: 'Salvador Gonzalez', address: formanmail},
           { name: 'Damien Diskey', address: damienemail}
-        
+    
       ],
         subject: 'TRAFFIC CONTROL JOB CANCELLED',
         html: `
@@ -149,32 +254,6 @@ router.get('/jobs/month', async (req, res) => {
   } catch (err) {
     console.error("Error fetching monthly jobs:", err);
     res.status(500).json({ error: 'Failed to fetch monthly jobs' });
-  }
-});
-// 📅 Get fully booked dates (10 jobs or more per day)
-router.get('/jobs/full-dates', async (req, res) => {
-  try {
-    const pipeline = [
-      { $unwind: "$jobDates" },
-      { $match: { "jobDates.cancelled": false } },
-      {
-        $group: {
-          _id: "$jobDates.date",
-          count: { $sum: 1 }
-        }
-      },
-      { $match: { count: { $gte: 10 } } }
-    ];
-
-    const result = await ControlUser.aggregate(pipeline);
-    const fullDates = result.map(r =>
-      new Date(r._id).toISOString().split('T')[0] // Format: YYYY-MM-DD
-    );
-
-    res.json(fullDates);
-  } catch (err) {
-    console.error("Failed to fetch full dates:", err);
-    res.status(500).json({ error: 'Failed to fetch full dates' });
   }
 });
 
