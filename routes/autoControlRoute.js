@@ -334,5 +334,32 @@ router.get('/jobs/month', async (req, res) => {
   }
 });
 
+// 📅 Get all fully booked dates (10 or more active jobs)
+router.get('/jobs/full-dates', async (req, res) => {
+  try {
+    const pipeline = [
+      { $unwind: "$jobDates" },
+      { $match: { "jobDates.cancelled": false } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$jobDates.date" }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $match: { count: { $gte: 10 } } },
+      { $project: { _id: 0, date: "$_id" } }
+    ];
+
+    const fullDates = await ControlUser.aggregate(pipeline);
+    const dateList = fullDates.map(d => d.date); // e.g., ['2025-05-14', '2025-05-17']
+
+    res.json(dateList);
+  } catch (err) {
+    console.error("Error fetching full job dates:", err);
+    res.status(500).json({ error: 'Failed to fetch fully booked dates' });
+  }
+});
 
 module.exports = router;
