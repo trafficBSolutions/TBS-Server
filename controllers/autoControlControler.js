@@ -174,8 +174,6 @@ const manageLinks = createdJobs.map(job =>
                   <h3>Additional Info:</h3>
                   <p>Terms & Conditions: ${terms}</p>
                   <p>${message}</p>
-                  <h3>If you need to edit your job, click here</h3>
-          <ul>${manageLinks}</ul>
                   <h3>If you need to cancel a date, use the link for that specific day:</h3>
                         <ul>${cancelLinks}</ul>
 
