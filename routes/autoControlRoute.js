@@ -336,18 +336,25 @@ router.get('/jobs/month', async (req, res) => {
 // Add this route to fetch fully booked dates
 router.get('/jobs/full-dates', async (req, res) => {
   try {
-    const pipeline = [
-      { $unwind: "$jobDates" },
-      { $match: { "jobDates.cancelled": false } },
-      {
-        $group: {
-          _id: "$jobDates.date",
-          count: { $sum: 1 }
-        }
-      },
-      { $match: { count: { $gte: 10 } } }
-    ];
-
+const pipeline = [
+  { $unwind: "$jobDates" },
+  {
+    $match: {
+      "jobDates.date": { $exists: true },
+      $or: [
+        { "jobDates.cancelled": false },
+        { "jobDates.cancelled": { $exists: false } }
+      ]
+    }
+  },
+  {
+    $group: {
+      _id: "$jobDates.date",
+      count: { $sum: 1 }
+    }
+  },
+  { $match: { count: { $gte: 10 } } }
+];
     const result = await ControlUser.aggregate(pipeline);
     const fullDates = result.map(r =>
       new Date(r._id).toISOString().split('T')[0] // Format: YYYY-MM-DD
