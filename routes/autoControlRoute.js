@@ -337,14 +337,12 @@ router.get('/jobs/month', async (req, res) => {
 router.get('/jobs/full-dates', async (req, res) => {
   try {
 const pipeline = [
+  { $match: { cancelled: { $ne: true } } },  // Exclude jobs that are entirely cancelled
   { $unwind: "$jobDates" },
   {
     $match: {
       "jobDates.date": { $exists: true },
-      $or: [
-        { "jobDates.cancelled": false },
-        { "jobDates.cancelled": { $exists: false } }
-      ]
+      "jobDates.cancelled": { $ne: true }    // Exclude cancelled dates
     }
   },
   {
