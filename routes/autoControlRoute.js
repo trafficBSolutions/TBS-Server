@@ -333,39 +333,53 @@ router.get('/jobs/month', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch monthly jobs' });
   }
 });
-
-// 📅 Get all fully booked dates (10 or more active jobs)
+// Add this route to fetch fully booked dates
 router.get('/jobs/full-dates', async (req, res) => {
   try {
-    const pipeline = [
-      { $unwind: "$jobDates" },
-      {
-  $match: {
-    $or: [
-      { "jobDates.cancelled": false },
-      { "jobDates.cancelled": { $exists: false } }
-    ]
-  }
-},
-      {
-        $group: {
-          _id: "$jobDates.date",
-          count: { $sum: 1 }
+    // You can adjust the logic based on your definition of "fully booked"
+    // For example, if a date has 10 or more jobs, it's considered fully booked
+    const { month, year } = req.query;
+    
+    if (!month || !year) {
+      return res.status(400).json({ error: 'Month and year are required' });
+    }
+    
+    const monthInt = parseInt(month, 10) - 1; // JS months are 0-indexed
+    const yearInt = parseInt(year, 10);
+    
+    const start = new Date(Date.UTC(yearInt, monthInt, 1));
+    const end = new Date(Date.UTC(yearInt, monthInt + 1, 1));
+    
+    // Get all jobs for the month
+    const jobs = await ControlUser.find({
+      jobDates: {
+        $elemMatch: {
+          date: { $gte: start, $lt: end },
+          cancelled: false
         }
-      },
-      { $match: { count: { $gte: 10 } } }
-    ];
-
-    const result = await ControlUser.aggregate(pipeline);
-    const fullDates = result.map(r =>
-      new Date(r._id).toISOString().split('T')[0] // Format: YYYY-MM-DD
+      }
+    });
+    
+    // Count jobs per date
+    const dateCountMap = {};
+    jobs.forEach(job => {
+      job.jobDates.forEach(dateObj => {
+        if (!dateObj.cancelled) {
+          const dateStr = new Date(dateObj.date).toISOString().split('T')[0];
+          dateCountMap[dateStr] = (dateCountMap[dateStr] || 0) + 1;
+        }
+      });
+    });
+    
+    // Find dates with 10 or more jobs (or whatever threshold you consider "fully booked")
+    const fullyBookedDates = Object.keys(dateCountMap).filter(
+      date => dateCountMap[date] >= 10
     );
-
-    res.json(fullDates);
+    
+    res.json({ fullyBookedDates });
   } catch (err) {
-    console.error("Failed to fetch full dates:", err);
-    res.status(500).json({ error: 'Failed to fetch full dates' });
+    console.error("Error fetching fully booked dates:", err);
+    res.status(500).json({ error: 'Failed to fetch fully booked dates' });
   }
 });
-
 module.exports = router;
