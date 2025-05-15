@@ -55,21 +55,18 @@ const submitTrafficControlJob = async (req, res) => {
             const startOfDay = new Date(estMidnight);
             const endOfDay = new Date(estMidnight);
             endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
-          
+         
 const pipeline = [
+  { $match: { cancelled: { $ne: true } } },  // Exclude jobs that are entirely cancelled
   { $unwind: "$jobDates" },
   {
     $match: {
       "jobDates.date": { $gte: startOfDay, $lt: endOfDay },
-      $or: [
-        { "jobDates.cancelled": false },
-        { "jobDates.cancelled": { $exists: false } }
-      ]
+      "jobDates.cancelled": { $ne: true }    // Exclude cancelled dates
     }
   },
   { $count: "count" }
 ];
-
 const result = await ControlUser.aggregate(pipeline);
 const jobCount = result[0]?.count || 0;
 
