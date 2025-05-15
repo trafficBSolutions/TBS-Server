@@ -61,7 +61,10 @@ const pipeline = [
   {
     $match: {
       "jobDates.date": { $gte: startOfDay, $lt: endOfDay },
-      "jobDates.cancelled": false
+      $or: [
+        { "jobDates.cancelled": false },
+        { "jobDates.cancelled": { $exists: false } }
+      ]
     }
   },
   { $count: "count" }
@@ -69,7 +72,6 @@ const pipeline = [
 
 const result = await ControlUser.aggregate(pipeline);
 const jobCount = result[0]?.count || 0;
-
 
       if (jobCount >= 10) {
         failedDates.push(estDateStr);
