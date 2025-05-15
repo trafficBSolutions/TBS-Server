@@ -338,14 +338,7 @@ router.get('/jobs/full-dates', async (req, res) => {
   try {
     const pipeline = [
       { $unwind: "$jobDates" },
-      {
-  $match: {
-    $or: [
-      { "jobDates.cancelled": false },
-      { "jobDates.cancelled": { $exists: false } }
-    ]
-  }
-},
+      { $match: { "jobDates.cancelled": false } },
       {
         $group: {
           _id: "$jobDates.date",
