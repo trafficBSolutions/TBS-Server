@@ -33,31 +33,53 @@ const submitTrafficControlJob = async (req, res) => {
         } = req.body;
 
         // Parse the job date
-  const submittedDate = new Date(jobDate);
-        
-        // Convert to EST timezone for consistent date comparison
-        const estOptions = { timeZone: 'America/New_York' };
-        const estDateStr = submittedDate.toLocaleDateString('en-US', estOptions);
-        const [month, day, year] = estDateStr.split('/').map(Number);
-        
-        // Create EST midnight for the job date
-        const estMidnight = new Date(Date.UTC(year, month - 1, day));
-        
-        // Count jobs for the same EST date
-        const startOfDay = new Date(estMidnight);
-        const endOfDay = new Date(estMidnight);
-        endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
-        
-        const jobCount = await ControlUser.countDocuments({
-            jobDate: { 
-                $gte: startOfDay,
-                $lt: endOfDay
+        if (!Array.isArray(jobDate) || jobDate.length === 0) {
+            return res.status(400).json({ error: 'No job dates provided' });
+          }
+          
+          const failedDates = [];
+          const scheduledDates = [];
+          
+          for (const dateStr of jobDate) {
+            const submittedDate = new Date(dateStr);
+          
+            if (isNaN(submittedDate.getTime())) {
+              failedDates.push(dateStr);
+              continue;
             }
-        });
+          
+            const estOptions = { timeZone: 'America/New_York' };
+            const estDateStr = submittedDate.toLocaleDateString('en-US', estOptions);
+            const [month, day, year] = estDateStr.split('/').map(Number);
+          
+            const estMidnight = new Date(Date.UTC(year, month - 1, day));
+            const startOfDay = new Date(estMidnight);
+            const endOfDay = new Date(estMidnight);
+            endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+         
+const pipeline = [
+  { $match: { cancelled: { $ne: true } } },  // Exclude jobs that are entirely cancelled
+  { $unwind: "$jobDates" },
+  {
+    $match: {
+      "jobDates.date": { $gte: startOfDay, $lt: endOfDay },
+      "jobDates.cancelled": { $ne: true }    // Exclude cancelled dates
+    }
+  },
+  { $count: "count" }
+];
+const result = await ControlUser.aggregate(pipeline);
+const jobCount = result[0]?.count || 0;
 
-        if (jobCount >= 10) {
-            return res.status(400).json({ error: 'Job limit reached for the selected date' });
-        }
+      if (jobCount >= 10) {
+        failedDates.push(estDateStr);
+      } else {
+        scheduledDates.push(estMidnight);
+      }
+    }
+          if (scheduledDates.length === 0) {
+            return res.status(400).json({ error: `All selected job dates are full. Try again later.` });
+          }
           const jobDateFormatted = scheduledDates.map(d =>
             new Intl.DateTimeFormat('en-US', {
               timeZone: 'America/New_York',
@@ -96,7 +118,7 @@ const submitTrafficControlJob = async (req, res) => {
               });
             createdJobs.push(newUser);
           }       
-        /*
+        
           const cancelLinks = createdJobs
           .map(job => {
             return job.jobDates.map(jobDateObj => {
@@ -108,7 +130,7 @@ const submitTrafficControlJob = async (req, res) => {
           const manageLinks = createdJobs.map(job => {
   return `<li><a href="http://localhost:5173/manage-job/${job._id}">Edit this job</a></li>`;
 }).join('');
-          */
+          /*
           const cancelLinks = createdJobs
           .map(job => {
             return job.jobDates.map(jobDateObj => {
@@ -122,6 +144,7 @@ const manageLinks = createdJobs.map(job =>
           const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
   return `<li><a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">${dateString} – Edit this job</a></li>`;
 }).join('')).join('');
+*/
         // Compose email options
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
