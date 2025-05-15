@@ -56,20 +56,27 @@ const submitTrafficControlJob = async (req, res) => {
             const endOfDay = new Date(estMidnight);
             endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
           
-const jobCount = await ControlUser.countDocuments({
-  jobDates: {
-    $elemMatch: {
-      date: { $gte: startOfDay, $lt: endOfDay },
-      cancelled: false
+const pipeline = [
+  { $unwind: "$jobDates" },
+  {
+    $match: {
+      "jobDates.date": { $gte: startOfDay, $lt: endOfDay },
+      "jobDates.cancelled": false
     }
-  }
-});
-            if (jobCount >= 10) {
-              failedDates.push(estDateStr);
-            } else {
-              scheduledDates.push(estMidnight);
-            }
-          }
+  },
+  { $count: "count" }
+];
+
+const result = await ControlUser.aggregate(pipeline);
+const jobCount = result[0]?.count || 0;
+
+
+      if (jobCount >= 10) {
+        failedDates.push(estDateStr);
+      } else {
+        scheduledDates.push(estMidnight);
+      }
+    }
           if (scheduledDates.length === 0) {
             return res.status(400).json({ error: `All selected job dates are full. Try again later.` });
           }
