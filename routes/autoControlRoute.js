@@ -6,13 +6,13 @@ const { submitTrafficControlJob } = require('../controllers/autoControlControler
 const transporter6 = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 const ControlUser = require('../models/controluser'); // Import your model
-
+/*
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const formanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
-
+*/
 // Middleware
 router.use(
     cors({
@@ -85,13 +85,13 @@ const mailOptions = {
   to: job.email,
   bcc: [
           { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-           
+           /*
           { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
           { name: 'Bryson Davis', address: mainEmail },
           { name: 'Jonkell Tolbert', address: foreemail },
           { name: 'Salvador Gonzalez', address: formanmail},
           { name: 'Damien Diskey', address: damienemail}
-           
+           */
       ],
   subject: 'TRAFFIC CONTROL JOB UPDATED',
 html: `
