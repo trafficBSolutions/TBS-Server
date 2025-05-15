@@ -118,19 +118,6 @@ const jobCount = result[0]?.count || 0;
               });
             createdJobs.push(newUser);
           }       
-        
-          const cancelLinks = createdJobs
-          .map(job => {
-            return job.jobDates.map(jobDateObj => {
-              const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
-              return `<li><a href="http://localhost:5173/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
-            }).join('');
-          })
-          .join('');
-          const manageLinks = createdJobs.map(job => {
-  return `<li><a href="http://localhost:5173/manage-job/${job._id}">Edit this job</a></li>`;
-}).join('');
-          /*
           const cancelLinks = createdJobs
           .map(job => {
             return job.jobDates.map(jobDateObj => {
@@ -144,7 +131,7 @@ const manageLinks = createdJobs.map(job =>
           const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
   return `<li><a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">${dateString} – Edit this job</a></li>`;
 }).join('')).join('');
-*/
+
         // Compose email options
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
