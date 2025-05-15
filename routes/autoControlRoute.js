@@ -336,41 +336,32 @@ router.get('/jobs/month', async (req, res) => {
 // Add this route to fetch fully booked dates
 router.get('/jobs/full-dates', async (req, res) => {
   try {
-    // Get all jobs from the database
-    const jobs = await ControlUser.find({});
-    
-    // Group jobs by date in EST timezone
-    const dateCountMap = {};
-    
-    jobs.forEach(job => {
-      // Convert UTC date to EST date string (YYYY-MM-DD)
-      const date = new Date(job.jobDate);
-      
-      // Format date to EST timezone string
-      const estDate = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).format(date);
-      
-      // Convert MM/DD/YYYY to YYYY-MM-DD
-      const [month, day, year] = estDate.split('/');
-      const formattedDate = `${year}-${month}-${day}`;
-      
-      // Count jobs by date
-      dateCountMap[formattedDate] = (dateCountMap[formattedDate] || 0) + 1;
-    });
-    
-    // Find dates with 10 or more jobs
-    const fullDates = Object.entries(dateCountMap)
-      .filter(([_, count]) => count >= 10)
-      .map(([date]) => date);
-    
+const pipeline = [
+  { $match: { cancelled: { $ne: true } } },  // Exclude jobs that are entirely cancelled
+  { $unwind: "$jobDates" },
+  {
+    $match: {
+      "jobDates.date": { $exists: true },
+      "jobDates.cancelled": { $ne: true }    // Exclude cancelled dates
+    }
+  },
+  {
+    $group: {
+      _id: "$jobDates.date",
+      count: { $sum: 1 }
+    }
+  },
+  { $match: { count: { $gte: 10 } } }
+];
+    const result = await ControlUser.aggregate(pipeline);
+    const fullDates = result.map(r =>
+      new Date(r._id).toISOString().split('T')[0] // Format: YYYY-MM-DD
+    );
+
     res.json(fullDates);
-  } catch (error) {
-    console.error("Error fetching full dates:", error);
-    res.status(500).json({ error: "Failed to fetch full job dates" });
+  } catch (err) {
+    console.error("Failed to fetch full dates:", err);
+    res.status(500).json({ error: 'Failed to fetch full dates' });
   }
 });
 module.exports = router;
