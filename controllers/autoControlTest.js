@@ -122,14 +122,14 @@ const jobCount = result[0]?.count || 0;
           .map(job => {
             return job.jobDates.map(jobDateObj => {
               const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
-              return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
+              return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job-test/${job._id}">${dateString} – Cancel this job</a></li>`;
             }).join('');
           })
           .join('');
 const manageLinks = createdJobs.map(job =>
         job.jobDates.map(jobDateObj => {
           const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
-  return `<li><a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">${dateString} – Edit this job</a></li>`;
+  return `<li><a href="https://www.trafficbarriersolutions.com/manage-job-test/${job._id}">${dateString} – Edit this job</a></li>`;
 }).join('')).join('');
 
         // Compose email options
