@@ -2,13 +2,13 @@ const ControlUser = require('../models/controluser');
 const transporter = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 const path = require('path'); 
-/*
+
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
-*/
+
 const submitTrafficControlJob = async (req, res) => {
     try {
         const {
@@ -137,13 +137,13 @@ const manageLinks = createdJobs.map(job =>
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
             bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                  /*
+                  
               { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
               { name: 'Bryson Davis', address: mainEmail },
       { name: 'Jonkell Tolbert', address: foreemail },
       { name: 'Salvador Gonzalez', address: foremanmail},
       { name: 'Damien Diskey', address: damienemail}
-             */],
+             ],
             subject: 'TRAFFIC CONTROL JOB REQUEST',
             html: `
             <html>
@@ -216,38 +216,6 @@ const manageLinks = createdJobs.map(job =>
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
-const updateTrafficControlJob = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { updatedDates } = req.body;
-
-    if (!Array.isArray(updatedDates) || updatedDates.length === 0) {
-      return res.status(400).json({ error: 'No dates provided' });
-    }
-
-    const parsedDates = updatedDates.map(dateStr => ({
-      date: new Date(dateStr),
-      cancelled: false,
-      cancelledAt: null
-    }));
-
-    const job = await ControlUser.findById(id);
-    if (!job) return res.status(404).json({ error: 'Job not found' });
-
-    job.jobDates = parsedDates;
-    await job.save();
-
-    // Send email notification
-    // ... (email sending code)
-
-    res.status(200).json({ message: 'Job updated successfully', job });
-  } catch (err) {
-    console.error('Error updating job:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-};
-
 module.exports = {
-  submitTrafficControlJob,
-  updateTrafficControlJob
+  submitTrafficControlJob
 };
