@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { submitTrafficControlJob } = require('../controllers/autoControlControler');
+const { submitTrafficControlJobTest } = require('../controllers/autoControlTest');
 const transporter6 = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 const ControlUser = require('../models/controluser'); // Import your model
@@ -26,11 +26,11 @@ router.use(bodyParser.urlencoded({ extended: true }));
 router.use(bodyParser.json());
 
 // 🚦 Job Submission
-router.post('/trafficcontrol', submitTrafficControlJob);
+router.post('/traffic-control-test-page', submitTrafficControlJobTest);
 // PATCH /manage-job/:id – update jobDates only
 // ✅ Get a specific job by ID
 // Add this route to fetch a specific job by ID
-router.get('/trafficcontrol/:id', async (req, res) => {
+router.get('/traffic-control-test-page/:id', async (req, res) => {
   try {
     const job = await ControlUser.findById(req.params.id);
     if (!job) {
