@@ -44,7 +44,7 @@ router.get('/traffic-control-test-page/:id', async (req, res) => {
 });
 
 // Add this route to update a job
-router.patch('/manage-job/:id', async (req, res) => {
+router.patch('/manage-job-test/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { updatedJob } = req.body;
@@ -77,8 +77,8 @@ const formattedDates = job.jobDates.map(d =>
 const cancelLink = `http://localhost:5173/cancel-job/${job._id}`;
 const updateLink = `http://localhost:5173/manage-job/${job._id}`;
 */
-const cancelLink = `https://www.trafficbarriersolutions.com/cancel-job/${job._id}`;
-const updateLink = `https://www.trafficbarriersolutions.com/manage-job/${job._id}`;
+const cancelLink = `https://www.trafficbarriersolutions.com/cancel-job-test/${job._id}`;
+const updateLink = `https://www.trafficbarriersolutions.com/manage-job-test/${job._id}`;
 
 const mailOptions = {
   from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
@@ -142,7 +142,7 @@ transporter6.sendMail(mailOptions, (err, info) => {
 });
 
 // 🗑️ Cancel a job by ID
-router.delete('/cancel-job/:id', async (req, res) => {
+router.delete('/cancel-job-test/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { date } = req.query;
