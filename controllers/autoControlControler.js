@@ -176,7 +176,8 @@ const manageLinks = createdJobs.map(job =>
                   <p>${message}</p>
                   <h3>If you need to cancel a date, use the link for that specific day:</h3>
                         <ul>${cancelLinks}</ul>
-                    <p style="font-size: 14px;">Our web developer is in the process of trying code a way to switch dates to reschedule jobs. This may take a while so if you need to reschedule, click the cancel link and resubmit your job on a different day.
+                    <p style="font-size: 14px;">Our web developer is in the process of trying code a way to switch dates to reschedule jobs. 
+                    You can still access it here ${manageLinks} but please do not update as it is being tested at this time. However, if you need to reschedule, click the cancel link and resubmit your job on a different day.
                   <hr style="margin: 20px 0;">
                   <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
                 </div>
