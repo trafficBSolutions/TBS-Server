@@ -13,13 +13,7 @@ mongoose.connect(process.env.MONGO_URL)
         
     })
     .catch((err) => console.log('Database Not Connected', err));
-mongoose.connect(process.env.MONGO_URL_2)
-    .then(() => {
-        console.log('Database Connected');
-        // Call removeDuplicates function after database connection
-        
-    })
-    .catch((err) => console.log('Database Not Connected', err));
+
 // Middleware
 app.use(express.json());
 
