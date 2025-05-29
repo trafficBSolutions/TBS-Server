@@ -183,7 +183,6 @@ if (!date) {
       <p><strong>Coordinator:</strong> ${job.coordinator}</p>
       <p><strong>Company:</strong> ${job.company}</p>
       <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
-      <p>If this was a mistake, please <a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">resubmit or update the job</a>.</p>
       <p>— TBS Admin Team</p>
     `
   };
