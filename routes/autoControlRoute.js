@@ -363,4 +363,77 @@ const pipeline = [
     res.status(500).json({ error: 'Failed to fetch full dates' });
   }
 });
+router.get('/jobs/cancelled', async (req, res) => {
+  try {
+    const { year } = req.query;
+    
+    let matchCondition = {};
+    
+    if (year) {
+      const yearInt = parseInt(year, 10);
+      const startOfYear = new Date(Date.UTC(yearInt, 0, 1));
+      const endOfYear = new Date(Date.UTC(yearInt + 1, 0, 1));
+      
+      matchCondition = {
+        $or: [
+          // Jobs that are entirely cancelled
+          {
+            cancelled: true,
+            cancelledAt: { $gte: startOfYear, $lt: endOfYear }
+          },
+          // Jobs with specific cancelled dates
+          {
+            jobDates: {
+              $elemMatch: {
+                cancelled: true,
+                cancelledAt: { $gte: startOfYear, $lt: endOfYear }
+              }
+            }
+          }
+        ]
+      };
+    } else {
+      // Get all cancelled jobs if no year specified
+      matchCondition = {
+        $or: [
+          { cancelled: true },
+          { 'jobDates.cancelled': true }
+        ]
+      };
+    }
+
+    const cancelledJobs = await ControlUser.find(matchCondition);
+    
+    // Process the results to extract individual cancelled dates
+    const processedCancelledJobs = [];
+    
+    cancelledJobs.forEach(job => {
+      if (job.cancelled) {
+        // Entire job was cancelled
+        processedCancelledJobs.push({
+          ...job.toObject(),
+          cancelledDate: job.cancelledAt,
+          cancelledType: 'entire_job'
+        });
+      } else {
+        // Check for individual cancelled dates
+        job.jobDates.forEach(jobDate => {
+          if (jobDate.cancelled) {
+            processedCancelledJobs.push({
+              ...job.toObject(),
+              cancelledDate: jobDate.cancelledAt || jobDate.date,
+              originalJobDate: jobDate.date,
+              cancelledType: 'single_date'
+            });
+          }
+        });
+      }
+    });
+
+    res.json(processedCancelledJobs);
+  } catch (err) {
+    console.error("Error fetching cancelled jobs:", err);
+    res.status(500).json({ error: 'Failed to fetch cancelled jobs' });
+  }
+});
 module.exports = router;
