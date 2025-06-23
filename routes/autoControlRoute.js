@@ -112,7 +112,7 @@ html: `
   <p><strong>Company:</strong> ${job.company}</p>
   <p><strong>Coordinator:</strong> ${job.coordinator}</p>
   <p><strong>Phone:</strong> ${job.phone}</p>
-  <p><strong>Project:</strong> ${job.project}</p>
+  <p><strong>Project/Task:</strong> ${job.project}</p>
   <p><strong>Job Site:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
 
   <h3>Need to update again or cancel the whole job?</h3>
@@ -179,7 +179,7 @@ if (!date) {
       <p>Dear ${job.name},</p>
       <p>Your traffic control job scheduled for the following date(s) has been cancelled:</p>
       <ul>${job.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}</ul>
-      <p><strong>Project:</strong> ${job.project}</p>
+      <p><strong>Project/Task Number:</strong> ${job.project}</p>
       <p><strong>Coordinator:</strong> ${job.coordinator}</p>
       <p><strong>Company:</strong> ${job.company}</p>
       <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
@@ -243,7 +243,7 @@ const formatted = new Date(job.jobDates[dateIndex].date).toLocaleDateString('en-
         <p>The following job date has been cancelled:</p>
         <ul><li><strong>${formatted}</strong></li></ul>
 
-        <p><strong>Project:</strong> ${job.project}</p>
+        <p><strong>Project/Task Number:</strong> ${job.project}</p>
         <p><strong>Company:</strong> ${job.company}</p>
         <p><strong>Coordinator:</strong> ${job.coordinator}</p>
         <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
