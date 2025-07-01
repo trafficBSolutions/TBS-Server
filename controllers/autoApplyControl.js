@@ -140,7 +140,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
   : `<p>No employment history provided.</p>`;
         // Contact details for Carson Speer Traffic and Barrier Solutions, LLC
         const contactInfo = `
-            <p>Traffic Control Manager:</p>
+            <p>Hiring Contact:</p>
             <p>Carson Speer</p>
             <p>Traffic & Barrier Solutions, LLC</p>
             <p>1995 Dews Pond Rd SE</p>
