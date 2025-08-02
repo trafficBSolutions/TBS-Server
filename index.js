@@ -1,3 +1,4 @@
+
 const express = require('express');
 const dotenv = require('dotenv').config();
 const mongoose = require('mongoose');
@@ -42,8 +43,8 @@ mongoose.connect(process.env.MONGO_URL)
   .catch((err) => console.error('❌ Database Not Connected', err));
 
 // ✅ Routes
-app.use('/', require('./routes/autoBollardRoute'));
-app.use('/', require('./routes/autoPPERoute'));
+app.use('/', require('./routes/autoBollardRoute'))
+app.use('/', require('./routes/autoPPERoute'))
 app.use('/', require('./routes/autoSignRoute'));
 app.use('/', require('./routes/autoControlRoute'));
 app.use('/', require('./routes/autoPlanRoute'));
