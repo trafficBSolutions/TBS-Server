@@ -51,7 +51,6 @@ app.use('/', require('./routes/autoApplyNew'));
 app.use('/', require('./routes/autoRentalRoute'));
 app.use('/', require('./routes/autoContactRoute'));
 app.use('/', require('./routes/adminRoute'));
-app.use('/', require('./routes/autoControlRouteTest'));
 
 // ✅ Static file routes
 app.use('/forms', express.static(path.join(__dirname, 'forms')));
