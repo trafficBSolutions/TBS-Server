@@ -35,17 +35,36 @@ const storage = multer.diskStorage({
         cb(null, uniqueFilename);
     },
 });
+const allowedMimeTypes = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'application/x-iwork-pages-sffpages',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/heic',
+  'image/heif'
+];
+
+const fileFilter = (req, file, cb) => {
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    console.warn(`⛔ Blocked file type: ${file.mimetype}`);
+    cb(new Error('Unsupported file type.'));
+  }
+};
 
 const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 1024 * 1024 * 25, // 5MB file size limit
-    },
+  storage: storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 }).fields([
-    { name: 'resume', maxCount: 1 },
-    { name: 'cover', maxCount: 1 }
+  { name: 'resume', maxCount: 1 },
+  { name: 'cover', maxCount: 1 }
 ]);
-
 // Use bodyParser to parse URL-encoded and JSON data
 router.use(bodyParser.urlencoded({ extended: true }));
 router.use(bodyParser.json());
