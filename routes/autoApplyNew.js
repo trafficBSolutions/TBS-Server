@@ -43,7 +43,8 @@ const upload = multer({
 // Use bodyParser to parse URL-encoded and JSON data
 router.use(bodyParser.urlencoded({ extended: true }));
 router.use(bodyParser.json());
-
+console.log("Resume file type:", req.files?.resume?.[0]?.mimetype);
+console.log("File size:", req.files?.resume?.[0]?.size);
 // 🚀 Fix: Apply Multer Middleware Correctly
 router.post('/applynow', (req, res, next) => {
     upload(req, res, function (err) {
@@ -67,3 +68,4 @@ router.get('/apply/all', async (req, res) => {
   }
 });
 module.exports = router;
+
