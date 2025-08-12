@@ -29,7 +29,7 @@ app.use(limiter);
 // Enable CORS
 app.use(cors({
   credentials: true,
-  origin: ['https://www.trafficbarriersolutions.com']
+  origin: ['https://www.trafficbarriersolutions.com', 'http://localhost:5173']
 }));
 
 app.use(express.json()); // JSON parsing
