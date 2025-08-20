@@ -22,6 +22,7 @@ const controlUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    companyKey: { type: String, index: true },   // NEW
     coordinator: {
         type: String,
         required: true
@@ -81,7 +82,12 @@ const controlUserSchema = new mongoose.Schema({
       cancelledAt: {
         type: Date,
         default: null
-      }
+      },
+      emergency: {
+  type: Boolean,
+  default: false
+}
+
 });
 
 const ControlUser = mongoose.model('ControlUser', controlUserSchema);
