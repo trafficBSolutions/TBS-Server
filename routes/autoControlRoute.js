@@ -18,7 +18,7 @@ router.use(
     cors({
         credentials: true,
         /* origin: 'http://localhost:5173' // Make sure this matches your frontend*/
-        origin: ['https://www.trafficbarriersolutions.com', 'http://localhost:5173']
+        origin: 'https://www.trafficbarriersolutions.com'
     })
 );
 
