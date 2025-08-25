@@ -10,7 +10,7 @@ const fs = require('fs'); // Import the 'fs' module for file system operations
 router.use(
     cors({
         credentials: true,
-        origin: 'https://www.trafficbarriersolutions.com'
+        origin: ['https://www.trafficbarriersolutions.com', 'http://localhost:5173']
     })
 );
 
