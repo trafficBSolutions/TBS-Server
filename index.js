@@ -60,7 +60,12 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // ✅ Job cleaner utility (MongoDB cleanup job)
 require('./utils/cleanJob');
-
+app.use(
+  '/billing',
+  require('./middleware/verifyAdmin'),
+  require('./middleware/requireInvoiceAdmin'),
+  require('./routes/billing')
+);
 // ✅ Start server
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, '0.0.0.0', () => {
