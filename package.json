@@ -14,7 +14,7 @@
     "bcryptjs": "^3.0.2",
     "body-parser": "^1.20.2",
     "compression": "^1.8.1",
-    "cookie-parser": "^1.4.6",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "docxtemplater": "^3.60.1",
     "dotenv": "^16.4.7",
@@ -33,6 +33,7 @@
     "pdfkit": "^0.16.0",
     "pizzip": "^3.1.8",
     "twilio": "^5.0.1",
+    "xlsx": "^0.18.5",
     "xss-clean": "^0.1.4"
   }
 }
