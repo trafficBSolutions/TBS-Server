@@ -196,19 +196,29 @@ router.get('/pricing/:companyKey', async (req,res) => {
        console.warn('PDF generation failed (continuing):', e.message);
      }
 
-     // Send email (from AP inbox)
-     if (inv.companyEmail) {
-       await transporter2.sendMail({
-         from: 'trafficandbarriersolutions.ap@gmail.com',
-         to: inv.companyEmail,
-         subject: `Invoice ${inv._id} - ${inv.company}`,
-         text: `Please find attached your invoice. Total due today: $${currentTotal(inv).toFixed(2)}.`,
-         attachments: [
-           inv.invoicePdfPath ? { path: inv.invoicePdfPath } : null,
-           inv.workOrderPdfPath ? { path: inv.workOrderPdfPath } : null,
-         ].filter(Boolean),
-       });
-     }
+// Send email (from AP inbox) but don't fail the request on mailer errors
+let emailSent = false;
+let emailError = null;
+if (inv.companyEmail) {
+  try {
+    await transporter2.sendMail({
+      from: 'Traffic & Barrier Solutions, LLC <trafficandbarriersolutions.ap@gmail.com>',
+      to: inv.companyEmail,
+      bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: process.env.INVOICE_EMAIL || 'tbsolutions3@gmail.com' }],
+      subject: `Invoice ${inv._id} - ${inv.company}`,
+      text: `Please find attached your invoice. Total due today: $${currentTotal(inv).toFixed(2)}.`,
+      attachments: [
+        inv.invoicePdfPath ? { filename: `invoice-${inv.company}.pdf`, path: inv.invoicePdfPath } : null,
+        inv.workOrderPdfPath ? { filename: `work-order-${inv.company}.pdf`, path: inv.workOrderPdfPath } : null,
+      ].filter(Boolean),
+    });
+    emailSent = true;
+  } catch (err) {
+    emailError = err?.message || String(err);
+    console.error('bill-job sendMail failed:', emailError);
+  }
+}
+
 
    // Flag job as billed WITHOUT triggering required validators on legacy docs
    await ControlUser.updateOne(
