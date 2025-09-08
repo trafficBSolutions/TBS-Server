@@ -7,6 +7,7 @@ const { generateWorkOrderPdf } = require('../services/workOrderPDF');
 const { generateInvoicePdf } = require('../services/invoicePDF');
 const invoiceEmail = 'trafficandbarriersolutions.ap@gmail.com';
 // helper: normalize $ (frontend sends dollars as float)
+const path = require('path');
 function dollarsToCents(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return null;
@@ -221,5 +222,6 @@ exports.billPlan = async (req, res) => {
     return res.status(500).json({ message: 'Failed to send plan invoice', error: err.message });
   }
 };
+
 
 
