@@ -8,7 +8,7 @@ const xss = require('xss-clean');
 const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
-
+const billingRouter = require('./routes/billing');
 // Create Express app
 const app = express();
 
@@ -61,11 +61,11 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 // ✅ Job cleaner utility (MongoDB cleanup job)
 require('./utils/cleanJob');
 app.use(
-  '/billing',
  require('./middleware/auth'),              // or ./middleware/authJwt if that’s your header-based one
  require('./middleware/requireInvoiceAdmin'),
  require('./routes/billing')
 );
+app.use('/api/billing', billingRouter);
 // ✅ Start server
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, '0.0.0.0', () => {
