@@ -227,5 +227,79 @@ router.get('/pricing/:companyKey', async (req,res) => {
   console.log('[billing router]', req.method, req.originalUrl);
   next();
 });
+// routes/billing.js
+router.post('/mark-paid', auth, requireInvoiceAdmin, async (req, res) => {
+  try {
+    const { jobId, amount, method, last4, checkNo, receiptEmail } = req.body;
+
+    if (!jobId || !method) return res.status(400).json({ message: 'Missing fields' });
+    if (method === 'card' && !last4) return res.status(400).json({ message: 'Last4 required for card' });
+    if (method === 'check' && !checkNo) return res.status(400).json({ message: 'Check # required for check' });
+
+    const job = await ControlUser.findById(jobId); // or your Job model
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    // Persist payment
+    const paidAt = new Date();
+    job.billed = true;
+    job.paid = true;
+    job.paidAt = paidAt;
+    job.payment = {
+      method,
+      last4: method === 'card' ? String(last4) : undefined,
+      checkNo: method === 'check' ? String(checkNo) : undefined,
+      amount: Number(amount || 0),
+      recordedBy: req.user?.email || 'system',
+    };
+    await job.save();
+
+    // Email receipt
+    const to = receiptEmail || job.email;
+    if (to) {
+      const prettyAmt = (Number(amount || 0)).toFixed(2);
+      await transporter2.sendMail({
+        from: 'Traffic & Barrier Solutions, LLC <trafficandbarriersolutions.ap@gmail.com>',
+        to,
+        bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: process.env.INVOICE_EMAIL || 'tbsolutions3@gmail.com' }],
+        subject: `PAYMENT RECEIPT — ${job.company}`,
+        text:
+`Thank you for your payment.
+
+Company: ${job.company}
+Project/Task: ${job.project || ''}
+Amount: $${prettyAmt}
+Method: ${method === 'card' ? `Card (•••• ${last4})` : `Check #${checkNo}`}
+Paid at: ${paidAt.toLocaleString('en-US', { timeZone: 'America/New_York' })}
+
+Traffic & Barrier Solutions, LLC
+(706) 263-0175
+www.trafficbarriersolutions.com`,
+        html: `
+<html>
+  <body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e7e7e7;color:#000;">
+    <div style="max-width:600px;margin:auto;background:#fff;padding:20px;border-radius:8px;">
+      <h1 style="text-align:center;background:#efad76;padding:15px;border-radius:6px;margin-top:0;">PAYMENT RECEIPT</h1>
+      <p>Thank you for your payment.</p>
+      <ul>
+        <li><strong>Company:</strong> ${job.company}</li>
+        ${job.project ? `<li><strong>Project/Task:</strong> ${job.project}</li>` : ''}
+        <li><strong>Amount:</strong> $${prettyAmt}</li>
+        <li><strong>Method:</strong> ${method === 'card' ? `Card (•••• ${last4})` : `Check #${checkNo}`}</li>
+        <li><strong>Paid at:</strong> ${paidAt.toLocaleString('en-US', { timeZone: 'America/New_York' })}</li>
+      </ul>
+      <hr style="margin:20px 0;">
+      <p style="font-size:14px;">Traffic &amp; Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+    </div>
+  </body>
+</html>`
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Failed to mark paid / send receipt' });
+  }
+});
 
 module.exports = router;
