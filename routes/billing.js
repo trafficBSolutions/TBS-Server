@@ -9,7 +9,7 @@
  const { generateInvoicePdf } = require('../services/invoicePDF');
  const { exportInvoicesXlsx } = require('../services/invoiceExcel');
  const { currentTotal } = require('../utils/invoiceMath');
- const transporter2 = require('../utils/emailConfig');
+ const transporter7 = require('../utils/emailConfig');
  const { computeTotalFromSelections } = require('../utils/pricing');
  const authJwt = require('../middleware/authJwt');
 const PriceList = require('../models/priceList');
@@ -95,7 +95,7 @@ router.post('/invoices/:id/send', async (req,res) => {
   // email
   const toEmail = inv.billedTo?.email || inv.companyEmail;
   if (toEmail) {
-    await transporter2.sendMail({
+    await transporter7.sendMail({
       from: 'trafficandbarriersolutions.ap@gmail.com',
       to: toEmail,
       subject: `Invoice ${inv._id} - ${inv.company}`,
@@ -201,7 +201,7 @@ let emailSent = false;
 let emailError = null;
 if (inv.companyEmail) {
   try {
-    await transporter2.sendMail({
+    await transporter7.sendMail({
       from: 'Traffic & Barrier Solutions, LLC <trafficandbarriersolutions.ap@gmail.com>',
       to: inv.companyEmail,
       bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: process.env.INVOICE_EMAIL || 'tbsolutions3@gmail.com' }],
@@ -275,7 +275,7 @@ router.post('/mark-paid', async (req, res) => {
     const to = receiptEmail || job.email;
     if (to) {
       const prettyAmt = (Number(amount || 0)).toFixed(2);
-      await transporter2.sendMail({
+      await transporter7.sendMail({
         from: 'Traffic & Barrier Solutions, LLC <trafficandbarriersolutions.ap@gmail.com>',
         to,
         bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: process.env.INVOICE_EMAIL || 'tbsolutions3@gmail.com' }],
