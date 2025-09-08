@@ -61,10 +61,10 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 // ✅ Job cleaner utility (MongoDB cleanup job)
 require('./utils/cleanJob');
 app.use(
+  billingRouter,
   require('./middleware/auth'),                 // must set req.user.email
   require('./middleware/requireInvoiceAdmin'), // checks allowed emails
 );
-app.use('/', require(billingRouter));
 // ✅ Start server
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, '0.0.0.0', () => {
