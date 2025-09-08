@@ -232,12 +232,6 @@ if (inv.companyEmail) {
      console.error('bill-job error', e);
      res.status(500).json({ message: 'Failed to bill job' });
    }
-  return res.json({
-  message: emailSent ? 'Billed & emailed' : 'Billed (email failed)',
-  invoiceId: inv._id,
-  emailSent,
-  emailError
-});
  });
  router.use((req, res, next) => {
   console.log('[billing router]', req.method, req.originalUrl);
