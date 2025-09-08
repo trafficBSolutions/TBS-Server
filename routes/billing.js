@@ -29,8 +29,6 @@ router.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
-router.use(auth);
-router.use(requireInvoiceAdmin);
 router.get('/companies', async (req,res) => {
   const companies = await ControlUser.aggregate([
     { $match: { cancelled: { $ne: true } } },
