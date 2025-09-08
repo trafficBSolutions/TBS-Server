@@ -1,6 +1,6 @@
 // models/invoice.js
 const mongoose = require('mongoose');
-
+const { randomUUID } = require('crypto');
 const LineItemSchema = new mongoose.Schema({
   description: String,
   qty: { type: Number, default: 1 },
@@ -29,6 +29,9 @@ const InvoiceSchema = new mongoose.Schema({
   history: [{ at: Date, action: String, by: String }]
 }, { timestamps: true });
 
-InvoiceSchema.index({ company: 1, status: 1, sentAt: -1 });
+InvoiceSchema.index(
+  { publicKey: 1 },
+  { unique: true, partialFilterExpression: { publicKey: { $type: 'string' } } }
+);
 
 module.exports = mongoose.model('Invoice', InvoiceSchema);
