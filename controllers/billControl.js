@@ -1,4 +1,4 @@
-// controllers/billingController.js
+// controllers/billControl.js
 const Invoice = require('../models/invoice');
 const Job = require('../models/controlinvoice');     // your job model
 const Plan = require('../models/planuser');          // your plan model
@@ -136,3 +136,4 @@ exports.billPlan = async (req, res) => {
     return res.status(500).json({ message: 'Failed to send plan invoice', error: err.message });
   }
 };
+
