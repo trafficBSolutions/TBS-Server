@@ -2,7 +2,7 @@
 const Invoice = require('../models/invoice');
 const Job = require('../models/controlinvoice');     // your job model
 const Plan = require('../models/planuser');          // your plan model
-const transporter2 = require('../utils/emailConfig'); // nodemailer config you already have
+const transporter7 = require('../utils/emailConfig'); // nodemailer config you already have
 const { generateWorkOrderPdf } = require('../services/workOrderPDF');
 const { generateInvoicePdf } = require('../services/invoicePDF');
 const invoiceEmail = 'trafficandbarriersolutions.ap@gmail.com';
@@ -52,7 +52,7 @@ exports.billJob = async (req, res) => {
     await inv.save();
 
     // Send email
-    async function sendInvoiceEmail({ job, cents, emailOverride, invoicePdfPath, workOrderPdfPath, transporter2, invoiceEmail }) {
+    async function sendInvoiceEmail({ job, cents, emailOverride, invoicePdfPath, workOrderPdfPath, transporter7, invoiceEmail }) {
   const to = emailOverride || job?.email || '';
   const totalUSD = (Number(cents || 0) / 100).toFixed(2);
   const today = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
@@ -60,7 +60,7 @@ exports.billJob = async (req, res) => {
 
   if (!to) return;
 
-  await transporter2.sendMail({
+  await transporter7.sendMail({
     from: 'Traffic & Barrier Solutions, LLC <trafficandbarriersolutions.ap@gmail.com>',
     to,
     // ✅ use bcc (not bbc); you can add more here, same as your request template
@@ -200,7 +200,7 @@ exports.billPlan = async (req, res) => {
 
     const to = emailOverride || plan.email;
     if (to) {
-      await transporter2.sendMail({
+      await transporter7.sendMail({
         from: 'trafficandbarriersolutions.ap@gmail.com',
         to,
         subject: `Invoice ${inv._id} - ${plan.company}`,
@@ -222,6 +222,7 @@ exports.billPlan = async (req, res) => {
     return res.status(500).json({ message: 'Failed to send plan invoice', error: err.message });
   }
 };
+
 
 
 
