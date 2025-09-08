@@ -61,9 +61,10 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 // ✅ Job cleaner utility (MongoDB cleanup job)
 require('./utils/cleanJob');
 app.use(
- require('./middleware/auth'),              // or ./middleware/authJwt if that’s your header-based one
- require('./middleware/requireInvoiceAdmin'),
- require('./routes/billing')
+  '/api/billing',
+  require('./middleware/auth'),                 // must set req.user.email
+  require('./middleware/requireInvoiceAdmin'), // checks allowed emails
+  billingRouter
 );
 app.use('/api/billing', billingRouter);
 // ✅ Start server
