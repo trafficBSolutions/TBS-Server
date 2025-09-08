@@ -238,6 +238,14 @@ if (inv.companyEmail) {
   next();
 });
 // routes/billing.js
+// after ControlUser.updateOne(...)
+return res.json({
+  message: emailSent ? 'Billed & emailed' : 'Billed (email failed)',
+  invoiceId: inv._id,
+  emailSent,
+  emailError
+});
+
 router.post('/mark-paid', async (req, res) => {
   try {
     const { jobId, amount, method, last4, checkNo, receiptEmail } = req.body;
