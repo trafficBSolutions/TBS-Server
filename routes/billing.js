@@ -5,7 +5,6 @@
  const Invoice = require('../models/invoice');
  const ControlUser = require('../models/controluser');
  const auth = require('../middleware/auth');
-const requireInvoiceAdmin = require('../middleware/requireInvoiceAdmin');
  const { generateWorkOrderPdf } = require('../services/workOrderPDF');
  const { generateInvoicePdf } = require('../services/invoicePDF');
  const { exportInvoicesXlsx } = require('../services/invoiceExcel');
