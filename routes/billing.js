@@ -1,25 +1,39 @@
 // routes/billing.js
-const express = require('express');
-const router = express.Router();
-const Invoice = require('../models/invoice');
-const InvoiceUser = require('../models/controlinvoice'); // your job model
-const verifyAdmin = require('../middleware/verifyAdmin');
+ const express = require('express');
+ const router = express.Router();
+ const cors = require('cors');
+ const Invoice = require('../models/invoice');
+ const ControlUser = require('../models/controluser');
+ const auth = require('../middleware/auth');
 const requireInvoiceAdmin = require('../middleware/requireInvoiceAdmin');
-const { generateWorkOrderPdf } = require('../services/workOrderPDF');
-const { generateInvoicePdf } = require('../services/invoicePDF');
-const { exportInvoicesXlsx } = require('../services/invoiceExcel');
-const { currentTotal } = require('../utils/invoiceMath');
-const transporter2 = require('../utils/emailConfig'); // you already have this
-const { computeTotalFromSelections } = require('../utils/pricing');
-const { billJob, billPlan } = require('../controllers/billControl');
-const authJwt = require('../middleware/authJwt');
-const cors = require('cors');
-router.use(authJwt);
-router.use(verifyAdmin);
+ const { generateWorkOrderPdf } = require('../services/workOrderPDF');
+ const { generateInvoicePdf } = require('../services/invoicePDF');
+ const { exportInvoicesXlsx } = require('../services/invoiceExcel');
+ const { currentTotal } = require('../utils/invoiceMath');
+ const transporter2 = require('../utils/emailConfig');
+ const { computeTotalFromSelections } = require('../utils/pricing');
+ const authJwt = require('../middleware/authJwt');
+const PriceList = require('../models/priceList');
+
+const corsOptions = {
+  origin: ['http://localhost:5173','http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
+  credentials: true,
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+};
+
+router.use(cors(corsOptions));
+router.options('*', cors(corsOptions));     // respond to preflight early
+
+// if you prefer: short-circuit OPTIONS before auth entirely
+router.use((req, res, next) => {
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+router.use(auth);
 router.use(requireInvoiceAdmin);
-// Companies with submitted jobs (not cancelled)
 router.get('/companies', async (req,res) => {
-  const companies = await InvoiceUser.aggregate([
+  const companies = await ControlUser.aggregate([
     { $match: { cancelled: { $ne: true } } },
     { $group: { _id: '$company' } },
     { $sort: { _id: 1 } }
@@ -29,7 +43,7 @@ router.get('/companies', async (req,res) => {
 
 // Create invoice DRAFT from job (only if not cancelled)
 router.post('/invoices/from-job/:jobId', async (req,res) => {
-  const job = await InvoiceUser.findById(req.params.jobId);
+  const job = await ControlUser.findById(req.params.jobId);
   if (!job) return res.status(404).json({ message: 'Job not found' });
   if (job.cancelled) return res.status(400).json({ message: 'Cancelled job cannot be invoiced' });
 
@@ -114,7 +128,7 @@ router.get('/invoices/export', async (req,res) => {
   const filter = {};
   if (req.query.company) filter.company = req.query.company;
   const invoices = await Invoice.find(filter);
-  const jobs = await InvoiceUser.find({ _id: { $in: invoices.map(i => i.job) } });
+  const jobs = await ControlUser.find({ _id: { $in: invoices.map(i => i.job) } });
   const jobsById = new Map(jobs.map(j => [String(j._id), j]));
 
   const full = await exportInvoicesXlsx(invoices, jobsById);
@@ -134,14 +148,11 @@ router.get('/invoices/:id/pdf', async (req,res) => {
 
 // Download work order PDF for a job
 router.get('/workorder/:jobId/pdf', async (req,res) => {
-  const job = await InvoiceUser.findById(req.params.jobId);
+  const job = await ControlUser.findById(req.params.jobId);
   if (!job) return res.status(404).end();
   const full = await generateWorkOrderPdf(job);
   res.download(full);
 });
-
-// routes/billing.js
-const PriceList = require('../models/priceList');
 
 router.get('/pricing/:companyKey', async (req,res) => {
   const doc = await PriceList.findOne({ companyKey: req.params.companyKey });
@@ -149,13 +160,75 @@ router.get('/pricing/:companyKey', async (req,res) => {
   res.json(doc); // visible only to admins via requireInvoiceAdmin
 });
 
-router.post('/bill-job', billJob);
-router.post('/bill-plan', billPlan);
-router.use(
-    cors({
-        credentials: true,
-        /* origin: 'http://localhost:5173' // Make sure this matches your frontend*/
-        origin: ['https://www.trafficbarriersolutions.com', 'http://localhost:5173']
-    })
-);
+ router.post('/bill-job', async (req, res) => {
+   try {
+     const { jobId, selections, manualAmount, emailOverride } = req.body;
+
+     const job = await ControlUser.findById(jobId);
+     if (!job) return res.status(404).json({ message: 'Job not found' });
+     if (job.cancelled) return res.status(400).json({ message: 'Cancelled job cannot be billed' });
+     if (job.billed) return res.status(409).json({ message: 'Job already billed' });
+
+     // Compute principal (manual amount path requires no price list)
+     let principalCents;
+     if (manualAmount != null && !Number.isNaN(Number(manualAmount))) {
+       principalCents = Math.round(Number(manualAmount) * 100);
+     } else {
+       if (!job.companyKey) return res.status(400).json({ message: 'Missing companyKey for pricing' });
+       const list = await PriceList.findOne({ companyKey: job.companyKey });
+       if (!list) return res.status(404).json({ message: 'No pricing for company' });
+       principalCents = computeTotalFromSelections(list, selections || {});
+     }
+
+     const inv = await Invoice.create({
+       job: job._id,
+       company: job.company,
+       companyEmail: emailOverride || job.email || '',
+       principal: principalCents / 100,
+       selections: selections || null,
+       status: 'SENT',
+       sentAt: new Date()
+     });
+
+     // Best-effort PDFs
+     try {
+       inv.workOrderPdfPath = await generateWorkOrderPdf(job);
+       inv.invoicePdfPath = await generateInvoicePdf(inv, job);
+       await inv.save();
+     } catch (e) {
+       console.warn('PDF generation failed (continuing):', e.message);
+     }
+
+     // Send email (from AP inbox)
+     if (inv.companyEmail) {
+       await transporter2.sendMail({
+         from: 'trafficandbarriersolutions.ap@gmail.com',
+         to: inv.companyEmail,
+         subject: `Invoice ${inv._id} - ${inv.company}`,
+         text: `Please find attached your invoice. Total due today: $${currentTotal(inv).toFixed(2)}.`,
+         attachments: [
+           inv.invoicePdfPath ? { path: inv.invoicePdfPath } : null,
+           inv.workOrderPdfPath ? { path: inv.workOrderPdfPath } : null,
+         ].filter(Boolean),
+       });
+     }
+
+   // Flag job as billed WITHOUT triggering required validators on legacy docs
+   await ControlUser.updateOne(
+    { _id: job._id },
+     { $set: { billed: true, billedAt: new Date(), billedInvoiceId: inv._id } },
+     { runValidators: false }
+  );
+
+     res.json({ message: 'Billed', invoiceId: inv._id });
+   } catch (e) {
+     console.error('bill-job error', e);
+     res.status(500).json({ message: 'Failed to bill job' });
+   }
+ });
+ router.use((req, res, next) => {
+  console.log('[billing router]', req.method, req.originalUrl);
+  next();
+});
+
 module.exports = router;
