@@ -1,5 +1,5 @@
 const ContactUser = require('../models/contactuser');
-const transporter4 = require('../utils/emailConfig');
+const transporter = require('../utils/emailConfig');
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
@@ -205,7 +205,7 @@ if (!first || !last || !company || !email || !phone || !message) {
         };
 
         // Send email
-        transporter4.sendMail(mailOptions, (error, info) => {
+        transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.log('Error sending email notification:', error);
             } else {
@@ -228,3 +228,4 @@ if (!first || !last || !company || !email || !phone || !message) {
 module.exports = {
     submitContact
 };
+
