@@ -3,7 +3,7 @@ const router = express.Router();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { submitTrafficControlJob } = require('../controllers/autoControlControler');
-const transporter6 = require('../utils/emailConfig');
+const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const myEmail = 'tbsolutions9@gmail.com';
 const ControlUser = require('../models/controluser'); // Import your model
 
@@ -126,7 +126,7 @@ html: `
 `
 };
 
-transporter6.sendMail(mailOptions, (err, info) => {
+transporter.sendMail(mailOptions, (err, info) => {
   if (err) {
     console.error('Error sending update email:', err);
   } else {
@@ -187,7 +187,7 @@ if (!date) {
     `
   };
 
-  transporter6.sendMail(fullCancelEmail, (err, info) => {
+  transporter.sendMail(fullCancelEmail, (err, info) => {
     if (err) {
       console.error('Error sending full cancellation email:', err);
     } else {
@@ -253,7 +253,7 @@ const formatted = new Date(job.jobDates[dateIndex].date).toLocaleDateString('en-
       `
     };
 
-    transporter6.sendMail(cancelDateMail, (err, info) => {
+    transporter.sendMail(cancelDateMail, (err, info) => {
       if (err) {
         console.error('Error sending partial cancel email:', err);
       } else {
