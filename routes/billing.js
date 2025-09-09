@@ -41,7 +41,7 @@ async function sendInvoiceEmail({
     from: 'Traffic & Barrier Solutions, LLC <trafficandbarriersolutions.ap@gmail.com>',
     to,
     bcc: [
-      { name: 'Traffic & Barrier Solutions, LLC', address: invoiceEmail },
+      { name: 'Traffic & Barrier Solutions LLC', address: invoiceEmail },
       // optional more BCCs:
       // { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
       // { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
