@@ -43,10 +43,9 @@ async function sendInvoiceEmail({
     bcc: [
       { name: 'Traffic & Barrier Solutions LLC', address: invoiceEmail },
       // optional more BCCs:
-      // { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
+      { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
       // { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
     ],
-    replyTo: 'tbsolutions3@gmail.com',
     subject: `TRAFFIC CONTROL INVOICE — ${job?.company || ''} — ${today}`,
     text:
 `Hi ${greetingName},
