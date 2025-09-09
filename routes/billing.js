@@ -13,7 +13,7 @@
  const { computeTotalFromSelections } = require('../utils/pricing');
  const authJwt = require('../middleware/authJwt');
 const PriceList = require('../models/priceList');
-
+const crypto = require('crypto');
 const corsOptions = {
   origin: ['http://localhost:5173','http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
   credentials: true,
@@ -177,15 +177,16 @@ router.get('/pricing/:companyKey', async (req,res) => {
        principalCents = computeTotalFromSelections(list, selections || {});
      }
 
-     const inv = await Invoice.create({
-       job: job._id,
-       company: job.company,
-       companyEmail: emailOverride || job.email || '',
-       principal: principalCents / 100,
-       selections: selections || null,
-       status: 'SENT',
-       sentAt: new Date()
-     });
+const inv = await Invoice.create({
+  job: job._id,
+  company: job.company,
+  companyEmail: emailOverride || job.email || '',
+  principal: principalCents / 100,
+  selections: selections || null,
+  status: 'SENT',
+  sentAt: new Date(),
+  publicKey: crypto.randomUUID(),   // 👈 HOTFIX: ensure non-null unique value
+});
 
      // Best-effort PDFs
      try {
