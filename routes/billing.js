@@ -305,19 +305,23 @@ const inv = await Invoice.create({
        console.warn('PDF generation failed (continuing):', e.message);
      }
 
-     // Send email (from AP inbox)
-     if (inv.companyEmail) {
-       await transporter7.sendMail({
-         from: 'trafficandbarriersolutions.ap@gmail.com',
-         to: inv.companyEmail,
-         subject: `Invoice ${inv._id} - ${inv.company}`,
-         text: `Please find attached your invoice. Total due today: $${currentTotal(inv).toFixed(2)}.`,
-         attachments: [
-           inv.invoicePdfPath ? { path: inv.invoicePdfPath } : null,
-           inv.workOrderPdfPath ? { path: inv.workOrderPdfPath } : null,
-         ].filter(Boolean),
-       });
-     }
+let emailSent = false;
+let emailError = null;
+try {
+  await sendInvoiceEmail({
+    job,
+    cents: principalCents,                 // integer cents
+    emailOverride,
+    invoicePdfPath: inv.invoicePdfPath,    // may be undefined if PDF generation failed
+    workOrderPdfPath: inv.workOrderPdfPath,
+    transporter7,
+    invoiceEmail,
+  });
+  emailSent = true;
+} catch (err) {
+  emailError = err?.message || String(err);
+  console.error('sendInvoiceEmail failed:', emailError);
+}
 
    // Flag job as billed WITHOUT triggering required validators on legacy docs
    await ControlUser.updateOne(
