@@ -9,6 +9,9 @@ const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
 const billingRouter = require('./routes/billing');
+const cron = require('node-cron');
+const { runInterestReminderCycle } = require('./services/interestBot');
+const workOrdersRouter = require('./routes/autoOrderRoute');
 // Create Express app
 const app = express();
 
@@ -16,7 +19,9 @@ const app = express();
 app.use(helmet()); // Secure headers
 app.use(xss()); // Prevent XSS
 app.use(compression()); // GZIP compression
-
+cron.schedule('15 9 * * *', () => runInterestReminderCycle(), {
+  timezone: 'America/New_York'
+});
 // Limit repeated requests
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 mins
@@ -26,13 +31,16 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Enable CORS
-app.use(cors({
+// server.js / app.js
+const cookieParser = require('cookie-parser');
+ app.use(express.json());                    // JSON should be before routes
+ app.use(cookieParser());
+ app.use(cors({
+ origin: ['http://localhost:5173','http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
   credentials: true,
-  origin: ['https://www.trafficbarriersolutions.com', 'http://localhost:5173']
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
 }));
-
-app.use(express.json()); // JSON parsing
 
 // ✅ Database connection
 mongoose.connect(process.env.MONGO_URL)
@@ -52,19 +60,23 @@ app.use('/', require('./routes/autoApplyNew'));
 app.use('/', require('./routes/autoRentalRoute'));
 app.use('/', require('./routes/autoContactRoute'));
 app.use('/', require('./routes/adminRoute'));
+app.use(require('./routes/invoiceRoute'));
+app.use(require('./routes/payCard'));  // if using Stripe
 
 // ✅ Static file routes
 app.use('/forms', express.static(path.join(__dirname, 'forms')));
 app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
+// server.js or app.js
 
 // ✅ Job cleaner utility (MongoDB cleanup job)
 require('./utils/cleanJob');
-app.use(express.json({ limit: '5mb' }));
-app.use('/api/billing', require('./routes/billing')); // after body parser
-
+app.use('/api/billing', billingRouter);
 // ✅ Start server
+
+app.use('/', workOrdersRouter);
 const PORT = process.env.PORT || 8000;
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
