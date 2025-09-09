@@ -198,6 +198,23 @@ router.post('/invoices/:id/send', async (req,res) => {
   inv.status = 'SENT';
   inv.invoicePdfPath = await generateInvoicePdf(inv, inv.job);
   await inv.save();
+ let emailSent = false;
+let emailError = null;
+try {
+  await sendInvoiceEmail({
+    job,
+    cents: principalCents,                 // integer cents
+    emailOverride,
+    invoicePdfPath: inv.invoicePdfPath,    // may be undefined if PDF generation failed
+    workOrderPdfPath: inv.workOrderPdfPath,
+    transporter7,
+    invoiceEmail,
+  });
+  emailSent = true;
+} catch (err) {
+  emailError = err?.message || String(err);
+  console.error('sendInvoiceEmail failed:', emailError);
+}
   res.json({ message: 'Invoice sent', invId: inv._id, sentAt: inv.sentAt });
 });
 
