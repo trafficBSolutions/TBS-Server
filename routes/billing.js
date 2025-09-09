@@ -14,7 +14,7 @@
  const authJwt = require('../middleware/authJwt');
 const PriceList = require('../models/priceList');
 const crypto = require('crypto');
-const invoiceEmail = process.env.INVOICE_EMAIL || 'trafficandbarriersolutions.ap@gmail.com';
+const invoiceEmail = 'trafficandbarriersolutions.ap@gmail.com';
 async function sendInvoiceEmail({
   job,
   cents,                      // integer cents (e.g. principalCents)
