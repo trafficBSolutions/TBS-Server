@@ -1,5 +1,5 @@
 const PlanUser = require('../models/planuser');
-const transporter4 = require('../utils/emailConfig'); // Use transporter2 only
+const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
@@ -101,7 +101,7 @@ const submitPlan = async (req, res) => {
                 path: `./files/${structure}`
             });
         }
-        transporter4.sendMail(mailOptions, (error, info) => {
+        transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.error('Error sending email notification:', error);
             } else {
