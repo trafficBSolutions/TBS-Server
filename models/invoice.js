@@ -34,7 +34,7 @@ const InvoiceSchema = new mongoose.Schema({
   },
 
   // NEW: public payment link + reminder bookkeeping
-  publicKey: { type: String, default: () => randomUUID() }{ timestamps: true },
+  publicKey: { type: String, default: () => randomUUID() },
   interestStepsEmailed: { type: Number, default: 0 },
   lastReminderAt: { type: Date },
 
