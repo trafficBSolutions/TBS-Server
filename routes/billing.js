@@ -9,7 +9,7 @@
  const { generateInvoicePdf } = require('../services/invoicePDF');
  const { exportInvoicesXlsx } = require('../services/invoiceExcel');
  const { currentTotal } = require('../utils/invoiceMath');
- const transporter7 = require('../utils/emailConfig');
+ const { transporter7 } = require('../utils/emailConfig'); 
  const { computeTotalFromSelections } = require('../utils/pricing');
  const authJwt = require('../middleware/authJwt');
 const PriceList = require('../models/priceList');
