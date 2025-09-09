@@ -2,7 +2,7 @@
 const Invoice = require('../models/invoice');
 const Job = require('../models/controlinvoice');     // your job model
 const Plan = require('../models/planuser');          // your plan model
-const transporter7 = require('../utils/emailConfig'); // nodemailer config you already have
+const { transporter7 } = require('../utils/emailConfig'); // uses EMAIL_USER
 const { generateWorkOrderPdf } = require('../services/workOrderPDF');
 const { generateInvoicePdf } = require('../services/invoicePDF');
 const invoiceEmail = 'trafficandbarriersolutions.ap@gmail.com'
@@ -222,5 +222,6 @@ exports.billPlan = async (req, res) => {
     return res.status(500).json({ message: 'Failed to send plan invoice', error: err.message });
   }
 };
+
 
 
