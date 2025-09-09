@@ -34,7 +34,7 @@ const InvoiceSchema = new mongoose.Schema({
   },
 
   // NEW: public payment link + reminder bookkeeping
-  publicKey: { type: String, unique: true, index: true },
+  publicKey: { type: String, default: () => randomUUID() }{ timestamps: true },
   interestStepsEmailed: { type: Number, default: 0 },
   lastReminderAt: { type: Date },
 
@@ -47,7 +47,11 @@ const InvoiceSchema = new mongoose.Schema({
   history: [{ at: Date, action: String, by: String }]
 }, { timestamps: true });
 
-InvoiceSchema.index({ company: 1, status: 1, sentAt: -1 });
+InvoiceSchema.index(
+  { publicKey: 1 },
+  { unique: true, partialFilterExpression: { publicKey: { $type: 'string' } } }
+  // partial index enforces uniqueness only when it's a string
+);
 
 InvoiceSchema.pre('save', function(next) {
   if (!this.publicKey) {
