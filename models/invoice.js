@@ -29,9 +29,5 @@ const InvoiceSchema = new mongoose.Schema({
   history: [{ at: Date, action: String, by: String }]
 }, { timestamps: true });
 
-InvoiceSchema.index(
-  { publicKey: 1 },
-  { unique: true, partialFilterExpression: { publicKey: { $type: 'string' } } }
-);
 
 module.exports = mongoose.model('Invoice', InvoiceSchema);
