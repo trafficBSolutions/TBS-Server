@@ -1,5 +1,5 @@
 const ControlUser = require('../models/controluser');
-const transporter = require('../utils/emailConfig');
+const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const myEmail = 'tbsolutions9@gmail.com';
 const path = require('path'); 
 
