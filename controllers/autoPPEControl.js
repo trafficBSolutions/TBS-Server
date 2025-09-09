@@ -1,5 +1,5 @@
 const PPEUser = require('../models/ppeuser');
-const transporter4 = require('../utils/emailConfig'); // Use transporter2 only
+const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
@@ -298,7 +298,7 @@ const submitPPE = async (req, res) => {
         };
 
         // Send email
-        transporter4.sendMail(mailOptions, (error, info) => {
+        transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.log('Error sending email notification:', error);
             } else {
