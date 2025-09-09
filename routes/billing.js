@@ -14,6 +14,113 @@
  const authJwt = require('../middleware/authJwt');
 const PriceList = require('../models/priceList');
 const crypto = require('crypto');
+const invoiceEmail = process.env.INVOICE_EMAIL || 'trafficandbarriersolutions.ap@gmail.com';
+async function sendInvoiceEmail({
+  job,
+  cents,                      // integer cents (e.g. principalCents)
+  emailOverride,
+  invoicePdfPath,
+  workOrderPdfPath,
+  transporter7,
+  invoiceEmail,
+}) {
+  const to = emailOverride || job?.email || '';
+  if (!to) return;
+
+  const totalUSD = (Number(cents || 0) / 100).toFixed(2);
+  const today = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+  const greetingName = job?.coordinator || job?.company || 'there';
+
+  const safeCompany = (job?.company || 'company').replace(/[^a-z0-9\- ]/gi,'');
+  const atts = [
+    invoicePdfPath && { filename: `invoice-${safeCompany}.pdf`, path: invoicePdfPath, contentDisposition: 'attachment' },
+    workOrderPdfPath && { filename: `work-order-${safeCompany}.pdf`, path: workOrderPdfPath, contentDisposition: 'attachment' },
+  ].filter(Boolean);
+
+  await transporter7.sendMail({
+    from: 'Traffic & Barrier Solutions, LLC <trafficandbarriersolutions.ap@gmail.com>',
+    to,
+    bcc: [
+      { name: 'Traffic & Barrier Solutions, LLC', address: invoiceEmail },
+      // optional more BCCs:
+      // { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
+      // { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
+    ],
+    replyTo: 'tbsolutions3@gmail.com',
+    subject: `TRAFFIC CONTROL INVOICE — ${job?.company || ''} — ${today}`,
+    text:
+`Hi ${greetingName},
+
+Your invoice has been created and is attached to this email.
+
+Total due today: $${totalUSD}
+
+A 2.5% interest has started as of the invoice date.
+(An admin can clear interest by marking the invoice paid in the Admin → Invoices panel.)
+
+Company: ${job?.company || ''}
+Project/Task: ${job?.project || ''}
+Address: ${[job?.address, job?.city, job?.state, job?.zip].filter(Boolean).join(', ')}
+
+If you have any questions, please call (706) 263-0175.
+
+Traffic & Barrier Solutions, LLC
+1995 Dews Pond Rd SE, Calhoun, GA 30701
+www.trafficbarriersolutions.com
+`,
+    html: `
+<html>
+  <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+    <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+      <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px; margin-top:0;">
+        TRAFFIC CONTROL INVOICE
+      </h1>
+
+      <p>Hi <strong>${greetingName}</strong>,</p>
+      <p>Your invoice has been created and is attached to this email.</p>
+
+      <h3>Invoice Summary</h3>
+      <ul>
+        <li><strong>Total due today:</strong> $${totalUSD}</li>
+        <li><strong>Invoice date:</strong> ${today}</li>
+        ${job?.company ? `<li><strong>Company:</strong> ${job.company}</li>` : ''}
+        ${job?.project ? `<li><strong>Project/Task:</strong> ${job.project}</li>` : ''}
+        ${job?.time ? `<li><strong>Time:</strong> ${job.time}</li>` : ''}
+        ${
+          [job?.address, job?.city, job?.state, job?.zip].filter(Boolean).length
+            ? `<li><strong>Job Site Address:</strong> ${[job.address, job.city, job.state, job.zip].filter(Boolean).join(', ')}</li>`
+            : ''
+        }
+      </ul>
+
+      <div style="padding: 12px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 6px; margin: 16px 0;">
+        <strong>Interest Notice:</strong> A <strong>2.5% interest</strong> has started as of the invoice date. 
+        <br/>If this invoice has been paid, the admin can clear the balance/interest in the <em>Admin → Invoices</em> panel.
+      </div>
+
+      <p style="margin-top: 16px;">
+        The following documents are attached:
+      </p>
+      <ul>
+        ${invoicePdfPath ? '<li>Invoice (PDF)</li>' : ''}
+        ${workOrderPdfPath ? '<li>Work Order (PDF)</li>' : ''}
+      </ul>
+
+      <hr style="margin: 20px 0;">
+
+      <p style="font-size: 14px;">
+        Traffic &amp; Barrier Solutions, LLC<br>
+        1995 Dews Pond Rd SE, Calhoun, GA 30701<br>
+        Phone: (706) 263-0175<br>
+        <a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a>
+      </p>
+    </div>
+  </body>
+</html>
+    `,
+    attachments: atts,
+  });
+}
 const corsOptions = {
   origin: ['http://localhost:5173','http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
   credentials: true,
@@ -91,22 +198,6 @@ router.post('/invoices/:id/send', async (req,res) => {
   inv.status = 'SENT';
   inv.invoicePdfPath = await generateInvoicePdf(inv, inv.job);
   await inv.save();
-
-  // email
-  const toEmail = inv.billedTo?.email || inv.companyEmail;
-  if (toEmail) {
-    await transporter7.sendMail({
-      from: 'trafficandbarriersolutions.ap@gmail.com',
-      to: toEmail,
-      subject: `Invoice ${inv._id} - ${inv.company}`,
-      text: `Please find attached your invoice. Total due today: $${currentTotal(inv).toFixed(2)}.`,
-      attachments: [
-        { path: inv.invoicePdfPath },
-        { path: inv.workOrderPdfPath }
-      ]
-    });
-  }
-
   res.json({ message: 'Invoice sent', invId: inv._id, sentAt: inv.sentAt });
 });
 
