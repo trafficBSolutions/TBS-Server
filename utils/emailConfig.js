@@ -108,11 +108,12 @@ const transporter7 = nodemailer.createTransport({
         rejectUnauthorized: true
     }
 });
-module.exports = 
-    transporter,
-    transporter2,
-    transporter3,
-    transporter4,
-    transporter5,
-    transporter6,
-    transporter7;
+module.exports = {
+  transporter,   // uses EMAIL_USER
+  transporter2,  // uses EMAIL_USER_2
+  transporter3,
+  transporter4,
+  transporter5,
+  transporter6,
+  transporter7,  // uses EMAIL_USER_7  ← should be trafficandbarriersolutions.ap@gmail.com
+};
