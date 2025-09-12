@@ -16,23 +16,24 @@ function verifyToken(t) {
     return null; 
   } 
 }
-
 function getUserFromReq(req) {
+  const candidates = [];
+  if (req.cookies?.empToken) candidates.push(verifyToken(req.cookies.empToken));
+  if (req.cookies?.token)   candidates.push(verifyToken(req.cookies.token));
   const auth = req.headers.authorization || '';
-  if (auth.startsWith('Bearer ')) {
-    const u = verifyToken(auth.slice(7)); 
-    if (u) return u;
-  }
-  if (req.cookies?.empToken) {
-    const u = verifyToken(req.cookies.empToken); 
-    if (u) return u;
-  }
-  if (req.cookies?.token) {
-    const u = verifyToken(req.cookies.token); 
-    if (u) return u;
-  }
-  return null;
+  if (auth.startsWith('Bearer ')) candidates.push(verifyToken(auth.slice(7)));
+
+  const ALLOWED = new Set(['admin','employee','invoice','invoice_admin','invoiceAdmin','superadmin']);
+  const withRole = candidates.find(u => u && ALLOWED.has(u.role));
+  if (withRole) return withRole;
+
+  // back-compat: some old admin tokens only had an email
+  const adminish = candidates.find(u => u && (u.email || u.isAdmin === true || u.scope === 'admin'));
+  if (adminish) return { ...adminish, role: adminish.role || 'admin' };
+
+  return candidates.find(Boolean) || null;
 }
+
 
 const ALLOWED_ROLES = new Set(['admin','employee','invoice','invoice_admin','invoiceAdmin','superadmin']);
 
@@ -521,3 +522,4 @@ router.use((req, _res, next) => {
 });
 
 module.exports = router;
+
