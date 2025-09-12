@@ -39,20 +39,25 @@ const ALLOWED_ROLES = new Set(['admin','employee','invoice','invoice_admin','inv
 
 function requireStaff(req, res, next) {
   const user = getUserFromReq(req);
+  console.log('Auth debug - user found:', !!user, 'user details:', user ? { email: user.email, role: user.role } : 'null');
+  
   if (!user) {
-    console.warn('No user found in request');
+    console.warn('No user found in request - cookies:', req.cookies, 'auth header:', req.headers.authorization?.slice(0, 20));
     return res.status(401).send('Unauthorized');
   }
   
   // If user has no role but has an email, assume admin (for backward compatibility)
   if (!user.role && user.email) {
+    console.log('Assigning admin role to user with email but no role:', user.email);
     user.role = 'admin';
   }
   
   if (!user.role || !ALLOWED_ROLES.has(user.role)) {
-    console.warn('Forbidden role for /work-order:', user.role, 'User:', user.email);
+    console.warn('Forbidden role for /work-order:', user.role, 'User:', user.email || 'undefined');
     return res.status(403).send('Forbidden');
   }
+  
+  console.log('User authenticated successfully:', user.email, 'role:', user.role);
   req.user = user;
   next();
 }
@@ -239,7 +244,7 @@ router.use(cors({ credentials: true, origin: [
   'https://www.trafficbarriersolutions.com'
 ]}));
 
-router.post('/work-order', async (req, res) => {
+router.post('/work-order', requireStaff, async (req, res) => {
   try {
     const {
       jobId,
