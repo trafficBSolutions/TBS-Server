@@ -1,0 +1,82 @@
+// routes/employeeAuth.js
+const express = require('express');
+const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const Employee = require('../models/employee');
+
+// optional: rate limit your login route
+// const rateLimit = require('express-rate-limit');
+// router.use('/login', rateLimit({ windowMs: 15*60*1000, max: 50 }));
+
+// Register (optional seed route — protect/remove in prod)
+router.post('/register', async (req, res) => {
+  try {
+    const { firstName, lastName, email, password } = req.body || {};
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: 'Missing fields' });
+    }
+    const existing = await Employee.findOne({ email });
+    if (existing) return res.status(409).json({ message: 'Email already in use' });
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const emp = await Employee.create({ firstName, lastName, email, passwordHash, role: 'employee' });
+    return res.json({ message: 'Employee registered', id: emp._id });
+  } catch (e) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+// routes/employeeAuth.js
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    const emp = await Employee.findOne({ email, active: true });
+    if (!emp) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const ok = await bcrypt.compare(password, emp.passwordHash);
+    if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const token = jwt.sign(
+      { id: emp._id, email: emp.email, role: 'employee', name: `${emp.firstName} ${emp.lastName}` },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    const isProd = process.env.NODE_ENV === 'production';
+
+    res.cookie('empToken', token, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
+      path: '/',
+      maxAge: 8 * 60 * 60 * 1000,
+    });
+
+    return res.json({
+      message: 'Logged in',
+      user: { email: emp.email, name: `${emp.firstName} ${emp.lastName}`, role: 'employee' },
+      ...(isProd ? {} : { token }) // 👈 echo in dev so the SPA can set Authorization
+    });
+  } catch (e) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+// routes/employeeAuth.js
+router.post('/logout', (req, res) => {
+  res.clearCookie('empToken', { path: '/' });
+  res.clearCookie('token', { path: '/' }); // legacy/admin
+  return res.json({ message: 'Logged out' });
+});
+
+
+router.get('/me', (req, res) => {
+  try {
+    const raw = req.cookies?.empToken || req.cookies?.token;
+    if (!raw) return res.status(200).json({ authenticated: false });
+    const payload = jwt.verify(raw, process.env.JWT_SECRET);
+    return res.json({ authenticated: true, user: { email: payload.email, role: payload.role, name: payload.name }});
+  } catch { return res.status(200).json({ authenticated: false }); }
+});
+
+
+module.exports = router;
