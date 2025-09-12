@@ -37,7 +37,28 @@ const cookieParser = require('cookie-parser');
  app.use(express.json());                    // JSON should be before routes
  app.use(cookieParser());
  app.use(cors({
- origin: ['http://localhost:5173','http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Allow localhost on any port
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Allow production domain
+    if (origin === 'https://www.trafficbarriersolutions.com') {
+      return callback(null, true);
+    }
+    
+    // Allow local network IPs (192.168.x.x, 10.x.x.x, etc.)
+    if (origin.match(/^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/) || 
+        origin.match(/^https?:\/\/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/)) {
+      return callback(null, true);
+    }
+    
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
