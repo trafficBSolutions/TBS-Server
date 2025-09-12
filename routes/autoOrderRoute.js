@@ -10,9 +10,12 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 
 function verifyToken(t) { 
-  try { 
-    return jwt.verify(t, process.env.JWT_SECRET); 
-  } catch { 
+  try {
+    const decoded = jwt.verify(t, process.env.JWT_SECRET);
+    console.log('JWT decoded successfully:', { email: decoded.email, role: decoded.role, id: decoded.id });
+    return decoded;
+  } catch (error) {
+    console.log('JWT verification failed:', error.message);
     return null; 
   } 
 }
@@ -23,8 +26,10 @@ function getUserFromReq(req) {
   const auth = req.headers.authorization || '';
   if (auth.startsWith('Bearer ')) candidates.push(verifyToken(auth.slice(7)));
 
+  console.log('JWT candidates:', candidates.map(c => c ? { email: c.email, role: c.role, id: c.id } : null));
+
   const ALLOWED = new Set(['admin','employee','invoice','invoice_admin','invoiceAdmin','superadmin']);
-  const withRole = candidates.find(u => u && ALLOWED.has(u.role));
+  const withRole = candidates.find(u => u && u.role && ALLOWED.has(u.role));
   if (withRole) return withRole;
 
   // back-compat: some old admin tokens only had an email
@@ -39,10 +44,11 @@ const ALLOWED_ROLES = new Set(['admin','employee','invoice','invoice_admin','inv
 
 function requireStaff(req, res, next) {
   const user = getUserFromReq(req);
-  console.log('Auth debug - user found:', !!user, 'user details:', user ? { email: user.email, role: user.role } : 'null');
+  console.log('Auth debug - full user object:', JSON.stringify(user, null, 2));
+  console.log('Auth debug - user found:', !!user, 'user details:', user ? { email: user.email, role: user.role, id: user.id } : 'null');
   
   if (!user) {
-    console.warn('No user found in request - cookies:', req.cookies, 'auth header:', req.headers.authorization?.slice(0, 20));
+    console.warn('No user found in request - cookies:', Object.keys(req.cookies || {}), 'auth header exists:', !!req.headers.authorization);
     return res.status(401).send('Unauthorized');
   }
   
@@ -52,8 +58,10 @@ function requireStaff(req, res, next) {
     user.role = 'admin';
   }
   
+  console.log('Role check - user.role:', user.role, 'ALLOWED_ROLES has role:', ALLOWED_ROLES.has(user.role));
+  
   if (!user.role || !ALLOWED_ROLES.has(user.role)) {
-    console.warn('Forbidden role for /work-order:', user.role, 'User:', user.email || 'undefined');
+    console.warn('Forbidden role for /work-order:', user.role, 'User:', user.email || 'undefined', 'Full user:', JSON.stringify(user));
     return res.status(403).send('Forbidden');
   }
   
