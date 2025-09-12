@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "postinstall": "npx @puppeteer/browsers install chrome@stable",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon index.js"
   },
