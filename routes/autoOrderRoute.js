@@ -16,32 +16,22 @@ function verifyToken(t) {
     return null; 
   } 
 }
+
 function getUserFromReq(req) {
-  const candidates = [];
- // Prefer employee cookie first (most reliable for staff)
- if (req.cookies?.empToken) candidates.push(verifyToken(req.cookies.empToken));
- // Legacy cookie
- if (req.cookies?.token) candidates.push(verifyToken(req.cookies.token));
- // Finally, Authorization header
- const auth = req.headers.authorization || '';
- if (auth.startsWith('Bearer ')) candidates.push(verifyToken(auth.slice(7)));
- // Pick the first token that clearly has a staff role or admin marker
- const allowed = new Set(['admin','employee','invoice','invoice_admin','invoiceAdmin','superadmin']);
- const byRole = candidates.find(u => u && allowed.has(u.role));
-  if (byRole) return byRole;
-
-  // Backward-compat: treat tokens with clear admin hints as admin
-  const byHint = candidates.find(u =>
-    u && (u.isAdmin === true || u.admin === true ||
-          u.scope === 'admin' ||
-          (Array.isArray(u.permissions) && u.permissions.includes('admin')) ||
-          u.email) // older admin tokens that only had email
-  );
-  if (byHint) return { ...byHint, role: byHint.role || 'admin' };
-
-  // Fallback: return the first valid token if any
-  const anyValid = candidates.find(Boolean);
-  return anyValid || null;
+  const auth = req.headers.authorization || '';
+  if (auth.startsWith('Bearer ')) {
+    const u = verifyToken(auth.slice(7)); 
+    if (u) return u;
+  }
+  if (req.cookies?.empToken) {
+    const u = verifyToken(req.cookies.empToken); 
+    if (u) return u;
+  }
+  if (req.cookies?.token) {
+    const u = verifyToken(req.cookies.token); 
+    if (u) return u;
+  }
+  return null;
 }
 
 const ALLOWED_ROLES = new Set(['admin','employee','invoice','invoice_admin','invoiceAdmin','superadmin']);
@@ -244,6 +234,7 @@ async function generateWorkOrderPdf(wo) {
 }
 
 router.use(cors({ credentials: true, origin: [
+  'http://localhost:5173',
   'https://www.trafficbarriersolutions.com'
 ]}));
 
@@ -530,5 +521,3 @@ router.use((req, _res, next) => {
 });
 
 module.exports = router;
-
-
