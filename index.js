@@ -12,6 +12,7 @@ const billingRouter = require('./routes/billing');
 const cron = require('node-cron');
 const { runInterestReminderCycle } = require('./services/interestBot');
 const workOrdersRouter = require('./routes/autoOrderRoute');
+const employeeAuth = require('./routes/employeeAuth');
 // Create Express app
 const app = express();
 
@@ -62,7 +63,7 @@ app.use('/', require('./routes/autoContactRoute'));
 app.use('/', require('./routes/adminRoute'));
 app.use(require('./routes/invoiceRoute'));
 app.use(require('./routes/payCard'));  // if using Stripe
-
+app.use('/employee', employeeAuth);
 // ✅ Static file routes
 app.use('/forms', express.static(path.join(__dirname, 'forms')));
 app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
