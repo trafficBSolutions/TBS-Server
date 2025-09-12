@@ -36,28 +36,33 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, emp.passwordHash);
     if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const token = jwt.sign(
-      { id: emp._id, email: emp.email, role: 'employee', name: `${emp.firstName} ${emp.lastName}` },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
-    );
+    const payload = { id: emp._id, email: emp.email, role: 'employee', name: `${emp.firstName} ${emp.lastName}` };
+    console.log('Creating JWT with payload:', payload);
+    
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
+    
+    // Verify the token was created correctly
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('JWT verification after creation:', decoded);
 
     const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('empToken', token, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
+      secure: false, // Allow HTTP for local development
+      sameSite: 'Lax',
       path: '/',
       maxAge: 8 * 60 * 60 * 1000,
+      domain: isProd ? '.trafficbarriersolutions.com' : undefined, // No domain restriction for dev
     });
 
     return res.json({
       message: 'Logged in',
       user: { email: emp.email, name: `${emp.firstName} ${emp.lastName}`, role: 'employee' },
-      ...(isProd ? {} : { token }) // 👈 echo in dev so the SPA can set Authorization
+      ...(isProd ? {} : { token })
     });
   } catch (e) {
+    console.error('Employee login error:', e);
     return res.status(500).json({ message: 'Server error' });
   }
 });
