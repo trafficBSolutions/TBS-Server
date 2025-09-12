@@ -26,53 +26,58 @@ siteForeman: { type: Boolean, required: true },
 signsAndStands: { type: Boolean, required: true },
 conesAndTaper: { type: Boolean, required: true },
 equipmentLeft: { type: Boolean, required: true }, // may be enforced true if mismatch
+equipmentLeftReason: { type: String, trim: true, default: '' }, // <-- add this
 }, { _id: false });
 
 
 const WorkOrderSchema = new mongoose.Schema({
-job: { type: mongoose.Schema.Types.ObjectId, ref: 'ControlUser', required: true },
-scheduledDate: { type: Date, required: true },
+  job: { type: mongoose.Schema.Types.ObjectId, ref: 'ControlUser' }, // <-- NOT required
+  scheduledDate: { type: Date, required: true },
 
+  basic: {
+    dateOfJob: { type: String, required: true },
+    client: { type: String, required: true },
+    coordinator: { type: String, required: true },
+    project: { type: String, required: true },
+    address: { type: String, required: true },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    zip: { type: String, required: true },
+    startTime: { type: String, required: true },
+    endTime: { type: String, required: true },
+    rating: { type: String },
+    notice24: { type: String },
+    callBack: { type: String },
+    notes: { type: String },
 
-basic: {
-dateOfJob: { type: String, required: true }, // YYYY-MM-DD string captured from UI
-client: { type: String, required: true },
-coordinator: { type: String, required: true },
-project: { type: String, required: true },
-address: { type: String, required: true },
-city: { type: String, required: true },
-state: { type: String, required: true },
-zip: { type: String, required: true },
-startTime: { type: String, required: true }, // HH:MM
-endTime: { type: String, required: true }, // HH:MM
-rating: { type: String },
-notice24: { type: String },
-callBack: { type: String },
-notes: { type: String },
-},
+    // ✅ add this
+    foremanName: { type: String, required: true },
+  },
 
+  // ❌ was: required: true
+  // ✅ now optional (or remove the field entirely if you won't use it)
+ foremanSignature: { type: String, required: true },
 
-foremanSignature: { type: String, required: true }, // base64 (no prefix), PNG
+  tbs: {
+    flagger1: { type: String, required: true },
+    flagger2: { type: String, required: true },
+    flagger3: { type: String },
+    flagger4: { type: String },
+    flagger5: { type: String },
+    flagger6: { type: String },
+    trucks: [{ type: String }],
+    morning: { type: MorningSchema, required: true },
+    jobsite: { type: JobsiteSchema, required: true },
+  },
 
-
-tbs: {
-flagger1: { type: String, required: true },
-flagger2: { type: String, required: true },
-flagger3: { type: String },
-flagger4: { type: String },
-flagger5: { type: String },
-flagger6: { type: String },
-trucks: [{ type: String }],
-morning: { type: MorningSchema, required: true },
-jobsite: { type: JobsiteSchema, required: true },
-},
-
-
-mismatch: { type: Boolean, required: true },
+  mismatch: { type: Boolean, required: true },
 }, { timestamps: true });
 
 
-WorkOrderSchema.index({ job: 1, scheduledDate: 1 }, { unique: true });
+WorkOrderSchema.index(
+  { job: 1, scheduledDate: 1 },
+  { unique: true, partialFilterExpression: { job: { $exists: true, $type: "objectId" } } }
+);
 
 
 module.exports = mongoose.model('WorkOrder', WorkOrderSchema);
