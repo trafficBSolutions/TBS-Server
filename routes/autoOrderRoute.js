@@ -234,7 +234,6 @@ async function generateWorkOrderPdf(wo) {
 }
 
 router.use(cors({ credentials: true, origin: [
-  'http://localhost:5173',
   'https://www.trafficbarriersolutions.com'
 ]}));
 
@@ -521,3 +520,4 @@ router.use((req, _res, next) => {
 });
 
 module.exports = router;
+
