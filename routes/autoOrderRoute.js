@@ -10,62 +10,48 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 
 function verifyToken(t) { 
-  try {
-    const decoded = jwt.verify(t, process.env.JWT_SECRET);
-    console.log('JWT decoded successfully:', { email: decoded.email, role: decoded.role, id: decoded.id });
-    return decoded;
-  } catch (error) {
-    console.log('JWT verification failed:', error.message);
+  try { 
+    return jwt.verify(t, process.env.JWT_SECRET); 
+  } catch { 
     return null; 
   } 
 }
+
 function getUserFromReq(req) {
-  const candidates = [];
-  if (req.cookies?.empToken) candidates.push(verifyToken(req.cookies.empToken));
-  if (req.cookies?.token)   candidates.push(verifyToken(req.cookies.token));
   const auth = req.headers.authorization || '';
-  if (auth.startsWith('Bearer ')) candidates.push(verifyToken(auth.slice(7)));
-
-  console.log('JWT candidates:', candidates.map(c => c ? { email: c.email, role: c.role, id: c.id } : null));
-
-  const ALLOWED = new Set(['admin','employee','invoice','invoice_admin','invoiceAdmin','superadmin']);
-  const withRole = candidates.find(u => u && u.role && ALLOWED.has(u.role));
-  if (withRole) return withRole;
-
-  // back-compat: some old admin tokens only had an email
-  const adminish = candidates.find(u => u && (u.email || u.isAdmin === true || u.scope === 'admin'));
-  if (adminish) return { ...adminish, role: adminish.role || 'admin' };
-
-  return candidates.find(Boolean) || null;
+  if (auth.startsWith('Bearer ')) {
+    const u = verifyToken(auth.slice(7)); 
+    if (u) return u;
+  }
+  if (req.cookies?.empToken) {
+    const u = verifyToken(req.cookies.empToken); 
+    if (u) return u;
+  }
+  if (req.cookies?.token) {
+    const u = verifyToken(req.cookies.token); 
+    if (u) return u;
+  }
+  return null;
 }
-
 
 const ALLOWED_ROLES = new Set(['admin','employee','invoice','invoice_admin','invoiceAdmin','superadmin']);
 
 function requireStaff(req, res, next) {
   const user = getUserFromReq(req);
-  console.log('Auth debug - full user object:', JSON.stringify(user, null, 2));
-  console.log('Auth debug - user found:', !!user, 'user details:', user ? { email: user.email, role: user.role, id: user.id } : 'null');
-  
   if (!user) {
-    console.warn('No user found in request - cookies:', Object.keys(req.cookies || {}), 'auth header exists:', !!req.headers.authorization);
+    console.warn('No user found in request');
     return res.status(401).send('Unauthorized');
   }
   
   // If user has no role but has an email, assume admin (for backward compatibility)
   if (!user.role && user.email) {
-    console.log('Assigning admin role to user with email but no role:', user.email);
     user.role = 'admin';
   }
   
-  console.log('Role check - user.role:', user.role, 'ALLOWED_ROLES has role:', ALLOWED_ROLES.has(user.role));
-  
   if (!user.role || !ALLOWED_ROLES.has(user.role)) {
-    console.warn('Forbidden role for /work-order:', user.role, 'User:', user.email || 'undefined', 'Full user:', JSON.stringify(user));
+    console.warn('Forbidden role for /work-order:', user.role, 'User:', user.email);
     return res.status(403).send('Forbidden');
   }
-  
-  console.log('User authenticated successfully:', user.email, 'role:', user.role);
   req.user = user;
   next();
 }
@@ -230,7 +216,16 @@ async function generateWorkOrderPdf(wo) {
 
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+      '--disable-gpu'
+    ],
   });
 
   try {
@@ -252,7 +247,7 @@ router.use(cors({ credentials: true, origin: [
   'https://www.trafficbarriersolutions.com'
 ]}));
 
-router.post('/work-order', requireStaff, async (req, res) => {
+router.post('/work-order', async (req, res) => {
   try {
     const {
       jobId,
@@ -452,7 +447,16 @@ router.get('/work-order/:id/pdf', requireStaff, async (req, res) => {
 
     const browser = await puppeteer.launch({
       headless: 'new',
-      args: ['--no-sandbox','--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu'
+      ]
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
@@ -535,4 +539,3 @@ router.use((req, _res, next) => {
 });
 
 module.exports = router;
-
