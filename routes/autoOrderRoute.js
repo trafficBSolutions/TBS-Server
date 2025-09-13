@@ -501,6 +501,8 @@ router.get('/work-orders/month', requireStaff, async (req, res) => {
 router.get('/work-orders', requireStaff, async (req, res) => {
   try {
     const { date } = req.query;
+    console.log(`[DEBUG] *** WORK ORDERS ROUTE HIT *** date=${date}`);
+    
     if (!date) return res.status(400).json({ error: 'Date parameter required' });
     
     console.log(`[DEBUG] Daily work orders request for date: ${date}`);
@@ -508,6 +510,10 @@ router.get('/work-orders', requireStaff, async (req, res) => {
     const startDate = new Date(date + 'T00:00:00Z');
     const endDate = new Date(date + 'T23:59:59Z');
     console.log(`[DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    
+    // First, let's see ALL work orders in the database
+    const allWorkOrders = await WorkOrder.find({}).sort({ createdAt: -1 });
+    console.log(`[DEBUG] Total work orders in database: ${allWorkOrders.length}`);
     
     const workOrders = await WorkOrder.find({
       scheduledDate: { $gte: startDate, $lte: endDate }
@@ -550,3 +556,5 @@ router.use((req, _res, next) => {
 });
 
 module.exports = router;
+
+
