@@ -476,12 +476,20 @@ router.get('/work-order/:id/pdf', requireStaff, async (req, res) => {
 router.get('/work-orders/month', requireStaff, async (req, res) => {
   try {
     const { month, year } = req.query;
+    console.log(`[DEBUG] Monthly work orders request: month=${month}, year=${year}`);
+    
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
+    console.log(`[DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
     const workOrders = await WorkOrder.find({
       scheduledDate: { $gte: startDate, $lte: endDate }
     }).sort({ scheduledDate: 1 });
+    
+    console.log(`[DEBUG] Found ${workOrders.length} work orders for month ${month}/${year}`);
+    workOrders.forEach((wo, i) => {
+      console.log(`[DEBUG] Work Order ${i + 1}: ${wo.basic?.client} on ${wo.scheduledDate?.toISOString()}`);
+    });
     
     res.json(workOrders);
   } catch (e) {
@@ -495,12 +503,20 @@ router.get('/work-orders', requireStaff, async (req, res) => {
     const { date } = req.query;
     if (!date) return res.status(400).json({ error: 'Date parameter required' });
     
+    console.log(`[DEBUG] Daily work orders request for date: ${date}`);
+    
     const startDate = new Date(date + 'T00:00:00Z');
     const endDate = new Date(date + 'T23:59:59Z');
+    console.log(`[DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
     const workOrders = await WorkOrder.find({
       scheduledDate: { $gte: startDate, $lte: endDate }
     }).sort({ createdAt: -1 });
+    
+    console.log(`[DEBUG] Found ${workOrders.length} work orders for date ${date}`);
+    workOrders.forEach((wo, i) => {
+      console.log(`[DEBUG] Work Order ${i + 1}: ${wo.basic?.client} scheduled for ${wo.scheduledDate?.toISOString()}`);
+    });
     
     res.json(workOrders);
   } catch (e) {
@@ -534,5 +550,3 @@ router.use((req, _res, next) => {
 });
 
 module.exports = router;
-
-
