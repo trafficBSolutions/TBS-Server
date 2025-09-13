@@ -293,7 +293,7 @@ router.post('/work-order', requireStaff, async (req, res) => {
       return res.status(400).json({ error: 'Equipment Left After Hours must be checked when counts mismatch' });
     }
 
-    const scheduled = new Date(scheduledDate + 'T00:00:00Z');
+    const scheduled = new Date(scheduledDate + 'T00:00:00');
 
     const created = await WorkOrder.create({
       ...(job ? { job: job._id } : {}),
