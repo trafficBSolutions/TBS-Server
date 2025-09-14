@@ -198,8 +198,13 @@ function renderWorkOrderHTML(wo, assets) {
       ${wo.photos.map(photo => {
         const photoPath = path.join(__dirname, '..', 'uploads', 'workorder-photos', photo);
         if (fs.existsSync(photoPath)) {
-          const photoDataUri = toDataUri(photoPath);
-          return `<div style="text-align: center;"><img src="${photoDataUri}" alt="Work Order Photo" style="max-width: 100%; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;" /><p style="font-size: 8px; margin: 2px 0;">${photo}</p></div>`;
+          try {
+            const photoDataUri = toDataUri(photoPath);
+            return `<div style="text-align: center; page-break-inside: avoid;"><img src="${photoDataUri}" alt="Work Order Photo" style="max-width: 200px; max-height: 150px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px;" /><p style="font-size: 8px; margin: 2px 0;">${photo}</p></div>`;
+          } catch (e) {
+            console.warn(`Failed to process photo ${photo}:`, e.message);
+            return `<div style="text-align: center;"><p style="font-size: 8px; color: #999;">Photo: ${photo} (processing failed)</p></div>`;
+          }
         }
         return '';
       }).join('')}
@@ -266,11 +271,13 @@ async function generateWorkOrderPdf(wo) {
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setDefaultTimeout(60000); // 60 second timeout
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
     const pdfBuffer = await page.pdf({
       format: 'Letter',
       printBackground: true,
       margin: { top: '12mm', right: '12mm', bottom: '12mm', left: '12mm' },
+      timeout: 60000
     });
     return pdfBuffer;
   } finally {
@@ -375,7 +382,16 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       console.log('PDF generated successfully');
     } catch (pdfError) {
       console.error('PDF generation failed:', pdfError);
-      throw new Error('PDF generation failed: ' + pdfError.message);
+      // Try generating PDF without photos as fallback
+      try {
+        console.log('Attempting PDF generation without photos...');
+        const fallbackWo = { ...created.toObject(), photos: [] };
+        pdfBuffer = await generateWorkOrderPdf(fallbackWo);
+        console.log('Fallback PDF generated successfully');
+      } catch (fallbackError) {
+        console.error('Fallback PDF generation also failed:', fallbackError);
+        throw new Error('PDF generation failed: ' + pdfError.message);
+      }
     }
     
     // Save PDF to filesystem
