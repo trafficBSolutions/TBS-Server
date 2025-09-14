@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const cors = require('cors');
+const multer = require('multer');
 const WorkOrder = require('../models/workorder');
 const ControlUser = require('../models/controluser');
 const { transporter } = require('../utils/emailConfig');
@@ -8,6 +9,32 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '..', 'uploads', 'workorder-photos');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 function verifyToken(t) { 
   try {
@@ -164,6 +191,21 @@ function renderWorkOrderHTML(wo, assets) {
     </div>
   </div>
 
+  ${wo.photos && wo.photos.length > 0 ? `
+  <div class="section">
+    <h3>Work Order Photos</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+      ${wo.photos.map(photo => {
+        const photoPath = path.join(__dirname, '..', 'uploads', 'workorder-photos', photo);
+        if (fs.existsSync(photoPath)) {
+          const photoDataUri = toDataUri(photoPath);
+          return `<div style="text-align: center;"><img src="${photoDataUri}" alt="Work Order Photo" style="max-width: 100%; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;" /><p style="font-size: 8px; margin: 2px 0;">${photo}</p></div>`;
+        }
+        return '';
+      }).join('')}
+    </div>
+  </div>` : ''}
+
   <div class="signature-section">
     <h3>Job Site Foreman</h3>
     ${wo.foremanSignature ? `<img src="data:image/png;base64,${wo.foremanSignature}" alt="Foreman Signature" />` : ''}
@@ -241,7 +283,7 @@ router.use(cors({ credentials: true, origin: [
   'https://www.trafficbarriersolutions.com'
 ]}));
 
-router.post('/work-order', requireStaff, async (req, res) => {
+router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, res) => {
   try {
     const {
       jobId,
@@ -251,6 +293,8 @@ router.post('/work-order', requireStaff, async (req, res) => {
       mismatch,
       foremanSignature
     } = req.body;
+
+    const photos = req.files ? req.files.map(file => file.filename) : [];
 
     if (!foremanSignature) {
       return res.status(400).json({ error: 'Foreman signature is required' });
@@ -301,7 +345,8 @@ router.post('/work-order', requireStaff, async (req, res) => {
       basic: { ...basic, client: basic.client || basic.company, foremanName },
       tbs,
       mismatch: !!(mismatch || mismatchServer),
-      ...(foremanSignature ? { foremanSignature } : {})
+      ...(foremanSignature ? { foremanSignature } : {}),
+      ...(photos.length > 0 ? { photos } : {})
     });
 
     const pdfBuffer = await generateWorkOrderPdf(created);
@@ -361,6 +406,8 @@ router.post('/work-order', requireStaff, async (req, res) => {
           
           ${basic.notes ? `<h3>Additional Notes:</h3><p>${basic.notes}</p>` : ''}
           
+          ${created.photos && created.photos.length > 0 ? `<h3>Work Order Photos:</h3><p>${created.photos.length} photo(s) attached to this work order.</p>` : ''}
+          
           <hr style="margin: 20px 0;">
           <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
         </div>
@@ -386,7 +433,10 @@ router.post('/work-order', requireStaff, async (req, res) => {
           content: pdfBuffer,
           contentType: 'application/pdf',
         },
-
+        ...photos.map(photo => ({
+          filename: photo,
+          path: path.join(__dirname, '..', 'uploads', 'workorder-photos', photo)
+        }))
       ],
     };
 
