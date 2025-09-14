@@ -52,7 +52,10 @@ const WorkOrderSchema = new mongoose.Schema({
 
     // ✅ add this
     foremanName: { type: String, required: true },
+    requiresPhotos: { type: Boolean, default: false },
   },
+
+  photos: [{ type: String }], // Array of photo filenames
 
   // ❌ was: required: true
   // ✅ now optional (or remove the field entirely if you won't use it)
