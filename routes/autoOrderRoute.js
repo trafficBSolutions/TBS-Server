@@ -366,7 +366,17 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       ...(photos.length > 0 ? { photos } : {})
     });
 
-    const pdfBuffer = await generateWorkOrderPdf(created);
+    console.log('Work order created successfully:', created._id);
+    console.log('Photos attached:', photos.length);
+
+    let pdfBuffer;
+    try {
+      pdfBuffer = await generateWorkOrderPdf(created);
+      console.log('PDF generated successfully');
+    } catch (pdfError) {
+      console.error('PDF generation failed:', pdfError);
+      throw new Error('PDF generation failed: ' + pdfError.message);
+    }
     
     // Save PDF to filesystem
     const pdfDir = path.join(__dirname, '..', 'pdfs');
@@ -450,22 +460,45 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
           content: pdfBuffer,
           contentType: 'application/pdf',
         },
-        ...photos.map(photo => ({
-          filename: photo,
-          path: path.join(__dirname, '..', 'uploads', 'workorder-photos', photo)
-        }))
+        ...photos.map(photo => {
+          const photoPath = path.join(__dirname, '..', 'uploads', 'workorder-photos', photo);
+          if (!fs.existsSync(photoPath)) {
+            console.warn(`Photo file not found: ${photoPath}`);
+            return null;
+          }
+          return {
+            filename: photo,
+            path: photoPath
+          };
+        }).filter(Boolean)
       ],
     };
 
-    transporter.sendMail(mailOptions, (err, info) => {
-      if (err) console.error('Work order email error:', err);
-      else console.log('Work order email sent:', info.response);
-    });
+    try {
+      await new Promise((resolve, reject) => {
+        transporter.sendMail(mailOptions, (err, info) => {
+          if (err) {
+            console.error('Work order email error:', err);
+            reject(err);
+          } else {
+            console.log('Work order email sent:', info.response);
+            resolve(info);
+          }
+        });
+      });
+      console.log('Email sent successfully');
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      // Don't fail the entire request if email fails
+    }
 
     res.status(201).json({ message: 'Work order created', workOrderId: created._id });
   } catch (e) {
     console.error('Create work order failed:', e);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Error stack:', e.stack);
+    console.error('Request body keys:', Object.keys(req.body));
+    console.error('Files received:', req.files?.length || 0);
+    res.status(500).json({ error: 'Internal Server Error', details: e.message });
   }
 });
 
