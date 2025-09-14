@@ -285,7 +285,7 @@ router.use(cors({ credentials: true, origin: [
 
 router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, res) => {
   try {
-    const {
+    let {
       jobId,
       scheduledDate,
       basic = {},
@@ -293,6 +293,23 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       mismatch,
       foremanSignature
     } = req.body;
+
+    // Parse JSON fields if they're strings (from FormData)
+    if (typeof basic === 'string') {
+      try {
+        basic = JSON.parse(basic);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid basic data format' });
+      }
+    }
+    
+    if (typeof tbs === 'string') {
+      try {
+        tbs = JSON.parse(tbs);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid tbs data format' });
+      }
+    }
 
     const photos = req.files ? req.files.map(file => file.filename) : [];
 
@@ -606,5 +623,3 @@ router.use((req, _res, next) => {
 });
 
 module.exports = router;
-
-
