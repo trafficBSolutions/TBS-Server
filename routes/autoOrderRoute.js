@@ -290,6 +290,14 @@ router.use(cors({ credentials: true, origin: [
   'https://www.trafficbarriersolutions.com'
 ]}));
 
+// Debug middleware at the top
+router.use((req, _res, next) => {
+  console.log('[autoOrderRoute]', req.method, req.path);
+  next();
+});
+
+
+
 router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, res) => {
   try {
     let {
@@ -658,17 +666,4 @@ router.get('/auth/debug', (req, res) => {
     hasLegacyToken: !!req.cookies?.token,
   });
 });
-
-router.use((req, _res, next) => {
-  if (req.path === '/work-order') {
-    console.log('[work-order]',
-      'Origin:', req.headers.origin,
-      'HasAuth:', (req.headers.authorization || '').startsWith('Bearer '),
-      'HasEmpToken:', !!req.cookies?.empToken,
-      'HasLegacyToken:', !!req.cookies?.token
-    );
-  }
-  next();
-});
-
 module.exports = router;
