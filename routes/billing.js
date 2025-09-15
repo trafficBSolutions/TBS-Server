@@ -7,7 +7,6 @@
  const auth = require('../middleware/auth');
 const requireInvoiceAdmin = require('../middleware/requireInvoiceAdmin');
  const { generateWorkOrderPdf } = require('../services/workOrderPDF');
- const { generateInvoicePdf } = require('../services/invoicePDF');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
@@ -182,7 +181,7 @@ async function generateInvoicePdf(workOrder, manualAmount) {
 const PriceList = require('../models/priceList');
 
 const corsOptions = {
-  origin: ['http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
+  origin: ['http://localhost:5173','http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
