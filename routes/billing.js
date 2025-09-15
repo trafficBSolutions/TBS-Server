@@ -5,121 +5,182 @@
  const Invoice = require('../models/invoice');
  const ControlUser = require('../models/controluser');
  const auth = require('../middleware/auth');
+const requireInvoiceAdmin = require('../middleware/requireInvoiceAdmin');
  const { generateWorkOrderPdf } = require('../services/workOrderPDF');
  const { generateInvoicePdf } = require('../services/invoicePDF');
+const puppeteer = require('puppeteer');
+const fs = require('fs');
+const path = require('path');
+
+function toDataUri(absPath) {
+  try {
+    if (!fs.existsSync(absPath)) {
+      console.warn(`File not found: ${absPath}`);
+      return '';
+    }
+    const ext = path.extname(absPath).toLowerCase();
+    const mime = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : ext === '.svg' ? 'image/svg+xml' : 'application/octet-stream';
+    const buf = fs.readFileSync(absPath);
+    return `data:${mime};base64,${buf.toString('base64')}`;
+  } catch (e) {
+    console.error(`Failed to read file ${absPath}:`, e.message);
+    return '';
+  }
+}
+
+function renderInvoiceHTML(workOrder, manualAmount, assets) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root { --tbs-navy: #17365D; --tbs-blue: #2F5597; --row-alt: #f6f7fb; --muted: #6b7280; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; }
+    body { font-family: Arial, Helvetica, sans-serif; color:#111; padding: 20px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px; }
+    .header .brand { display:flex; gap:12px; align-items:center; }
+    .header .brand img { height:60px; }
+    .header .brand .company { font-weight:700; font-size:18px; line-height:1.2; }
+    .header .meta { text-align:right; font-size:12px; }
+    .title { text-align:center; letter-spacing:1px; font-weight:700; font-size:26px; color:var(--tbs-blue); }
+    .billto-bar { background:var(--tbs-navy); color:#fff; padding:6px 10px; font-weight:700; margin:18px 0 8px; }
+    .billto { display:flex; gap:16px; justify-content:space-between; font-size:13px; }
+    .table { width:100%; border-collapse:collapse; margin-top:16px; font-size:13px; }
+    .table th { background:var(--tbs-navy); color:#fff; text-align:left; padding:8px; font-weight:700; border:1px solid #1f2d44; }
+    .table td { padding:8px; border:1px solid #d1d5db; }
+    .table tr:nth-child(even) td { background:#f9fafb; }
+    .totals { margin-top:14px; width:50%; margin-left:auto; font-size:13px; }
+    .totals .row { display:flex; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #e5e7eb; }
+    .totals .grand { font-weight:700; border-top:2px solid #111; }
+    .footer { margin-top:20px; font-size:11.5px; color:#111; border-top:2px solid var(--tbs-navy); padding-top:10px; text-align:center; }
+    @page { size: A4; margin: 18mm; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <img src="${assets.logo}" alt="TBS Logo" />
+      <div class="company">Traffic & Barrier Solutions, LLC</div>
+    </div>
+    <div class="meta">
+      <div>Date: ${new Date().toLocaleDateString()}</div>
+      <div>Invoice #: ${String(workOrder._id || 'INV001').slice(-6)}</div>
+    </div>
+  </div>
+  
+  <h1 class="title">INVOICE</h1>
+  
+  <div class="billto-bar">BILL TO</div>
+  <div class="billto">
+    <div class="left">
+      <div><strong>${workOrder.basic?.client}</strong></div>
+      <div>${workOrder.basic?.address}</div>
+      <div>${workOrder.basic?.city}, ${workOrder.basic?.state} ${workOrder.basic?.zip}</div>
+    </div>
+  </div>
+  
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th style="text-align:right;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Traffic Control Services - ${workOrder.basic?.project}</td>
+        <td style="text-align:right;">$${Number(manualAmount).toFixed(2)}</td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <div class="totals">
+    <div class="row grand">
+      <span>TOTAL</span>
+      <span>$${Number(manualAmount).toFixed(2)}</span>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <div><strong>Traffic & Barrier Solutions, LLC</strong></div>
+    <div>1995 Dews Pond Rd SE, Calhoun, GA 30701</div>
+    <div>Phone: (706) 263-0175</div>
+  </div>
+</body>
+</html>`;
+}
+const os = require('os');
+
+async function generateInvoicePdf(workOrder, manualAmount) {
+  const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
+  const assets = { logo: toDataUri(logoPath) };
+  const html = renderInvoiceHTML(workOrder, manualAmount, assets);
+
+  let browser;
+  try {
+    // Try system Chrome first, then fallback to bundled
+    const possiblePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      process.env.PUPPETEER_EXECUTABLE_PATH
+    ].filter(Boolean);
+
+    let executablePath;
+    for (const chromePath of possiblePaths) {
+      if (fs.existsSync(chromePath)) {
+        executablePath = chromePath;
+        break;
+      }
+    }
+
+    console.log('[invoice] launching Chrome at:', executablePath || 'bundled');
+    
+    browser = await puppeteer.launch({
+      headless: true,
+      executablePath,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1240, height: 1754, deviceScaleFactor: 2 });
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.emulateMediaType('screen');
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '18mm', right: '18mm', bottom: '18mm', left: '18mm' }
+    });
+    
+    console.log('[invoice] PDF generated, size:', pdfBuffer.length, 'bytes');
+    
+    // Also save to temp file for debugging
+    const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
+    const datePart = workOrder.basic?.dateOfJob || new Date().toISOString().slice(0,10);
+    const tmpFile = path.join(os.tmpdir(), `invoice-${safeClient}-${datePart}.pdf`);
+    fs.writeFileSync(tmpFile, pdfBuffer);
+    console.log('[invoice] saved copy to:', tmpFile);
+
+    return pdfBuffer; // return buffer for reliable attachment
+  } finally {
+    if (browser) await browser.close();
+  }
+}
+
+
  const { exportInvoicesXlsx } = require('../services/invoiceExcel');
  const { currentTotal } = require('../utils/invoiceMath');
- const { transporter7 } = require('../utils/emailConfig'); 
+ const { transporter7 } = require('../utils/emailConfig');
  const { computeTotalFromSelections } = require('../utils/pricing');
  const authJwt = require('../middleware/authJwt');
 const PriceList = require('../models/priceList');
-const crypto = require('crypto');
-const invoiceEmail = 'trafficandbarriersolutions.ap@gmail.com';
-async function sendInvoiceEmail({
-  job,
-  cents,                      // integer cents (e.g. principalCents)
-  emailOverride,
-  invoicePdfPath,
-  workOrderPdfPath,
-  transporter7,
-  invoiceEmail,
-}) {
-  const to = emailOverride || job?.email || '';
-  if (!to) return;
 
-  const totalUSD = (Number(cents || 0) / 100).toFixed(2);
-  const today = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
-  const greetingName = job?.coordinator || job?.company || 'there';
-
-  const safeCompany = (job?.company || 'company').replace(/[^a-z0-9\- ]/gi,'');
-  const atts = [
-    invoicePdfPath && { filename: `invoice-${safeCompany}.pdf`, path: invoicePdfPath, contentDisposition: 'attachment' },
-    workOrderPdfPath && { filename: `work-order-${safeCompany}.pdf`, path: workOrderPdfPath, contentDisposition: 'attachment' },
-  ].filter(Boolean);
-
-  await transporter7.sendMail({
-    from: 'Traffic & Barrier Solutions, LLC <trafficandbarriersolutions.ap@gmail.com>',
-    to,
-    bcc: [
-      { name: 'Traffic & Barrier Solutions LLC', address: invoiceEmail },
-      // optional more BCCs:
-      { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
-      // { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
-    ],
-    subject: `TRAFFIC CONTROL INVOICE — ${job?.company || ''} — ${today}`,
-    text:
-`Hi ${greetingName},
-
-Your invoice has been created and is attached to this email.
-
-Total due today: $${totalUSD}
-
-A 2.5% interest has started as of the invoice date.
-(An admin can clear interest by marking the invoice paid in the Admin → Invoices panel.)
-
-Company: ${job?.company || ''}
-Project/Task: ${job?.project || ''}
-Address: ${[job?.address, job?.city, job?.state, job?.zip].filter(Boolean).join(', ')}
-
-If you have any questions, please call (706) 263-0175.
-
-Traffic & Barrier Solutions, LLC
-1995 Dews Pond Rd SE, Calhoun, GA 30701
-www.trafficbarriersolutions.com
-`,
-    html: `
-<html>
-  <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
-    <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-      <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px; margin-top:0;">
-        TRAFFIC CONTROL INVOICE
-      </h1>
-
-      <p>Hi <strong>${greetingName}</strong>,</p>
-      <p>Your invoice has been created and is attached to this email.</p>
-
-      <h3>Invoice Summary</h3>
-      <ul>
-        <li><strong>Total due today:</strong> $${totalUSD}</li>
-        <li><strong>Invoice date:</strong> ${today}</li>
-        ${job?.company ? `<li><strong>Company:</strong> ${job.company}</li>` : ''}
-        ${job?.project ? `<li><strong>Project/Task:</strong> ${job.project}</li>` : ''}
-        ${job?.time ? `<li><strong>Time:</strong> ${job.time}</li>` : ''}
-        ${
-          [job?.address, job?.city, job?.state, job?.zip].filter(Boolean).length
-            ? `<li><strong>Job Site Address:</strong> ${[job.address, job.city, job.state, job.zip].filter(Boolean).join(', ')}</li>`
-            : ''
-        }
-      </ul>
-
-      <div style="padding: 12px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 6px; margin: 16px 0;">
-        <strong>Interest Notice:</strong> A <strong>2.5% interest</strong> has started as of the invoice date. 
-        <br/>If this invoice has been paid, the admin can clear the balance/interest in the <em>Admin → Invoices</em> panel.
-      </div>
-
-      <p style="margin-top: 16px;">
-        The following documents are attached:
-      </p>
-      <ul>
-        ${invoicePdfPath ? '<li>Invoice (PDF)</li>' : ''}
-        ${workOrderPdfPath ? '<li>Work Order (PDF)</li>' : ''}
-      </ul>
-
-      <hr style="margin: 20px 0;">
-
-      <p style="font-size: 14px;">
-        Traffic &amp; Barrier Solutions, LLC<br>
-        1995 Dews Pond Rd SE, Calhoun, GA 30701<br>
-        Phone: (706) 263-0175<br>
-        <a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a>
-      </p>
-    </div>
-  </body>
-</html>
-    `,
-    attachments: atts,
-  });
-}
 const corsOptions = {
   origin: ['http://localhost:5173','http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
   credentials: true,
@@ -128,217 +189,121 @@ const corsOptions = {
 };
 
 router.use(cors(corsOptions));
-router.options('*', cors(corsOptions));     // respond to preflight early
+router.options('*', cors(corsOptions));
 
-// if you prefer: short-circuit OPTIONS before auth entirely
 router.use((req, res, next) => {
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  console.log('[billing router]', req.method, req.originalUrl, req.path);
   next();
 });
-router.get('/companies', async (req,res) => {
-  const companies = await ControlUser.aggregate([
-    { $match: { cancelled: { $ne: true } } },
-    { $group: { _id: '$company' } },
-    { $sort: { _id: 1 } }
-  ]);
-  res.json(companies.map(c => c._id).filter(Boolean));
-});
 
-// Create invoice DRAFT from job (only if not cancelled)
-router.post('/invoices/from-job/:jobId', async (req,res) => {
-  const job = await ControlUser.findById(req.params.jobId);
-  if (!job) return res.status(404).json({ message: 'Job not found' });
-  if (job.cancelled) return res.status(400).json({ message: 'Cancelled job cannot be invoiced' });
-
-  const companyKey = (job.companyKey || ''); // set this when saving jobs
-  const priceList = await PriceList.findOne({ companyKey });
-  let principalCents;
-
-  if (req.body.selections && priceList) {
-    principalCents = computeTotalFromSelections(priceList, req.body.selections);
-  } else {
-    // manual entry path (still allowed)
-    const p = Number(req.body.principal);
-    if (!p || p <= 0) return res.status(400).json({ message: 'principal required' });
-    principalCents = Math.round(p * 100);
+// Skip auth for bill-workorder route
+router.use((req, res, next) => {
+  if (req.path === '/bill-workorder') {
+    console.log('Skipping auth for bill-workorder');
+    return next();
   }
-
-  const inv = await Invoice.create({
-    job: job._id,
-    company: job.company,
-    companyEmail: job.email || '',
-    principal: principalCents / 100, // keep your existing decimal if you like
-    selections: req.body.selections || null
-  });
-
-  res.json(inv);
+  auth(req, res, next);
 });
 
-// List invoices (optionally by company)
-router.get('/invoices', async (req,res) => {
-  const filter = {};
-  if (req.query.company) filter.company = req.query.company;
-  const invoices = await Invoice.find(filter).sort({ createdAt: -1 });
-  const payload = invoices.map(i => ({
-    ...i.toObject(),
-    currentTotal: currentTotal(i)
-  }));
-  res.json(payload);
-});
-
-// Mark SENT (save + email). Also generates invoice PDF if missing.
-router.post('/invoices/:id/send', async (req,res) => {
-  const inv = await Invoice.findById(req.params.id).populate('job');
-  if (!inv) return res.status(404).json({ message: 'Invoice not found' });
-  if (!inv.workOrderPdfPath) {
-    inv.workOrderPdfPath = await generateWorkOrderPdf(inv.job);
+router.use((req, res, next) => {
+  if (req.path === '/bill-workorder') {
+    return next();
   }
-  inv.sentAt = new Date();
-  inv.status = 'SENT';
-  inv.invoicePdfPath = await generateInvoicePdf(inv, inv.job);
-  await inv.save();
- let emailSent = false;
-let emailError = null;
-try {
-  await sendInvoiceEmail({
-    job,
-    cents: principalCents,                 // integer cents
-    emailOverride,
-    invoicePdfPath: inv.invoicePdfPath,    // may be undefined if PDF generation failed
-    workOrderPdfPath: inv.workOrderPdfPath,
-    transporter7,
-    invoiceEmail,
-  });
-  emailSent = true;
-} catch (err) {
-  emailError = err?.message || String(err);
-  console.error('sendInvoiceEmail failed:', emailError);
-}
-  res.json({ message: 'Invoice sent', invId: inv._id, sentAt: inv.sentAt });
+  requireInvoiceAdmin(req, res, next);
 });
 
-// Mark PAID
-router.post('/invoices/:id/pay', async (req,res) => {
-  const inv = await Invoice.findById(req.params.id);
-  if (!inv) return res.status(404).json({ message: 'Invoice not found' });
-  inv.status = 'PAID';
-  inv.paidAt = new Date();
-  await inv.save();
-  res.json(inv);
-});
+router.post('/bill-workorder', async (req, res) => {
+  console.log('*** BILLING ROUTER - BILL WORKORDER HIT ***');
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  try {
+    const { workOrderId, manualAmount, emailOverride } = req.body;
+    const WorkOrder = require('../models/workorder');
 
-// Export company invoices to Excel
-router.get('/invoices/export', async (req,res) => {
-  const filter = {};
-  if (req.query.company) filter.company = req.query.company;
-  const invoices = await Invoice.find(filter);
-  const jobs = await ControlUser.find({ _id: { $in: invoices.map(i => i.job) } });
-  const jobsById = new Map(jobs.map(j => [String(j._id), j]));
+    const workOrder = await WorkOrder.findById(workOrderId);
+    if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
+    if (workOrder.billed) return res.status(409).json({ message: 'Work order already billed' });
 
-  const full = await exportInvoicesXlsx(invoices, jobsById);
-  res.download(full);
-});
+    // Mark work order as billed
+    await WorkOrder.updateOne(
+      { _id: workOrder._id },
+      { $set: { billed: true, billedAt: new Date(), billedAmount: manualAmount } },
+      { runValidators: false }
+    );
 
-// Download single invoice PDF
-router.get('/invoices/:id/pdf', async (req,res) => {
-  const inv = await Invoice.findById(req.params.id).populate('job');
-  if (!inv) return res.status(404).end();
-  if (!inv.invoicePdfPath) {
-    inv.invoicePdfPath = await generateInvoicePdf(inv, inv.job);
-    await inv.save();
+    // Generate PDF and send invoice email
+    console.log('Email override value:', emailOverride);
+    if (emailOverride) {
+      console.log('Attempting to send email to:', emailOverride);
+      
+      // Generate invoice PDF
+      let pdfBuffer = null;
+      try {
+        console.log('Starting PDF generation…');
+        pdfBuffer = await generateInvoicePdf(workOrder, manualAmount);
+      } catch (e) {
+        console.error('[invoice] PDF generation failed:', e);
+      }
+
+      const emailHtml = `
+        <html>
+          <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+            <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+              <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Invoice - ${workOrder.basic?.client}</h1>
+              
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Invoice Amount:</strong> $${Number(manualAmount).toFixed(2)}</p>
+                <p style="margin: 5px 0;"><strong>Work Order Date:</strong> ${workOrder.basic?.dateOfJob}</p>
+                <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
+                <p style="margin: 5px 0;"><strong>Address:</strong> ${workOrder.basic?.address}, ${workOrder.basic?.city}, ${workOrder.basic?.state} ${workOrder.basic?.zip}</p>
+              </div>
+              
+              <p style="text-align: center; font-size: 16px; margin: 30px 0;">Please find the attached invoice PDF. Thank you for your business!</p>
+              
+              <div style="text-align: center; border-top: 2px solid #efad76; padding-top: 15px; margin-top: 30px;">
+                <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
+                <p style="margin: 5px 0;">1995 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+const mailOptions = {
+  from: 'trafficandbarriersolutions.ap@gmail.com',
+  to: emailOverride,
+  subject: `INVOICE – ${workOrder.basic?.client} – $${Number(manualAmount).toFixed(2)}`,
+  html: emailHtml,
+  attachments: []
+};
+      if (pdfBuffer && pdfBuffer.length > 0) {
+        console.log('Adding PDF attachment, size:', pdfBuffer.length, 'bytes');
+        const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
+        mailOptions.attachments.push({
+          filename: `invoice-${safeClient}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        });
+      } else {
+        console.warn('[invoice] No PDF buffer available; sending without attachment');
+      }
+      try {
+        const info = await transporter7.sendMail(mailOptions);
+        console.log('[invoice] email sent', { to: emailOverride, messageId: info.messageId, attached: !!mailOptions.attachments.length });
+        
+
+      } catch (emailError) {
+        console.error('Email sending failed:', emailError);
+      }
+    } else {
+      console.log('No email override provided, skipping email');
+    }
+
+    console.log('Work order marked as billed successfully');
+    res.json({ message: 'Work order billed successfully', workOrderId: workOrder._id });
+  } catch (e) {
+    console.error('Bill work order error:', e);
+    res.status(500).json({ message: 'Failed to bill work order', error: e.message });
   }
-  res.download(inv.invoicePdfPath);
-});
-
-// Download work order PDF for a job
-router.get('/workorder/:jobId/pdf', async (req,res) => {
-  const job = await ControlUser.findById(req.params.jobId);
-  if (!job) return res.status(404).end();
-  const full = await generateWorkOrderPdf(job);
-  res.download(full);
-});
-
-router.get('/pricing/:companyKey', async (req,res) => {
-  const doc = await PriceList.findOne({ companyKey: req.params.companyKey });
-  if (!doc) return res.status(404).json({ message: 'No pricing' });
-  res.json(doc); // visible only to admins via requireInvoiceAdmin
-});
-
- router.post('/bill-job', async (req, res) => {
-   try {
-     const { jobId, selections, manualAmount, emailOverride } = req.body;
-
-     const job = await ControlUser.findById(jobId);
-     if (!job) return res.status(404).json({ message: 'Job not found' });
-     if (job.cancelled) return res.status(400).json({ message: 'Cancelled job cannot be billed' });
-     if (job.billed) return res.status(409).json({ message: 'Job already billed' });
-
-     // Compute principal (manual amount path requires no price list)
-     let principalCents;
-     if (manualAmount != null && !Number.isNaN(Number(manualAmount))) {
-       principalCents = Math.round(Number(manualAmount) * 100);
-     } else {
-       if (!job.companyKey) return res.status(400).json({ message: 'Missing companyKey for pricing' });
-       const list = await PriceList.findOne({ companyKey: job.companyKey });
-       if (!list) return res.status(404).json({ message: 'No pricing for company' });
-       principalCents = computeTotalFromSelections(list, selections || {});
-     }
-
-const inv = await Invoice.create({
-  job: job._id,
-  company: job.company,
-  companyEmail: emailOverride || job.email || '',
-  principal: principalCents / 100,
-  selections: selections || null,
-  status: 'SENT',
-  sentAt: new Date(),
-  publicKey: crypto.randomUUID(),   // 👈 HOTFIX: ensure non-null unique value
-});
-
-     // Best-effort PDFs
-     try {
-       inv.workOrderPdfPath = await generateWorkOrderPdf(job);
-       inv.invoicePdfPath = await generateInvoicePdf(inv, job);
-       await inv.save();
-     } catch (e) {
-       console.warn('PDF generation failed (continuing):', e.message);
-     }
-
-let emailSent = false;
-let emailError = null;
-try {
-  await sendInvoiceEmail({
-    job,
-    cents: principalCents,                 // integer cents
-    emailOverride,
-    invoicePdfPath: inv.invoicePdfPath,    // may be undefined if PDF generation failed
-    workOrderPdfPath: inv.workOrderPdfPath,
-    transporter7,
-    invoiceEmail,
-  });
-  emailSent = true;
-} catch (err) {
-  emailError = err?.message || String(err);
-  console.error('sendInvoiceEmail failed:', emailError);
-}
-
-   // Flag job as billed WITHOUT triggering required validators on legacy docs
-   await ControlUser.updateOne(
-    { _id: job._id },
-     { $set: { billed: true, billedAt: new Date(), billedInvoiceId: inv._id } },
-     { runValidators: false }
-  );
-
-     res.json({ message: 'Billed', invoiceId: inv._id });
-   } catch (e) {
-     console.error('bill-job error', e);
-     res.status(500).json({ message: 'Failed to bill job' });
-   }
- });
- router.use((req, res, next) => {
-  console.log('[billing router]', req.method, req.originalUrl);
-  next();
 });
 
 module.exports = router;
-
