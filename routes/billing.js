@@ -256,6 +256,125 @@ router.use((req, res, next) => {
   requireInvoiceAdmin(req, res, next);
 });
 
+// Mark invoice as paid
+router.post('/mark-paid', async (req, res) => {
+  try {
+    const { workOrderId, paymentMethod, emailOverride } = req.body;
+    const WorkOrder = require('../models/workorder');
+
+    const workOrder = await WorkOrder.findById(workOrderId);
+    if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
+    if (!workOrder.billed) return res.status(400).json({ message: 'Work order not billed yet' });
+    if (workOrder.paid) return res.status(409).json({ message: 'Work order already paid' });
+
+    // Mark as paid
+    await WorkOrder.updateOne(
+      { _id: workOrder._id },
+      { $set: { paid: true, paymentMethod, paidAt: new Date() } },
+      { runValidators: false }
+    );
+
+    // Send receipt email
+    if (emailOverride) {
+      const receiptHtml = `
+        <html>
+          <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+            <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+              <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Payment Receipt - ${workOrder.basic?.client}</h1>
+              
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${Number(workOrder.currentAmount || workOrder.billedAmount).toFixed(2)}</p>
+                <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentMethod}</p>
+                <p style="margin: 5px 0;"><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</p>
+                <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
+              </div>
+              
+              <p style="text-align: center; font-size: 16px; margin: 30px 0;">Thank you for your payment!</p>
+              
+              <div style="text-align: center; border-top: 2px solid #28a745; padding-top: 15px; margin-top: 30px;">
+                <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
+                <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const mailOptions = {
+        from: 'trafficandbarriersolutions.ap@gmail.com',
+        to: emailOverride,
+        subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – $${Number(workOrder.currentAmount || workOrder.billedAmount).toFixed(2)}`,
+        html: receiptHtml
+      };
+
+      try {
+        await transporter7.sendMail(mailOptions);
+        console.log('[receipt] email sent to:', emailOverride);
+      } catch (emailError) {
+        console.error('Receipt email failed:', emailError);
+      }
+    }
+
+    res.json({ message: 'Payment recorded successfully', workOrderId: workOrder._id });
+  } catch (e) {
+    console.error('Mark paid error:', e);
+    res.status(500).json({ message: 'Failed to record payment', error: e.message });
+  }
+});
+
+// Late fee processor (run this as a cron job)
+router.post('/process-late-fees', async (req, res) => {
+  try {
+    const WorkOrder = require('../models/workorder');
+    const now = new Date();
+    
+    // Find all billed but unpaid work orders
+    const unpaidInvoices = await WorkOrder.find({
+      billed: true,
+      paid: { $ne: true },
+      billedAt: { $exists: true }
+    });
+
+    let processed = 0;
+    for (const workOrder of unpaidInvoices) {
+      // Skip if no due date in invoice data
+      if (!workOrder.invoiceData?.dueDate) continue;
+      
+      const dueDate = new Date(workOrder.invoiceData.dueDate);
+      const daysPastDue = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));
+      
+      if (daysPastDue > 0) {
+        // Calculate late fees (every 14 days past due)
+        const lateFeeIntervals = Math.floor(daysPastDue / 14);
+        const lateFeeAmount = lateFeeIntervals * 25; // $25 per 14-day period
+        
+        if (lateFeeAmount > (workOrder.lateFees || 0)) {
+          const newLateFees = lateFeeAmount;
+          const newTotal = (workOrder.billedAmount || 0) + newLateFees;
+          
+          await WorkOrder.updateOne(
+            { _id: workOrder._id },
+            { 
+              $set: { 
+                lateFees: newLateFees,
+                currentAmount: newTotal,
+                lastLateFeeUpdate: now
+              }
+            }
+          );
+          processed++;
+        }
+      }
+    }
+
+    res.json({ message: `Processed late fees for ${processed} invoices` });
+  } catch (e) {
+    console.error('Late fee processing error:', e);
+    res.status(500).json({ message: 'Failed to process late fees', error: e.message });
+  }
+});
+
 router.post('/bill-workorder', async (req, res) => {
   console.log('*** BILLING ROUTER - BILL WORKORDER HIT ***');
   console.log('Request body:', JSON.stringify(req.body, null, 2));
@@ -270,7 +389,14 @@ router.post('/bill-workorder', async (req, res) => {
     // Mark work order as billed
     await WorkOrder.updateOne(
       { _id: workOrder._id },
-      { $set: { billed: true, billedAt: new Date(), billedAmount: manualAmount } },
+      { $set: { 
+        billed: true, 
+        billedAt: new Date(), 
+        billedAmount: manualAmount,
+        currentAmount: manualAmount,
+        invoiceData: invoiceData,
+        lateFees: 0
+      } },
       { runValidators: false }
     );
 
