@@ -27,7 +27,16 @@ function toDataUri(absPath) {
   }
 }
 
-function renderInvoiceHTML(workOrder, manualAmount, assets) {
+function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
+  const serviceRows = invoiceData.sheetRows || [];
+  const serviceRowsHTML = serviceRows.map(row => 
+    `<tr>
+      <td>${row.service}</td>
+      <td style="text-align:center;">${row.taxed ? 'X' : ''}</td>
+      <td style="text-align:right;">$${Number(row.amount).toFixed(2)}</td>
+    </tr>`
+  ).join('');
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -45,6 +54,7 @@ function renderInvoiceHTML(workOrder, manualAmount, assets) {
     .title { text-align:center; letter-spacing:1px; font-weight:700; font-size:26px; color:var(--tbs-blue); }
     .billto-bar { background:var(--tbs-navy); color:#fff; padding:6px 10px; font-weight:700; margin:18px 0 8px; }
     .billto { display:flex; gap:16px; justify-content:space-between; font-size:13px; }
+    .billto-right { display:flex; flex-direction:column; gap:4px; }
     .table { width:100%; border-collapse:collapse; margin-top:16px; font-size:13px; }
     .table th { background:var(--tbs-navy); color:#fff; text-align:left; padding:8px; font-weight:700; border:1px solid #1f2d44; }
     .table td { padding:8px; border:1px solid #d1d5db; }
@@ -60,11 +70,22 @@ function renderInvoiceHTML(workOrder, manualAmount, assets) {
   <div class="header">
     <div class="brand">
       <img src="${assets.logo}" alt="TBS Logo" />
-      <div class="company">Traffic & Barrier Solutions, LLC</div>
+      <div class="company">
+        <div>TBS</div>
+        <div>Traffic and Barrier Solutions, LLC</div>
+        <div>1999 Dews Pond Rd SE</div>
+        <div>Calhoun, GA 30701</div>
+        <div>Cell: 706-263-0175</div>
+        <div>Email: tbsolutions3@gmail.com</div>
+        <div>Website: www.TrafficBarrierSolutions.com</div>
+      </div>
     </div>
     <div class="meta">
-      <div>Date: ${new Date().toLocaleDateString()}</div>
-      <div>Invoice #: ${String(workOrder._id || 'INV001').slice(-6)}</div>
+      <div>DATE: ${invoiceData.invoiceDate || new Date().toLocaleDateString()}</div>
+      <div>INVOICE #: ${invoiceData.invoiceNumber || String(workOrder._id || 'INV001').slice(-6)}</div>
+      ${invoiceData.workRequestNumber1 ? `<div>WR#: ${invoiceData.workRequestNumber1}</div>` : ''}
+      ${invoiceData.workRequestNumber2 ? `<div>WR#: ${invoiceData.workRequestNumber2}</div>` : ''}
+      ${invoiceData.dueDate ? `<div>DUE DATE: ${invoiceData.dueDate}</div>` : ''}
     </div>
   </div>
   
@@ -73,48 +94,70 @@ function renderInvoiceHTML(workOrder, manualAmount, assets) {
   <div class="billto-bar">BILL TO</div>
   <div class="billto">
     <div class="left">
-      <div><strong>${workOrder.basic?.client}</strong></div>
-      <div>${workOrder.basic?.address}</div>
-      <div>${workOrder.basic?.city}, ${workOrder.basic?.state} ${workOrder.basic?.zip}</div>
+      <div><strong>${invoiceData.billToCompany || workOrder.basic?.client}</strong></div>
+      <div>${invoiceData.billToAddress || (workOrder.basic?.address + ', ' + workOrder.basic?.city + ', ' + workOrder.basic?.state + ' ' + workOrder.basic?.zip)}</div>
+    </div>
+    <div class="billto-right">
+      ${invoiceData.workType ? `<div><strong>Work Type:</strong> ${invoiceData.workType}</div>` : ''}
+      ${invoiceData.foreman ? `<div><strong>Foreman:</strong> ${invoiceData.foreman}</div>` : ''}
+      ${invoiceData.location ? `<div><strong>Job Site Location:</strong> ${invoiceData.location}</div>` : ''}
     </div>
   </div>
   
   <table class="table">
     <thead>
       <tr>
-        <th>Description</th>
-        <th style="text-align:right;">Amount</th>
+        <th>SERVICE</th>
+        <th style="text-align:center;">TAXED</th>
+        <th style="text-align:right;">AMOUNT</th>
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td>Traffic Control Services - ${workOrder.basic?.project}</td>
-        <td style="text-align:right;">$${Number(manualAmount).toFixed(2)}</td>
-      </tr>
+      ${serviceRowsHTML}
     </tbody>
   </table>
   
   <div class="totals">
+    <div class="row">
+      <span>Subtotal</span>
+      <span>$${Number(invoiceData.sheetSubtotal || manualAmount).toFixed(2)}</span>
+    </div>
+    ${invoiceData.sheetTaxDue > 0 ? `
+    <div class="row">
+      <span>Tax (${invoiceData.sheetTaxRate}%)</span>
+      <span>$${Number(invoiceData.sheetTaxDue).toFixed(2)}</span>
+    </div>` : ''}
+    ${invoiceData.sheetOther !== 0 ? `
+    <div class="row">
+      <span>Other</span>
+      <span>$${Number(invoiceData.sheetOther).toFixed(2)}</span>
+    </div>` : ''}
     <div class="row grand">
       <span>TOTAL</span>
-      <span>$${Number(manualAmount).toFixed(2)}</span>
+      <span>$${Number(invoiceData.sheetTotal || manualAmount).toFixed(2)}</span>
     </div>
   </div>
   
   <div class="footer">
-    <div><strong>Traffic & Barrier Solutions, LLC</strong></div>
-    <div>1995 Dews Pond Rd SE, Calhoun, GA 30701</div>
-    <div>Phone: (706) 263-0175</div>
+    <div><strong>Fully Loaded Vehicle</strong></div>
+    <div>• 8 to 10 signs for flagging and lane operations</div>
+    <div>• 2 STOP & GO paddles • 2 Certified Flaggers & Vehicle with Strobes</div>
+    <div>• 30 Cones & 2 Barricades</div>
+    <div style="margin-top:10px;">** Arrow Board upon request: additional fees will be applied</div>
+    <div>Late payment fee will go into effect if payment is not received 30 days after receiving Invoice.</div>
+    <div style="margin-top:10px;"><strong>Make all checks payable to TBS</strong></div>
+    <div style="margin-top:10px;">If you have any questions about this invoice, please contact<br/>[Bryson Davis, 706-263-0715, tbsolutions3@gmail.com]</div>
+    <div style="margin-top:10px; font-weight:bold;">Thank You For Your Business!</div>
   </div>
 </body>
 </html>`;
 }
 const os = require('os');
 
-async function generateInvoicePdf(workOrder, manualAmount) {
+async function generateInvoicePdf(workOrder, manualAmount, invoiceData = {}) {
   const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
   const assets = { logo: toDataUri(logoPath) };
-  const html = renderInvoiceHTML(workOrder, manualAmount, assets);
+  const html = renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData);
 
   let browser;
   try {
@@ -215,7 +258,7 @@ router.post('/bill-workorder', async (req, res) => {
   console.log('*** BILLING ROUTER - BILL WORKORDER HIT ***');
   console.log('Request body:', JSON.stringify(req.body, null, 2));
   try {
-    const { workOrderId, manualAmount, emailOverride } = req.body;
+    const { workOrderId, manualAmount, emailOverride, invoiceData } = req.body;
     const WorkOrder = require('../models/workorder');
 
     const workOrder = await WorkOrder.findById(workOrderId);
@@ -238,7 +281,7 @@ router.post('/bill-workorder', async (req, res) => {
       let pdfBuffer = null;
       try {
         console.log('Starting PDF generation…');
-        pdfBuffer = await generateInvoicePdf(workOrder, manualAmount);
+        pdfBuffer = await generateInvoicePdf(workOrder, manualAmount, invoiceData);
       } catch (e) {
         console.error('[invoice] PDF generation failed:', e);
       }
