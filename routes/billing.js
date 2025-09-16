@@ -30,7 +30,11 @@ function toDataUri(absPath) {
 function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
   const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   
+  console.log('[PDF] invoiceData received:', JSON.stringify(invoiceData, null, 2));
+  
   const serviceRows = invoiceData.sheetRows || [];
+  console.log('[PDF] serviceRows:', serviceRows);
+  
   const serviceRowsHTML = serviceRows.map(row => 
     `<tr>
       <td>${row.service}</td>
@@ -38,6 +42,8 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
       <td style="text-align:right;">${formatCurrency(row.amount)}</td>
     </tr>`
   ).join('');
+  
+  console.log('[PDF] serviceRowsHTML:', serviceRowsHTML);
 
   return `<!DOCTYPE html>
 <html>
