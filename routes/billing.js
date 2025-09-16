@@ -121,7 +121,7 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
       </tr>
     </thead>
     <tbody>
-      ${serviceRowsHTML}
+      ${serviceRowsHTML || '<tr><td colspan="3" style="text-align:center;font-style:italic;">No services listed</td></tr>'}
     </tbody>
   </table>
   
@@ -130,12 +130,12 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
       <span>Subtotal</span>
       <span>${formatCurrency(invoiceData.sheetSubtotal || manualAmount)}</span>
     </div>
-    ${invoiceData.sheetTaxDue > 0 ? `
+    ${(invoiceData.sheetTaxDue && invoiceData.sheetTaxDue > 0) ? `
     <div class="row">
-      <span>Tax (${invoiceData.sheetTaxRate}%)</span>
+      <span>Tax (${invoiceData.sheetTaxRate || 0}%)</span>
       <span>${formatCurrency(invoiceData.sheetTaxDue)}</span>
     </div>` : ''}
-    ${invoiceData.sheetOther !== 0 ? `
+    ${(invoiceData.sheetOther && !isNaN(invoiceData.sheetOther) && invoiceData.sheetOther !== 0) ? `
     <div class="row">
       <span>Other</span>
       <span>${formatCurrency(invoiceData.sheetOther)}</span>
