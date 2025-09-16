@@ -226,7 +226,7 @@ async function generateInvoicePdf(workOrder, manualAmount, invoiceData = {}) {
 const PriceList = require('../models/priceList');
 
 const corsOptions = {
-  origin: ['http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
+  origin: ['http://localhost:5173','http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
@@ -259,7 +259,7 @@ router.use((req, res, next) => {
 // Mark invoice as paid
 router.post('/mark-paid', async (req, res) => {
   try {
-    const { workOrderId, paymentMethod, emailOverride } = req.body;
+    const { workOrderId, paymentMethod, emailOverride, cardLast4, cardType, checkNumber } = req.body;
     const WorkOrder = require('../models/workorder');
 
     const workOrder = await WorkOrder.findById(workOrderId);
@@ -267,10 +267,25 @@ router.post('/mark-paid', async (req, res) => {
     if (!workOrder.billed) return res.status(400).json({ message: 'Work order not billed yet' });
     if (workOrder.paid) return res.status(409).json({ message: 'Work order already paid' });
 
+    // Prepare payment details
+    let paymentDetails = paymentMethod;
+    if (paymentMethod === 'card' && cardLast4 && cardType) {
+      paymentDetails = `${cardType} ****${cardLast4}`;
+    } else if (paymentMethod === 'check' && checkNumber) {
+      paymentDetails = `Check #${checkNumber}`;
+    }
+    
     // Mark as paid
     await WorkOrder.updateOne(
       { _id: workOrder._id },
-      { $set: { paid: true, paymentMethod, paidAt: new Date() } },
+      { $set: { 
+        paid: true, 
+        paymentMethod: paymentDetails,
+        paidAt: new Date(),
+        cardLast4: cardLast4 || undefined,
+        cardType: cardType || undefined,
+        checkNumber: checkNumber || undefined
+      } },
       { runValidators: false }
     );
 
@@ -284,7 +299,7 @@ router.post('/mark-paid', async (req, res) => {
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
                 <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${Number(workOrder.currentAmount || workOrder.billedAmount).toFixed(2)}</p>
-                <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentMethod}</p>
+                <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentDetails}</p>
                 <p style="margin: 5px 0;"><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
               </div>
