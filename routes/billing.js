@@ -28,12 +28,14 @@ function toDataUri(absPath) {
 }
 
 function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
+  const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+  
   const serviceRows = invoiceData.sheetRows || [];
   const serviceRowsHTML = serviceRows.map(row => 
     `<tr>
       <td>${row.service}</td>
       <td style="text-align:center;">${row.taxed ? 'X' : ''}</td>
-      <td style="text-align:right;">$${Number(row.amount).toFixed(2)}</td>
+      <td style="text-align:right;">${formatCurrency(row.amount)}</td>
     </tr>`
   ).join('');
 
@@ -49,7 +51,7 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
     .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px; }
     .header .brand { display:flex; gap:12px; align-items:center; }
     .header .brand img { height:60px; }
-    .header .brand .company { font-weight:700; font-size:18px; line-height:1.2; }
+    .header .brand .company { font-weight:700; font-size:12px; line-height:1.1; }
     .header .meta { text-align:right; font-size:12px; }
     .title { text-align:center; letter-spacing:1px; font-weight:700; font-size:26px; color:var(--tbs-blue); }
     .billto-bar { background:var(--tbs-navy); color:#fff; padding:6px 10px; font-weight:700; margin:18px 0 8px; }
@@ -71,7 +73,7 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
     <div class="brand">
       <img src="${assets.logo}" alt="TBS Logo" />
       <div class="company">
-        <div>TBS</div>
+        <div style="font-size:14px; font-weight:bold;">TBS</div>
         <div>Traffic and Barrier Solutions, LLC</div>
         <div>1999 Dews Pond Rd SE</div>
         <div>Calhoun, GA 30701</div>
@@ -120,21 +122,21 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
   <div class="totals">
     <div class="row">
       <span>Subtotal</span>
-      <span>$${Number(invoiceData.sheetSubtotal || manualAmount).toFixed(2)}</span>
+      <span>${formatCurrency(invoiceData.sheetSubtotal || manualAmount)}</span>
     </div>
     ${invoiceData.sheetTaxDue > 0 ? `
     <div class="row">
       <span>Tax (${invoiceData.sheetTaxRate}%)</span>
-      <span>$${Number(invoiceData.sheetTaxDue).toFixed(2)}</span>
+      <span>${formatCurrency(invoiceData.sheetTaxDue)}</span>
     </div>` : ''}
     ${invoiceData.sheetOther !== 0 ? `
     <div class="row">
       <span>Other</span>
-      <span>$${Number(invoiceData.sheetOther).toFixed(2)}</span>
+      <span>${formatCurrency(invoiceData.sheetOther)}</span>
     </div>` : ''}
     <div class="row grand">
       <span>TOTAL</span>
-      <span>$${Number(invoiceData.sheetTotal || manualAmount).toFixed(2)}</span>
+      <span>${formatCurrency(invoiceData.sheetTotal || manualAmount)}</span>
     </div>
   </div>
   
