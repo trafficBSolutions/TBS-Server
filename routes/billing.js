@@ -226,7 +226,7 @@ async function generateInvoicePdf(workOrder, manualAmount, invoiceData = {}) {
 const PriceList = require('../models/priceList');
 
 const corsOptions = {
-  origin: ['http://localhost:5173','http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
+  origin: ['http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
