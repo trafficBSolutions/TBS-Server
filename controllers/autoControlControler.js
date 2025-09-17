@@ -24,6 +24,8 @@ const submitTrafficControlJob = async (req, res) => {
             project,
             emergency,
             flagger,
+            additionalFlaggers,
+            additionalFlaggerCount,
             equipment,
             terms,
             address,
@@ -170,7 +172,7 @@ const manageLinks = createdJobs.map(job =>
                     <li><strong>On-Site Phone:</strong> ${site}</li>
                     <li><strong>Time:</strong> ${time}</li>
                     <li><strong>Project/Task:</strong> ${project}</li>
-                    <li><strong>Flaggers:</strong> ${flagger}</li>
+                    <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
                     <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
                     <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
                   </ul>
