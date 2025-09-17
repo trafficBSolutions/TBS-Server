@@ -270,7 +270,6 @@ router.post('/mark-paid', async (req, res) => {
 
     const workOrder = await WorkOrder.findById(workOrderId);
     if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
-    if (!workOrder.billed) return res.status(400).json({ message: 'Work order not billed yet' });
     if (workOrder.paid) return res.status(409).json({ message: 'Work order already paid' });
 
     // Prepare payment details
