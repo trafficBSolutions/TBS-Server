@@ -422,6 +422,18 @@ router.post('/mark-paid', async (req, res) => {
       { runValidators: false }
     );
 
+    // Update Invoice record if it exists
+    if (workOrder.invoiceId) {
+      await Invoice.updateOne(
+        { _id: workOrder.invoiceId },
+        { $set: {
+          status: 'PAID',
+          paidAt: new Date(),
+          paymentMethod: paymentMethod === 'card' ? 'CARD' : 'CHECK'
+        }}
+      );
+    }
+
     // Send receipt email
     if (emailOverride) {
       const receiptHtml = `
@@ -646,6 +658,27 @@ router.post('/bill-workorder', async (req, res) => {
     if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
     if (workOrder.billed) return res.status(409).json({ message: 'Work order already billed' });
 
+    // Create Invoice record
+    const invoice = new Invoice({
+      job: workOrder._id,
+      company: workOrder.basic?.client,
+      companyEmail: emailOverride,
+      principal: manualAmount,
+      status: 'SENT',
+      sentAt: new Date(),
+      lineItems: (invoiceData.sheetRows || []).map(row => ({
+        description: row.service,
+        qty: 1,
+        unitPrice: row.amount,
+        total: row.amount
+      })),
+      billedTo: {
+        name: invoiceData.billToCompany || workOrder.basic?.client,
+        email: emailOverride
+      }
+    });
+    await invoice.save();
+
     // Mark work order as billed
     await WorkOrder.updateOne(
       { _id: workOrder._id },
@@ -656,6 +689,7 @@ router.post('/bill-workorder', async (req, res) => {
         currentAmount: manualAmount,
         invoiceTotal: manualAmount,
         invoiceData: invoiceData,
+        invoiceId: invoice._id,
         lateFees: 0
       } },
       { runValidators: false }
