@@ -1,6 +1,7 @@
 // models/invoice.js
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const { randomUUID } = require('crypto');
 
 const LineItemSchema = new mongoose.Schema({
   description: String,
