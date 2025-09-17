@@ -162,6 +162,124 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
 }
 const os = require('os');
 
+async function generateReceiptPdf(workOrder, paymentDetails) {
+  const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
+  const assets = { logo: toDataUri(logoPath) };
+  const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+  
+  const paymentAmount = workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0;
+  
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root { --tbs-navy: #17365D; --tbs-blue: #2F5597; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; }
+    body { font-family: Arial, Helvetica, sans-serif; color:#111; padding: 20px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 20px; }
+    .header .brand { display:flex; gap:12px; align-items:center; }
+    .header .brand img { height:60px; }
+    .header .brand .company { font-weight:700; font-size:12px; line-height:1.1; }
+    .title { text-align:center; letter-spacing:1px; font-weight:700; font-size:26px; color:var(--tbs-blue); margin-bottom: 20px; }
+    .receipt-box { border: 2px solid var(--tbs-navy); padding: 20px; border-radius: 8px; background: #f9f9f9; }
+    .receipt-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #ddd; }
+    .receipt-row.total { font-weight:700; border-top:2px solid var(--tbs-navy); border-bottom:none; font-size:18px; }
+    .footer { margin-top:30px; text-align:center; font-size:12px; color:#666; }
+    @page { size: A4; margin: 18mm; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <img src="${assets.logo}" alt="TBS Logo" />
+      <div class="company">
+        <div style="font-size:14px; font-weight:bold;">TBS</div>
+        <div>Traffic and Barrier Solutions, LLC</div>
+        <div>1999 Dews Pond Rd SE</div>
+        <div>Calhoun, GA 30701</div>
+        <div>Cell: 706-263-0175</div>
+        <div>Email: tbsolutions3@gmail.com</div>
+      </div>
+    </div>
+  </div>
+  
+  <h1 class="title">PAYMENT RECEIPT</h1>
+  
+  <div class="receipt-box">
+    <div class="receipt-row">
+      <span>Client:</span>
+      <span><strong>${workOrder.basic?.client}</strong></span>
+    </div>
+    <div class="receipt-row">
+      <span>Project:</span>
+      <span>${workOrder.basic?.project}</span>
+    </div>
+    <div class="receipt-row">
+      <span>Payment Date:</span>
+      <span>${new Date().toLocaleDateString()}</span>
+    </div>
+    <div class="receipt-row">
+      <span>Payment Method:</span>
+      <span>${paymentDetails}</span>
+    </div>
+    <div class="receipt-row total">
+      <span>AMOUNT PAID:</span>
+      <span>${formatCurrency(paymentAmount)}</span>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <p><strong>Thank you for your payment!</strong></p>
+    <p>This receipt confirms payment has been received in full.</p>
+  </div>
+</body>
+</html>`;
+
+  let browser;
+  try {
+    const possiblePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      process.env.PUPPETEER_EXECUTABLE_PATH
+    ].filter(Boolean);
+
+    let executablePath;
+    for (const chromePath of possiblePaths) {
+      if (fs.existsSync(chromePath)) {
+        executablePath = chromePath;
+        break;
+      }
+    }
+
+    browser = await puppeteer.launch({
+      headless: true,
+      executablePath,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1240, height: 1754, deviceScaleFactor: 2 });
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.emulateMediaType('screen');
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '18mm', right: '18mm', bottom: '18mm', left: '18mm' }
+    });
+    
+    console.log('[receipt] PDF generated, size:', pdfBuffer.length, 'bytes');
+    return pdfBuffer;
+  } catch (e) {
+    console.error('[receipt] PDF generation failed:', e);
+    return null;
+  } finally {
+    if (browser) await browser.close();
+  }
+}
+
 async function generateInvoicePdf(workOrder, manualAmount, invoiceData = {}) {
   const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
   const assets = { logo: toDataUri(logoPath) };
@@ -303,7 +421,7 @@ router.post('/mark-paid', async (req, res) => {
               <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Payment Receipt - ${workOrder.basic?.client}</h1>
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${Number(workOrder.currentAmount || workOrder.billedAmount).toFixed(2)}</p>
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${Number(workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0).toFixed(2)}</p>
                 <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentDetails}</p>
                 <p style="margin: 5px 0;"><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
@@ -329,6 +447,17 @@ router.post('/mark-paid', async (req, res) => {
       };
 
       try {
+        // Generate receipt PDF
+        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails);
+        
+        if (receiptPdfBuffer) {
+          mailOptions.attachments = [{
+            filename: `receipt-${(workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
+            content: receiptPdfBuffer,
+            contentType: 'application/pdf'
+          }];
+        }
+        
         await transporter7.sendMail(mailOptions);
         console.log('[receipt] email sent to:', emailOverride);
       } catch (emailError) {
