@@ -167,8 +167,8 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount) {
   const assets = { logo: toDataUri(logoPath) };
   const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   
-  const paidAmount = paymentAmount || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0;
-  const totalOwed = workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0;
+  const paidAmount = paymentAmount || 0;
+  const totalOwed = workOrder.invoiceTotal || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0;
   const remainingBalance = totalOwed - paidAmount;
   
   const html = `<!DOCTYPE html>
@@ -654,6 +654,7 @@ router.post('/bill-workorder', async (req, res) => {
         billedAt: new Date(), 
         billedAmount: manualAmount,
         currentAmount: manualAmount,
+        invoiceTotal: manualAmount,
         invoiceData: invoiceData,
         lateFees: 0
       } },
