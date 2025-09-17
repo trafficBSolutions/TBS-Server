@@ -246,17 +246,17 @@ router.use((req, res, next) => {
   next();
 });
 
-// Skip auth for bill-workorder route
+// Skip auth for bill-workorder and mark-paid routes
 router.use((req, res, next) => {
-  if (req.path === '/bill-workorder') {
-    console.log('Skipping auth for bill-workorder');
+  if (req.path === '/bill-workorder' || req.path === '/mark-paid') {
+    console.log('Skipping auth for', req.path);
     return next();
   }
   auth(req, res, next);
 });
 
 router.use((req, res, next) => {
-  if (req.path === '/bill-workorder') {
+  if (req.path === '/bill-workorder' || req.path === '/mark-paid') {
     return next();
   }
   requireInvoiceAdmin(req, res, next);
@@ -344,6 +344,43 @@ router.post('/mark-paid', async (req, res) => {
   }
 });
 
+// Test endpoint to create overdue invoice for testing
+router.post('/create-test-overdue', async (req, res) => {
+  try {
+    const WorkOrder = require('../models/workorder');
+    const { workOrderId } = req.body;
+    
+    if (!workOrderId) {
+      return res.status(400).json({ message: 'workOrderId required' });
+    }
+    
+    const workOrder = await WorkOrder.findById(workOrderId);
+    if (!workOrder || !workOrder.billed) {
+      return res.status(404).json({ message: 'Billed work order not found' });
+    }
+    
+    // Set due date to 15 days ago for testing
+    const pastDueDate = new Date();
+    pastDueDate.setDate(pastDueDate.getDate() - 15);
+    
+    await WorkOrder.updateOne(
+      { _id: workOrder._id },
+      { 
+        $set: { 
+          'invoiceData.dueDate': pastDueDate.toISOString().slice(0, 10),
+          paid: false,
+          lateFees: 0
+        }
+      }
+    );
+    
+    res.json({ message: 'Test overdue invoice created', dueDate: pastDueDate.toISOString().slice(0, 10) });
+  } catch (e) {
+    console.error('Create test overdue error:', e);
+    res.status(500).json({ message: 'Failed to create test overdue', error: e.message });
+  }
+});
+
 // Late fee processor (run this as a cron job)
 router.post('/process-late-fees', async (req, res) => {
   try {
@@ -358,6 +395,8 @@ router.post('/process-late-fees', async (req, res) => {
     });
 
     let processed = 0;
+    let emailsSent = 0;
+    
     for (const workOrder of unpaidInvoices) {
       // Skip if no due date in invoice data
       if (!workOrder.invoiceData?.dueDate) continue;
@@ -385,11 +424,73 @@ router.post('/process-late-fees', async (req, res) => {
             }
           );
           processed++;
+          
+          // Send late fee notification email with updated PDF
+          const clientEmail = workOrder.invoiceData?.selectedEmail || workOrder.basic?.email;
+          if (clientEmail) {
+            try {
+              // Generate updated PDF with late fees
+              const updatedInvoiceData = {
+                ...workOrder.invoiceData,
+                sheetOther: newLateFees,
+                sheetTotal: newTotal
+              };
+              
+              const pdfBuffer = await generateInvoicePdf(workOrder, newTotal, updatedInvoiceData);
+              
+              const emailHtml = `
+                <html>
+                  <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+                    <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+                      <h1 style="text-align: center; background-color: #dc3545; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">LATE FEE NOTICE - ${workOrder.basic?.client}</h1>
+                      
+                      <div style="background-color: #f8d7da; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+                        <p style="margin: 5px 0; font-size: 16px;"><strong>Late Fee Applied:</strong> $${newLateFees.toFixed(2)}</p>
+                        <p style="margin: 5px 0;"><strong>Days Past Due:</strong> ${daysPastDue}</p>
+                        <p style="margin: 5px 0;"><strong>New Total Amount:</strong> $${newTotal.toFixed(2)}</p>
+                        <p style="margin: 5px 0;"><strong>Original Due Date:</strong> ${new Date(workOrder.invoiceData.dueDate).toLocaleDateString()}</p>
+                      </div>
+                      
+                      <p style="text-align: center; font-size: 16px; margin: 30px 0;">Your invoice is past due. A late fee of $25.00 per 14-day period has been applied. Please remit payment immediately to avoid additional fees.</p>
+                      
+                      <div style="text-align: center; border-top: 2px solid #dc3545; padding-top: 15px; margin-top: 30px;">
+                        <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
+                        <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                        <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
+                      </div>
+                    </div>
+                  </body>
+                </html>
+              `;
+              
+              const mailOptions = {
+                from: 'trafficandbarriersolutions.ap@gmail.com',
+                to: clientEmail,
+                subject: `LATE FEE NOTICE – ${workOrder.basic?.client} – $${newLateFees.toFixed(2)} Added`,
+                html: emailHtml,
+                attachments: [{
+                  filename: `updated-invoice-${(workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
+                  content: pdfBuffer,
+                  contentType: 'application/pdf'
+                }]
+              };
+              
+              await transporter7.sendMail(mailOptions);
+              emailsSent++;
+              console.log(`[late-fee] Email sent to ${clientEmail} for work order ${workOrder._id}`);
+            } catch (emailError) {
+              console.error(`[late-fee] Failed to send email for work order ${workOrder._id}:`, emailError);
+            }
+          }
         }
       }
     }
 
-    res.json({ message: `Processed late fees for ${processed} invoices` });
+    res.json({ 
+      message: `Processed late fees for ${processed} invoices, sent ${emailsSent} notifications`,
+      processed,
+      emailsSent
+    });
   } catch (e) {
     console.error('Late fee processing error:', e);
     res.status(500).json({ message: 'Failed to process late fees', error: e.message });
