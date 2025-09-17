@@ -162,12 +162,14 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
 }
 const os = require('os');
 
-async function generateReceiptPdf(workOrder, paymentDetails) {
+async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount) {
   const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
   const assets = { logo: toDataUri(logoPath) };
   const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   
-  const paymentAmount = workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0;
+  const paidAmount = paymentAmount || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0;
+  const totalOwed = workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0;
+  const remainingBalance = totalOwed - paidAmount;
   
   const html = `<!DOCTYPE html>
 <html>
@@ -224,9 +226,17 @@ async function generateReceiptPdf(workOrder, paymentDetails) {
       <span>Payment Method:</span>
       <span>${paymentDetails}</span>
     </div>
+    <div class="receipt-row">
+      <span>Total Owed:</span>
+      <span>${formatCurrency(totalOwed)}</span>
+    </div>
     <div class="receipt-row total">
       <span>AMOUNT PAID:</span>
-      <span>${formatCurrency(paymentAmount)}</span>
+      <span>${formatCurrency(paidAmount)}</span>
+    </div>
+    <div class="receipt-row">
+      <span>Remaining Balance:</span>
+      <span>${formatCurrency(remainingBalance)}</span>
     </div>
   </div>
   
@@ -383,7 +393,7 @@ router.use((req, res, next) => {
 // Mark invoice as paid
 router.post('/mark-paid', async (req, res) => {
   try {
-    const { workOrderId, paymentMethod, emailOverride, cardLast4, cardType, checkNumber } = req.body;
+    const { workOrderId, paymentMethod, emailOverride, cardLast4, cardType, checkNumber, paymentAmount } = req.body;
     const WorkOrder = require('../models/workorder');
 
     const workOrder = await WorkOrder.findById(workOrderId);
@@ -421,7 +431,7 @@ router.post('/mark-paid', async (req, res) => {
               <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Payment Receipt - ${workOrder.basic?.client}</h1>
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${Number(workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0).toFixed(2)}</p>
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${Number(paymentAmount || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0).toFixed(2)}</p>
                 <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentDetails}</p>
                 <p style="margin: 5px 0;"><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
@@ -448,7 +458,7 @@ router.post('/mark-paid', async (req, res) => {
 
       try {
         // Generate receipt PDF
-        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails);
+        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, paymentAmount);
         
         if (receiptPdfBuffer) {
           mailOptions.attachments = [{
