@@ -86,8 +86,10 @@ const controlUserSchema = new mongoose.Schema({
       emergency: {
   type: Boolean,
   default: false
-}
-
+},
+billed: { type: Boolean, default: false },
+  billedAt: Date,
+  billedInvoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
 });
 
 const ControlUser = mongoose.model('ControlUser', controlUserSchema);
