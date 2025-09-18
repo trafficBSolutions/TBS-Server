@@ -174,6 +174,7 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
     workOrder.currentAmount ??
     workOrder.billedAmount ??
     workOrder.invoiceData?.sheetTotal ??
+    workOrder.invoicePrincipal ??
     0;
   const remainingBalance = totalOwed - paidAmount;
   
@@ -409,9 +410,14 @@ router.post('/mark-paid', async (req, res) => {
     // If WorkOrder is missing amount fields but has an invoice, populate from Invoice.principal
     if (workOrder.billed && workOrder.invoiceId && !workOrder.billedAmount && !workOrder.invoiceTotal && !workOrder.currentAmount) {
       try {
-        const invoice = await Invoice.findById(workOrder.invoiceId);
+        const invoice = await Invoice.findById(workOrder.invoiceId).lean();
         if (invoice?.principal) {
           workOrder.invoicePrincipal = invoice.principal;
+          await WorkOrder.updateOne(
+      { _id: workOrder._id },
+      { $set: { invoicePrincipal: invoice.principal } }
+     );
+    workOrder.invoicePrincipal = invoice.principal; // keep for this request
         }
       } catch (err) {
         console.warn('Failed to fetch invoice principal:', err);
@@ -435,7 +441,9 @@ router.post('/mark-paid', async (req, res) => {
         paidAt: new Date(),
         cardLast4: cardLast4 || undefined,
         cardType: cardType || undefined,
-        checkNumber: checkNumber || undefined
+        checkNumber: checkNumber || undefined,
+        lateFees: 0,
+        invoicePrincipal: manualAmount   // <-- persist principal for the UI
       } },
       { runValidators: false }
     );
@@ -482,7 +490,13 @@ router.post('/mark-paid', async (req, res) => {
       const mailOptions = {
         from: 'trafficandbarriersolutions.ap@gmail.com',
         to: emailOverride,
-        subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – $${Number(workOrder.currentAmount || workOrder.billedAmount).toFixed(2)}`,
+         subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – $${Number(
+   workOrder.currentAmount ??
+   workOrder.billedAmount ??
+   workOrder.invoiceData?.sheetTotal ??
+  workOrder.invoicePrincipal ??
+   0
+ ).toFixed(2)}`,
         html: receiptHtml
       };
 
