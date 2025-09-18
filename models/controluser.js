@@ -45,6 +45,14 @@ const controlUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    additionalFlaggers: {
+        type: Boolean,
+        default: false
+    },
+    additionalFlaggerCount: {
+        type: Number,
+        default: 0
+    },
     equipment: {
         type: [String],
         required: true
