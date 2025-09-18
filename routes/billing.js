@@ -2,6 +2,7 @@
  const express = require('express');
  const router = express.Router();
  const cors = require('cors');
+ const mongoose = require('mongoose');
  const Invoice = require('../models/invoice');
  const ControlUser = require('../models/controluser');
  const auth = require('../middleware/auth');
@@ -168,7 +169,8 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount) {
   const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   
   const paidAmount = paymentAmount || 0;
-  const totalOwed = workOrder.invoiceTotal || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0;
+  // First try WorkOrder fields, then fall back to Invoice.principal if available
+  const totalOwed = workOrder.invoiceTotal || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || workOrder.invoicePrincipal || 0;
   const remainingBalance = totalOwed - paidAmount;
   
   const html = `<!DOCTYPE html>
@@ -399,6 +401,18 @@ router.post('/mark-paid', async (req, res) => {
     const workOrder = await WorkOrder.findById(workOrderId);
     if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
     if (workOrder.paid) return res.status(409).json({ message: 'Work order already paid' });
+    
+    // If WorkOrder is missing amount fields but has an invoice, populate from Invoice.principal
+    if (workOrder.billed && workOrder.invoiceId && !workOrder.billedAmount && !workOrder.invoiceTotal && !workOrder.currentAmount) {
+      try {
+        const invoice = await Invoice.findById(workOrder.invoiceId);
+        if (invoice?.principal) {
+          workOrder.invoicePrincipal = invoice.principal;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch invoice principal:', err);
+      }
+    }
 
     // Prepare payment details
     let paymentDetails = paymentMethod;
@@ -443,7 +457,7 @@ router.post('/mark-paid', async (req, res) => {
               <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Payment Receipt - ${workOrder.basic?.client}</h1>
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${Number(paymentAmount || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0).toFixed(2)}</p>
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${Number(paymentAmount || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || workOrder.invoicePrincipal || 0).toFixed(2)}</p>
                 <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentDetails}</p>
                 <p style="margin: 5px 0;"><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
@@ -660,7 +674,7 @@ router.post('/bill-workorder', async (req, res) => {
 
     // Create Invoice record
     const invoice = new Invoice({
-      job: workOrder._id,
+      job: workOrder._id && mongoose.Types.ObjectId.isValid(workOrder._id) ? workOrder._id : null,
       company: workOrder.basic?.client,
       companyEmail: emailOverride,
       principal: manualAmount,
