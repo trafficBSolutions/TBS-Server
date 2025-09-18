@@ -163,14 +163,18 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
 }
 const os = require('os');
 
-async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount) {
+async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, totalOwedOverride) {
   const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
   const assets = { logo: toDataUri(logoPath) };
-  const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-  
-  const paidAmount = paymentAmount || 0;
-  // First try WorkOrder fields, then fall back to Invoice.principal if available
-  const totalOwed = workOrder.invoiceTotal || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || workOrder.invoicePrincipal || 0;
+
+  const paidAmount = Number(paymentAmount) || 0;
+  const totalOwed =
+    (typeof totalOwedOverride === 'number' ? totalOwedOverride : undefined) ??
+    workOrder.invoiceTotal ??
+    workOrder.currentAmount ??
+    workOrder.billedAmount ??
+    workOrder.invoiceData?.sheetTotal ??
+    0;
   const remainingBalance = totalOwed - paidAmount;
   
   const html = `<!DOCTYPE html>
