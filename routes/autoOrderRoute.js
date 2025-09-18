@@ -610,6 +610,21 @@ router.get('/work-orders/month', requireStaff, async (req, res) => {
       scheduledDate: { $gte: startDate, $lte: endDate }
     }).sort({ scheduledDate: 1 });
     
+    // Populate Invoice.principal for billed jobs missing amount fields
+    const Invoice = require('../models/invoice');
+    for (const wo of workOrders) {
+      if (wo.billed && wo.invoiceId && !wo.billedAmount && !wo.invoiceTotal && !wo.currentAmount) {
+        try {
+          const invoice = await Invoice.findById(wo.invoiceId).lean();
+          if (invoice?.principal) {
+            wo.invoicePrincipal = invoice.principal;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch invoice principal for work order', wo._id, err);
+        }
+      }
+    }
+    
     console.log(`[DEBUG] Found ${workOrders.length} work orders for month ${month}/${year}`);
     workOrders.forEach((wo, i) => {
       console.log(`[DEBUG] Work Order ${i + 1}: ${wo.basic?.client} on ${wo.scheduledDate?.toISOString()}`);
@@ -642,6 +657,21 @@ router.get('/work-orders', requireStaff, async (req, res) => {
     const workOrders = await WorkOrder.find({
       scheduledDate: { $gte: startDate, $lte: endDate }
     }).sort({ createdAt: -1 });
+    
+    // Populate Invoice.principal for billed jobs missing amount fields
+    const Invoice = require('../models/invoice');
+    for (const wo of workOrders) {
+      if (wo.billed && wo.invoiceId && !wo.billedAmount && !wo.invoiceTotal && !wo.currentAmount) {
+        try {
+          const invoice = await Invoice.findById(wo.invoiceId).lean();
+          if (invoice?.principal) {
+            wo.invoicePrincipal = invoice.principal;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch invoice principal for work order', wo._id, err);
+        }
+      }
+    }
     
     console.log(`[DEBUG] Found ${workOrders.length} work orders for date ${date}`);
     workOrders.forEach((wo, i) => {
