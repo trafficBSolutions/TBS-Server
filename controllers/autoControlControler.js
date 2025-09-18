@@ -105,6 +105,8 @@ const jobCount = result[0]?.count || 0;
                 project,
                 emergency: emergency || false,
                 flagger,
+                additionalFlaggers: Boolean(additionalFlaggers),
+                additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
                 equipment,
                 terms,
                 address,
