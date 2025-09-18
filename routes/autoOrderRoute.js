@@ -70,9 +70,11 @@ function getUserFromReq(req) {
 const ALLOWED_ROLES = new Set(['admin','employee','invoice','invoice_admin','invoiceAdmin','superadmin']);
 
 function requireStaff(req, res, next) {
-  // Temporary bypass for development - allow all requests
-  console.log('Bypassing authentication for development');
-  req.user = { email: 'dev@tbs.com', role: 'admin', id: 'dev-user' };
+  const user = getUserFromReq(req);
+  if (!user || !user.role || !ALLOWED_ROLES.has(user.role)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  req.user = user;
   next();
 }
 
@@ -188,7 +190,6 @@ function renderWorkOrderHTML(wo, assets) {
       <div>✓ Equipment Left: ${js.equipmentLeft ? 'Yes' : 'No'}</div>
     </div>
     ${js.equipmentLeft && js.equipmentLeftReason ? `<div style="margin-top: 8px; padding: 5px; background: #f9f9f9; border-radius: 3px;"><strong>Equipment Left Reason:</strong> ${js.equipmentLeftReason}</div>` : ''}
-    </div>
   </div>
 
   ${wo.photos && wo.photos.length > 0 ? `
