@@ -407,11 +407,6 @@ router.post('/mark-paid', async (req, res) => {
         const invoice = await Invoice.findById(workOrder.invoiceId).lean();
         if (invoice?.principal) {
           workOrder.invoicePrincipal = invoice.principal;
-          await WorkOrder.updateOne(
-      { _id: workOrder._id },
-      { $set: { invoicePrincipal: invoice.principal } }
-     );
-    workOrder.invoicePrincipal = invoice.principal; // keep for this request
         }
       } catch (err) {
         console.warn('Failed to fetch invoice principal:', err);
