@@ -167,16 +167,16 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
   const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
   const assets = { logo: toDataUri(logoPath) };
 
-  const paidAmount = Number(paymentAmount) || 0;
-  const totalOwed =
-    (typeof totalOwedOverride === 'number' ? totalOwedOverride : undefined) ??
-    workOrder.invoiceTotal ??
-    workOrder.currentAmount ??
-    workOrder.billedAmount ??
-    workOrder.invoiceData?.sheetTotal ??
-    workOrder.invoicePrincipal ??
-    0;
-  const remainingBalance = totalOwed - paidAmount;
+const paid = Number(paymentAmount) || 0;
+const principal =
+  (typeof workOrder.invoiceTotal === 'number' ? workOrder.invoiceTotal : undefined) ??
+  (typeof workOrder.currentAmount === 'number' ? workOrder.currentAmount : undefined) ??
+  (typeof workOrder.billedAmount === 'number' ? workOrder.billedAmount : undefined) ??
+  (typeof workOrder.invoiceData?.sheetTotal === 'number' ? workOrder.invoiceData.sheetTotal : undefined) ??
+  (typeof workOrder.invoicePrincipal === 'number' ? workOrder.invoicePrincipal : undefined) ??
+  0;
+
+const remainingBalance = Math.max(principal - paid, 0);
   
   const html = `<!DOCTYPE html>
 <html>
@@ -433,20 +433,24 @@ router.post('/mark-paid', async (req, res) => {
     }
     
     // Mark as paid
-    await WorkOrder.updateOne(
-      { _id: workOrder._id },
-      { $set: { 
-        paid: true, 
-        paymentMethod: paymentDetails,
-        paidAt: new Date(),
-        cardLast4: cardLast4 || undefined,
-        cardType: cardType || undefined,
-        checkNumber: checkNumber || undefined,
-        lateFees: 0,
-        invoicePrincipal: manualAmount   // <-- persist principal for the UI
-      } },
-      { runValidators: false }
-    );
+await WorkOrder.updateOne(
+  { _id: workOrder._id },
+  {
+    $set: {
+      paid: true,
+      paymentMethod: paymentDetails,
+      paidAt: new Date(),
+      cardLast4: cardLast4 || undefined,
+      cardType:  cardType  || undefined,
+      checkNumber: checkNumber || undefined,
+      lateFees: 0,
+      invoicePrincipal: principal,     // ✅ correct field
+      amountPaid: paid,                // (optional) store paid for audit
+      remainingBalance                // (optional) store remaining
+    }
+  },
+  { runValidators: false }
+);
 
     // Update Invoice record if it exists
     if (workOrder.invoiceId) {
@@ -502,7 +506,7 @@ router.post('/mark-paid', async (req, res) => {
 
       try {
         // Generate receipt PDF
-        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, paymentAmount);
+        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, paid, principal);
         
         if (receiptPdfBuffer) {
           mailOptions.attachments = [{
@@ -644,18 +648,17 @@ router.post('/process-late-fees', async (req, res) => {
                   </body>
                 </html>
               `;
-              
-              const mailOptions = {
-                from: 'trafficandbarriersolutions.ap@gmail.com',
-                to: clientEmail,
-                subject: `LATE FEE NOTICE – ${workOrder.basic?.client} – $${newLateFees.toFixed(2)} Added`,
-                html: emailHtml,
-                attachments: [{
-                  filename: `updated-invoice-${(workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
-                  content: pdfBuffer,
-                  contentType: 'application/pdf'
-                }]
-              };
+const mailOptions = {
+  from: 'trafficandbarriersolutions.ap@gmail.com',
+  to: emailOverride,
+  subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – $${paid.toFixed(2)}`, // ✅ show amount paid
+  html: receiptHtml,
+  attachments: receiptPdfBuffer ? [{
+    filename: `receipt-${(workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
+    content: receiptPdfBuffer,
+    contentType: 'application/pdf'
+  }] : []
+};
               
               await transporter7.sendMail(mailOptions);
               emailsSent++;
