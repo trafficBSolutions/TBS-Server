@@ -163,20 +163,14 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
 }
 const os = require('os');
 
-async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, totalOwedOverride) {
+async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount) {
   const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
   const assets = { logo: toDataUri(logoPath) };
-
-const paid = Number(paymentAmount) || 0;
-const principal =
-  (typeof workOrder.invoiceTotal === 'number' ? workOrder.invoiceTotal : undefined) ??
-  (typeof workOrder.currentAmount === 'number' ? workOrder.currentAmount : undefined) ??
-  (typeof workOrder.billedAmount === 'number' ? workOrder.billedAmount : undefined) ??
-  (typeof workOrder.invoiceData?.sheetTotal === 'number' ? workOrder.invoiceData.sheetTotal : undefined) ??
-  (typeof workOrder.invoicePrincipal === 'number' ? workOrder.invoicePrincipal : undefined) ??
-  0;
-
-const remainingBalance = Math.max(principal - paid, 0);
+  const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+  
+  const paidAmount = paymentAmount || 0;
+  const totalOwed = workOrder.invoiceTotal || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || workOrder.invoicePrincipal || 0;
+  const remainingBalance = totalOwed - paidAmount;
   
   const html = `<!DOCTYPE html>
 <html>
@@ -433,24 +427,20 @@ router.post('/mark-paid', async (req, res) => {
     }
     
     // Mark as paid
-await WorkOrder.updateOne(
-  { _id: workOrder._id },
-  {
-    $set: {
-      paid: true,
-      paymentMethod: paymentDetails,
-      paidAt: new Date(),
-      cardLast4: cardLast4 || undefined,
-      cardType:  cardType  || undefined,
-      checkNumber: checkNumber || undefined,
-      lateFees: 0,
-      invoicePrincipal: principal,     // ✅ correct field
-      amountPaid: paid,                // (optional) store paid for audit
-      remainingBalance                // (optional) store remaining
-    }
-  },
-  { runValidators: false }
-);
+    // Mark as paid
+    await WorkOrder.updateOne(
+      { _id: workOrder._id },
+      { $set: { 
+        paid: true, 
+        paymentMethod: paymentDetails,
+        paidAt: new Date(),
+        cardLast4: cardLast4 || undefined,
+        cardType: cardType || undefined,
+        checkNumber: checkNumber || undefined,
+        lateFees: 0
+      } },
+      { runValidators: false }
+    );
 
     // Update Invoice record if it exists
     if (workOrder.invoiceId) {
@@ -506,7 +496,7 @@ await WorkOrder.updateOne(
 
       try {
         // Generate receipt PDF
-        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, paid, principal);
+        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, paymentAmount);
         
         if (receiptPdfBuffer) {
           mailOptions.attachments = [{
