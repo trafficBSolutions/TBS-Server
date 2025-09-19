@@ -168,10 +168,12 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount) {
   const assets = { logo: toDataUri(logoPath) };
   const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   
-  const paidAmount = paymentAmount || 0;
-  // Try multiple sources for the invoice total, including the invoice data sheet total
-  const totalOwed = workOrder.invoiceData?.sheetTotal || workOrder.invoiceTotal || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoicePrincipal || 0;
-  const remainingBalance = Math.max(0, totalOwed - paidAmount);
+  const paidAmount = Number(paymentAmount) || 0;
+  // Strongest sources first: sheetTotal → invoice totals → invoice principal → billed/current
+  const totalOwed = workOrder.invoiceData?.sheetTotal || workOrder.invoiceTotal || workOrder.invoicePrincipal || workOrder.currentAmount || workOrder.billedAmount || 0;
+  // Clamp payment to not exceed what's owed, and remaining balance to never go negative
+  const actualPaid = Math.min(paidAmount, totalOwed);
+  const remainingBalance = Math.max(0, totalOwed - actualPaid);
   
   const html = `<!DOCTYPE html>
 <html>
@@ -234,7 +236,7 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount) {
     </div>
     <div class="receipt-row total">
       <span>AMOUNT PAID:</span>
-      <span>${formatCurrency(paidAmount)}</span>
+      <span>${formatCurrency(actualPaid)}</span>
     </div>
     <div class="receipt-row">
       <span>Remaining Balance:</span>
