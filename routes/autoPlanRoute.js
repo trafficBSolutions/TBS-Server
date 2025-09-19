@@ -5,12 +5,12 @@ const multer = require('multer');
 const bodyParser = require('body-parser');
 const { submitPlan } = require('../controllers/autoPlanControl');
 const fs = require('fs'); // Import the 'fs' module for file system operations
-
+const verifyRecaptcha = require('../utils/recap');
 // Middleware
 router.use(
     cors({
         credentials: true,
-        origin: ['https://www.trafficbarriersolutions.com', 'http://localhost:5173']
+        origin: ['https://www.trafficbarriersolutions.com']
     })
 );
 
@@ -50,7 +50,7 @@ router.use(bodyParser.urlencoded({ extended: true }));
 router.use(bodyParser.json());
 
 // Define routes under /apply path
-router.post('/trafficplanning', upload, submitPlan);
+router.post('/trafficplanning', upload, verifyRecaptcha, submitPlan);
 const Plan = require('../models/planuser');
 
 router.get('/plan/all', async (req, res) => {
