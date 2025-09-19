@@ -169,8 +169,9 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount) {
   const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   
   const paidAmount = paymentAmount || 0;
-  const totalOwed = workOrder.invoiceTotal || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || workOrder.invoicePrincipal || 0;
-  const remainingBalance = totalOwed - paidAmount;
+  // Try multiple sources for the invoice total, including the invoice data sheet total
+  const totalOwed = workOrder.invoiceData?.sheetTotal || workOrder.invoiceTotal || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoicePrincipal || 0;
+  const remainingBalance = Math.max(0, totalOwed - paidAmount);
   
   const html = `<!DOCTYPE html>
 <html>
