@@ -415,7 +415,22 @@ router.post('/mark-paid', async (req, res) => {
         console.warn('Failed to fetch invoice principal:', err);
       }
     }
-
+    const enteredTotalOwed = Number(totalOwed ?? 0);
+    const requestedPaid    = Number(paymentAmount ?? 0);
+    const totalOwedFinal   =
+      enteredTotalOwed > 0
+        ? enteredTotalOwed
+        : Number(
+            workOrder.invoiceData?.sheetTotal ??
+            workOrder.invoiceTotal ??
+            workOrder.invoicePrincipal ??
+            workOrder.currentAmount ??
+            workOrder.billedAmount ??
+            0
+          );
+    const actualPaid       = Math.max(0, Math.min(requestedPaid, totalOwedFinal));
+    const remainingBalance = Math.max(0, totalOwedFinal - actualPaid);
+    const isPaidInFull     = remainingBalance === 0;
     // Prepare payment details
     let paymentDetails = paymentMethod;
     if (paymentMethod === 'card' && cardLast4 && cardType) {
@@ -430,12 +445,18 @@ router.post('/mark-paid', async (req, res) => {
       { _id: workOrder._id },
       { $set: { 
         paid: true, 
+        paid: isPaidInFull, 
         paymentMethod: paymentDetails,
         paidAt: new Date(),
         cardLast4: cardLast4 || undefined,
         cardType: cardType || undefined,
         checkNumber: checkNumber || undefined,
-        lateFees: 0
+        lateFees: 0,
+        billedAmount: totalOwedFinal,
+      currentAmount: remainingBalance,
+       lastPaymentAmount: actualPaid,
+       lastPaymentAt: new Date(),
+      lastManualTotalOwed: totalOwedFinal
       } },
       { runValidators: false }
     );
@@ -445,9 +466,10 @@ router.post('/mark-paid', async (req, res) => {
       await Invoice.updateOne(
         { _id: workOrder.invoiceId },
         { $set: {
-          status: 'PAID',
-          paidAt: new Date(),
-          paymentMethod: paymentMethod === 'card' ? 'CARD' : 'CHECK'
+          status: isPaidInFull ? 'PAID' : 'PARTIALLY_PAID',
+          paidAt: isPaidInFull ? new Date() : undefined,
+         paymentMethod: paymentMethod === 'card' ? 'CARD' : 'CHECK',
+          principal: totalOwedFinal
         }}
       );
     }
@@ -461,7 +483,9 @@ router.post('/mark-paid', async (req, res) => {
               <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Payment Receipt - ${workOrder.basic?.client}</h1>
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${Number(paymentAmount || workOrder.currentAmount || workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || workOrder.invoicePrincipal || 0).toFixed(2)}</p>
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Total Owed:</strong> $${totalOwedFinal.toFixed(2)}</p>
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Payment Received:</strong> $${actualPaid.toFixed(2)}</p>
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Remaining Balance:</strong> $${remainingBalance.toFixed(2)}</p>
                 <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentDetails}</p>
                 <p style="margin: 5px 0;"><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
@@ -482,19 +506,17 @@ router.post('/mark-paid', async (req, res) => {
       const mailOptions = {
         from: 'trafficandbarriersolutions.ap@gmail.com',
         to: emailOverride,
-         subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – $${Number(
-   workOrder.currentAmount ??
-   workOrder.billedAmount ??
-   workOrder.invoiceData?.sheetTotal ??
-  workOrder.invoicePrincipal ??
-   0
- ).toFixed(2)}`,
+         subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – Paid $${actualPaid.toFixed(2)} (Owed $${totalOwedFinal.toFixed(2)})`,
         html: receiptHtml
       };
 
       try {
-        // Generate receipt PDF
-        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, paymentAmount, totalOwed);
+const receiptPdfBuffer = await generateReceiptPdf(
+          workOrder,
+          paymentDetails,
+          actualPaid,
+          totalOwedFinal
+        );
         
         if (receiptPdfBuffer) {
           mailOptions.attachments = [{
