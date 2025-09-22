@@ -163,14 +163,14 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
 }
 const os = require('os');
 
-async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount) {
+async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, totalOwedAmount = null) {
   const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
   const assets = { logo: toDataUri(logoPath) };
   const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   
   const paidAmount = Number(paymentAmount) || 0;
-  // Strongest sources first: sheetTotal → invoice totals → invoice principal → billed/current
-  const totalOwed = workOrder.invoiceData?.sheetTotal || workOrder.invoiceTotal || workOrder.invoicePrincipal || workOrder.currentAmount || workOrder.billedAmount || 0;
+  // Use manually entered totalOwed if provided, otherwise fall back to stored values
+  const totalOwed = totalOwedAmount || workOrder.invoiceData?.sheetTotal || workOrder.invoiceTotal || workOrder.invoicePrincipal || workOrder.currentAmount || workOrder.billedAmount || 0;
   // Clamp payment to not exceed what's owed, and remaining balance to never go negative
   const actualPaid = Math.min(paidAmount, totalOwed);
   const remainingBalance = Math.max(0, totalOwed - actualPaid);
@@ -397,7 +397,7 @@ router.use((req, res, next) => {
 // Mark invoice as paid
 router.post('/mark-paid', async (req, res) => {
   try {
-    const { workOrderId, paymentMethod, emailOverride, cardLast4, cardType, checkNumber, paymentAmount } = req.body;
+    const { workOrderId, paymentMethod, emailOverride, cardLast4, cardType, checkNumber, paymentAmount, totalOwed } = req.body;
     const WorkOrder = require('../models/workorder');
 
     const workOrder = await WorkOrder.findById(workOrderId);
@@ -494,7 +494,7 @@ router.post('/mark-paid', async (req, res) => {
 
       try {
         // Generate receipt PDF
-        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, paymentAmount);
+        const receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, paymentAmount, totalOwed);
         
         if (receiptPdfBuffer) {
           mailOptions.attachments = [{
