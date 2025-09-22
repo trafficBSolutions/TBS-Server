@@ -439,24 +439,22 @@ router.post('/mark-paid', async (req, res) => {
       paymentDetails = `Check #${checkNumber}`;
     }
     
-    // Mark as paid
-    // Mark as paid
+    // Update work order with payment info
     await WorkOrder.updateOne(
       { _id: workOrder._id },
       { $set: { 
-        paid: true, 
         paid: isPaidInFull, 
         paymentMethod: paymentDetails,
-        paidAt: new Date(),
+        paidAt: isPaidInFull ? new Date() : undefined,
         cardLast4: cardLast4 || undefined,
         cardType: cardType || undefined,
         checkNumber: checkNumber || undefined,
         lateFees: 0,
         billedAmount: totalOwedFinal,
-      currentAmount: remainingBalance,
-       lastPaymentAmount: actualPaid,
-       lastPaymentAt: new Date(),
-      lastManualTotalOwed: totalOwedFinal
+        currentAmount: remainingBalance,
+        lastPaymentAmount: actualPaid,
+        lastPaymentAt: new Date(),
+        lastManualTotalOwed: totalOwedFinal
       } },
       { runValidators: false }
     );
