@@ -681,12 +681,15 @@ router.post('/bill-workorder', async (req, res) => {
     if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
     if (workOrder.billed) return res.status(409).json({ message: 'Work order already billed' });
 
+    // Calculate the final invoice total
+    const finalInvoiceTotal = invoiceData.sheetTotal || manualAmount;
+    
     // Create Invoice record
     const invoice = new Invoice({
       job: workOrder._id && mongoose.Types.ObjectId.isValid(workOrder._id) ? workOrder._id : null,
       company: workOrder.basic?.client,
       companyEmail: emailOverride,
-      principal: manualAmount,
+      principal: finalInvoiceTotal,
       status: 'SENT',
       sentAt: new Date(),
       lineItems: (invoiceData.sheetRows || []).map(row => ({
@@ -701,16 +704,16 @@ router.post('/bill-workorder', async (req, res) => {
       }
     });
     await invoice.save();
-
+    
     // Mark work order as billed
     await WorkOrder.updateOne(
       { _id: workOrder._id },
       { $set: { 
         billed: true, 
         billedAt: new Date(), 
-        billedAmount: manualAmount,
-        currentAmount: manualAmount,
-        invoiceTotal: manualAmount,
+        billedAmount: finalInvoiceTotal,
+        currentAmount: finalInvoiceTotal,
+        invoiceTotal: finalInvoiceTotal,
         invoiceData: invoiceData,
         invoiceId: invoice._id,
         lateFees: 0
@@ -727,7 +730,7 @@ router.post('/bill-workorder', async (req, res) => {
       let pdfBuffer = null;
       try {
         console.log('Starting PDF generation…');
-        pdfBuffer = await generateInvoicePdf(workOrder, manualAmount, invoiceData);
+        pdfBuffer = await generateInvoicePdf(workOrder, finalInvoiceTotal, invoiceData);
       } catch (e) {
         console.error('[invoice] PDF generation failed:', e);
       }
@@ -739,7 +742,7 @@ router.post('/bill-workorder', async (req, res) => {
               <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Invoice - ${workOrder.basic?.client}</h1>
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                <p style="margin: 5px 0; font-size: 16px;"><strong>Invoice Amount:</strong> $${Number(manualAmount).toFixed(2)}</p>
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Invoice Amount:</strong> $${Number(finalInvoiceTotal).toFixed(2)}</p>
                 <p style="margin: 5px 0;"><strong>Work Order Date:</strong> ${workOrder.basic?.dateOfJob}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
                 <p style="margin: 5px 0;"><strong>Address:</strong> ${workOrder.basic?.address}, ${workOrder.basic?.city}, ${workOrder.basic?.state} ${workOrder.basic?.zip}</p>
@@ -759,7 +762,7 @@ router.post('/bill-workorder', async (req, res) => {
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailOverride,
-  subject: `INVOICE – ${workOrder.basic?.client} – $${Number(manualAmount).toFixed(2)}`,
+  subject: `INVOICE – ${workOrder.basic?.client} – $${Number(finalInvoiceTotal).toFixed(2)}`,
   html: emailHtml,
   attachments: []
 };
