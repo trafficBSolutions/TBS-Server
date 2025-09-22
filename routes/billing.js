@@ -636,17 +636,17 @@ router.post('/process-late-fees', async (req, res) => {
                   </body>
                 </html>
               `;
-const mailOptions = {
-  from: 'trafficandbarriersolutions.ap@gmail.com',
-  to: emailOverride,
-  subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – $${paid.toFixed(2)}`, // ✅ show amount paid
-  html: receiptHtml,
-  attachments: receiptPdfBuffer ? [{
-    filename: `receipt-${(workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
-    content: receiptPdfBuffer,
-    contentType: 'application/pdf'
-  }] : []
-};
+              const mailOptions = {
+                from: 'trafficandbarriersolutions.ap@gmail.com',
+                to: clientEmail,
+                subject: `LATE FEE NOTICE – ${workOrder.basic?.client} – $${newTotal.toFixed(2)}`,
+                html: emailHtml,
+                attachments: pdfBuffer ? [{
+                  filename: `late-fee-invoice-${(workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
+                  content: pdfBuffer,
+                  contentType: 'application/pdf'
+                }] : []
+              };
               
               await transporter7.sendMail(mailOptions);
               emailsSent++;
