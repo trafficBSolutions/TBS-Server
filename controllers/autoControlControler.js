@@ -102,7 +102,7 @@ const jobCount = result[0]?.count || 0;
             userEmail: email
           });
           
-          const confirmLink = `https://www.trafficbarriersolutions.com/confirm-additional-flagger?token=${confirmToken}`;
+          const confirmLink = `https://www.trafficbarriersolutions.com/confirm-additional-flagger?token=${encodeURIComponent(confirmToken)}`;
           
           const confirmMailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
