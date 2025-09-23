@@ -10,8 +10,32 @@ const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
 
+// Simple in-memory cache to prevent duplicate submissions
+const recentSubmissions = new Map();
+
 const submitTrafficControlJob = async (req, res) => {
     try {
+        // Create a simple hash of the request to detect duplicates
+        const requestHash = JSON.stringify({
+            email: req.body.email,
+            jobDate: req.body.jobDate,
+            additionalFlaggers: req.body.additionalFlaggers,
+            timestamp: Math.floor(Date.now() / 10000) // 10-second window
+        });
+        
+        if (recentSubmissions.has(requestHash)) {
+            return res.status(429).json({ error: 'Duplicate submission detected. Please wait before submitting again.' });
+        }
+        
+        recentSubmissions.set(requestHash, Date.now());
+        
+        // Clean up old entries (older than 30 seconds)
+        const now = Date.now();
+        for (const [key, timestamp] of recentSubmissions.entries()) {
+            if (now - timestamp > 30000) {
+                recentSubmissions.delete(key);
+            }
+        }
         const {
             name,
             email,
@@ -149,6 +173,7 @@ const jobCount = result[0]?.count || 0;
           transporter.sendMail(confirmMailOptions, (error, info) => {
             if (error) {
               console.error('Error sending confirmation email:', error);
+              return res.status(500).json({ error: 'Failed to send confirmation email' });
             } else {
               console.log('Confirmation email sent:', info.response);
             }
@@ -350,7 +375,7 @@ const confirmAdditionalFlagger = async (req, res) => {
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
               <h1 style="text-align: center; background-color: #efad76;; color: white; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job with additional flaggers</h1>
-              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected YES for additional flaggers. </strong>,</p>
+              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected YES to approve additional flaggers. </strong>,</p>
               <p>Hi <strong>${jobs[0]?.name}, </strong>,</p>
               <p>Your traffic control job has been confirmed with <strong>${additionalFlaggerCount} additional flagger(s)</strong>.</p>
               <p>Your job has been scheduled on the following date(s):</p>
@@ -415,6 +440,15 @@ const confirmAdditionalFlagger = async (req, res) => {
       
       const jobs = createdJobs;
       
+      const cancelLinks = jobs
+        .map(job => {
+          return job.jobDates.map(jobDateObj => {
+            const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
+            return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
+          }).join('');
+        })
+        .join('');
+      
       const originalMailOptions = {
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
         to: userEmail,
@@ -432,7 +466,7 @@ const confirmAdditionalFlagger = async (req, res) => {
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
               <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB REQUEST</h1>
-              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected NO for additional flaggers. </strong>,</p>
+              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected NO for additional flaggers. But job is still scheduled. </strong>,</p>
               <p>Hi <strong>${jobs[0]?.name}, </strong>,</p>
               <p>Your traffic control job has been confirmed without additional flaggers.</p>
               <p>Your job has been scheduled on the following date(s):</p>
@@ -456,9 +490,11 @@ const confirmAdditionalFlagger = async (req, res) => {
               <h3>Additional Info:</h3>
               <p>Terms & Conditions: ${jobs[0]?.terms}</p>
               <p>${jobs[0]?.message}</p>
-              
-              <p>If you have any questions, please call (706) 263-0175.</p>
-              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC</p>
+              <h3>If you need to cancel a date, use the link for that specific day:</h3>
+              <ul>${cancelLinks}</ul>
+              <p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.
+              <hr style="margin: 20px 0;">
+              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
             </div>
           </body>
         </html>
