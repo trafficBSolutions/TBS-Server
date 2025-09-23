@@ -119,10 +119,9 @@ const jobCount = result[0]?.count || 0;
                   <p>You have requested <strong>${additionalFlaggerCount} additional flagger(s)</strong> for your traffic control job.</p>
                   <p><strong>IMPORTANT:</strong> Additional flaggers incur extra charges. Please confirm if you want to proceed.</p>
                   
-                  <div style="text-align: center; margin: 30px 0;">
-                    <a href="${confirmLink}&confirm=yes" style="background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 10px;">YES - I CONFIRM ADDITIONAL FLAGGERS</a>
-                    <br><br>
-                    <a href="${confirmLink}&confirm=no" style="background-color: #dc3545; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 10px;">NO - CANCEL ADDITIONAL FLAGGERS</a>
+                  <div style="display: flex; justify-content: center; gap: 20px; margin: 30px 0; flex-wrap: wrap;">
+                    <a href="${confirmLink}&confirm=yes" style="background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">YES - I CONFIRM ADDITIONAL FLAGGERS</a>
+                    <a href="${confirmLink}&confirm=no" style="background-color: #dc3545; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">NO - CANCEL ADDITIONAL FLAGGERS</a>
                   </div>
                   
                   <p>Job Details:</p>
