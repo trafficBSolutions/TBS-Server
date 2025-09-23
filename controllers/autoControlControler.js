@@ -19,7 +19,7 @@ const submitTrafficControlJob = async (req, res) => {
         const requestHash = JSON.stringify({
             email: req.body.email,
             jobDate: req.body.jobDate,
-            additionalFlaggers: req.body.additionalFlaggers
+            name: req.body.name
         });
         
         if (recentSubmissions.has(requestHash)) {
