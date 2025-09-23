@@ -10,31 +10,8 @@ const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
 
-// Simple in-memory cache to prevent duplicate submissions
-const recentSubmissions = new Map();
-
 const submitTrafficControlJob = async (req, res) => {
     try {
-        // Create a simple hash of the request to detect duplicates
-        const requestHash = JSON.stringify({
-            email: req.body.email,
-            jobDate: req.body.jobDate,
-            name: req.body.name
-        });
-        
-        if (recentSubmissions.has(requestHash)) {
-            return res.status(429).json({ error: 'Duplicate submission detected. Please wait before submitting again.' });
-        }
-        
-        recentSubmissions.set(requestHash, Date.now());
-        
-        // Clean up old entries (older than 5 seconds)
-        const now = Date.now();
-        for (const [key, timestamp] of recentSubmissions.entries()) {
-            if (now - timestamp > 5000) {
-                recentSubmissions.delete(key);
-            }
-        }
         const {
             name,
             email,
