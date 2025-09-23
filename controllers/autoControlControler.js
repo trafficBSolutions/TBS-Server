@@ -92,58 +92,12 @@ const jobCount = result[0]?.count || 0;
               day: '2-digit'
             }).format(d)
           );          
-          const createdJobs = [];
-          for (const dateObj of scheduledDates) {
-            const newUser = await ControlUser.create({
-                name,
-                email,
-                phone,
-                company,
-                coordinator,
-                siteContact,
-                site,
-                time,
-                project,
-                emergency: emergency || false,
-                flagger,
-                additionalFlaggers: Boolean(additionalFlaggers),
-                additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
-                equipment,
-                terms,
-                address,
-                city,
-                state,
-                zip,
-                message,
-                jobDates: [
-                  {
-                    date: dateObj,
-                    cancelled: false,
-                    cancelledAt: null
-                  }
-                ]
-              });
-            createdJobs.push(newUser);
-          }       
-          const cancelLinks = createdJobs
-          .map(job => {
-            return job.jobDates.map(jobDateObj => {
-              const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
-              return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
-            }).join('');
-          })
-          .join('');
-const manageLinks = createdJobs.map(job =>
-        job.jobDates.map(jobDateObj => {
-          const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
-  return `<li><a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">${dateString} – Edit this job</a></li>`;
-}).join('')).join('');
-
         // Check if additional flaggers need confirmation
         if (additionalFlaggers && additionalFlaggerCount > 0) {
-          // Send confirmation email for additional flaggers
+          // Don't create jobs yet, just send confirmation email with form data
           const confirmToken = signQuery({ 
-            jobIds: createdJobs.map(job => job._id),
+            formData: req.body,
+            scheduledDates: scheduledDates.map(d => d.toISOString()),
             additionalFlaggerCount,
             userEmail: email
           });
@@ -202,12 +156,55 @@ const manageLinks = createdJobs.map(job =>
           });
           
           return res.status(201).json({
-            message: 'Job submitted. Please check your email to confirm additional flaggers.',
+            message: 'Please check your email to confirm additional flaggers before job submission.',
             requiresConfirmation: true,
-            scheduledDates: scheduledDates.map(d => d.toISOString().split('T')[0]),
-            createdJobs
+            scheduledDates: scheduledDates.map(d => d.toISOString().split('T')[0])
           });
         }
+        
+        // Create jobs only if no additional flaggers
+        const createdJobs = [];
+        for (const dateObj of scheduledDates) {
+          const newUser = await ControlUser.create({
+              name,
+              email,
+              phone,
+              company,
+              coordinator,
+              siteContact,
+              site,
+              time,
+              project,
+              emergency: emergency || false,
+              flagger,
+              additionalFlaggers: Boolean(additionalFlaggers),
+              additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
+              equipment,
+              terms,
+              address,
+              city,
+              state,
+              zip,
+              message,
+              jobDates: [
+                {
+                  date: dateObj,
+                  cancelled: false,
+                  cancelledAt: null
+                }
+              ]
+            });
+          createdJobs.push(newUser);
+        }
+        
+        const cancelLinks = createdJobs
+          .map(job => {
+            return job.jobDates.map(jobDateObj => {
+              const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
+              return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
+            }).join('');
+          })
+          .join('');
         
         // Compose regular email options
         const mailOptions = {
@@ -306,11 +303,27 @@ const confirmAdditionalFlagger = async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired confirmation link' });
     }
     
-    const { jobIds, additionalFlaggerCount, userEmail } = payload;
+    const { formData, scheduledDates, additionalFlaggerCount, userEmail } = payload;
+    const parsedDates = scheduledDates.map(d => new Date(d));
     
     if (confirm === 'yes') {
-      // User confirmed - send final confirmation email
-      const jobs = await ControlUser.find({ _id: { $in: jobIds } });
+      // User confirmed - create jobs with additional flaggers
+      const createdJobs = [];
+      for (const dateObj of parsedDates) {
+        const newUser = await ControlUser.create({
+          ...formData,
+          additionalFlaggers: true,
+          additionalFlaggerCount: Number(additionalFlaggerCount),
+          jobDates: [{
+            date: dateObj,
+            cancelled: false,
+            cancelledAt: null
+          }]
+        });
+        createdJobs.push(newUser);
+      }
+      
+      const jobs = createdJobs;
       
       const cancelLinks = jobs
         .map(job => {
@@ -338,8 +351,8 @@ const confirmAdditionalFlagger = async (req, res) => {
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
               <h1 style="text-align: center; background-color: #efad76;; color: white; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job with additional flaggers</h1>
-              
-              <p>Hi <strong>${jobs[0]?.name}</strong>,</p>
+              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected YES for additional flaggers. </strong>,</p>
+              <p>Hi <strong>${jobs[0]?.name}, </strong>,</p>
               <p>Your traffic control job has been confirmed with <strong>${additionalFlaggerCount} additional flagger(s)</strong>.</p>
               <p>Your job has been scheduled on the following date(s):</p>
               <ul>
@@ -385,16 +398,23 @@ const confirmAdditionalFlagger = async (req, res) => {
       res.status(200).json({ message: 'Additional flaggers confirmed. Final confirmation email sent.' });
       
     } else if (confirm === 'no') {
-      // User declined - update jobs and send original confirmation
-      await ControlUser.updateMany(
-        { _id: { $in: jobIds } },
-        { 
+      // User declined - create jobs without additional flaggers
+      const createdJobs = [];
+      for (const dateObj of parsedDates) {
+        const newUser = await ControlUser.create({
+          ...formData,
           additionalFlaggers: false,
-          additionalFlaggerCount: 0
-        }
-      );
+          additionalFlaggerCount: 0,
+          jobDates: [{
+            date: dateObj,
+            cancelled: false,
+            cancelledAt: null
+          }]
+        });
+        createdJobs.push(newUser);
+      }
       
-      const jobs = await ControlUser.find({ _id: { $in: jobIds } });
+      const jobs = createdJobs;
       
       const originalMailOptions = {
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
@@ -407,14 +427,14 @@ const confirmAdditionalFlagger = async (req, res) => {
           { name: 'Salvador Gonzalez', address: foremanmail },
           { name: 'Damien Diskey', address: damienemail }
         ],
-        subject: 'TRAFFIC CONTROL JOB CONFIRMED - NO ADDITIONAL FLAGGERS',
+        subject: 'TRAFFIC CONTROL JOB REQUEST - NO ADDITIONAL FLAGGERS',
         html: `
         <html>
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job</h1>
-              
-              <p>Hi <strong>${jobs[0]?.name}</strong>,</p>
+              <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB REQUEST</h1>
+              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected NO for additional flaggers. </strong>,</p>
+              <p>Hi <strong>${jobs[0]?.name}, </strong>,</p>
               <p>Your traffic control job has been confirmed without additional flaggers.</p>
               <p>Your job has been scheduled on the following date(s):</p>
               <ul>
