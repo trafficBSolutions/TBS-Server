@@ -472,13 +472,12 @@ const confirmAdditionalFlagger = async (req, res) => {
         `
       };
       
-      transporter.sendMail(finalMailOptions, (error, info) => {
-        if (error) {
-          console.error('Error sending final confirmation:', error);
-        } else {
-          console.log('Final confirmation sent:', info.response);
-        }
-      });
+      try {
+        await transporter.sendMail(finalMailOptions);
+        console.log('Final confirmation email sent successfully');
+      } catch (emailError) {
+        console.error('Error sending final confirmation email:', emailError);
+      }
       
       res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=success&message=' + encodeURIComponent('Additional flaggers confirmed. Final confirmation email sent.'));
       
@@ -586,13 +585,12 @@ const confirmAdditionalFlagger = async (req, res) => {
         `
       };
       
-      transporter.sendMail(originalMailOptions, (error, info) => {
-        if (error) {
-          console.error('Error sending original confirmation:', error);
-        } else {
-          console.log('Original confirmation sent:', info.response);
-        }
-      });
+      try {
+        await transporter.sendMail(originalMailOptions);
+        console.log('Original confirmation email sent successfully');
+      } catch (emailError) {
+        console.error('Error sending original confirmation email:', emailError);
+      }
       
       res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=success&message=' + encodeURIComponent('Additional flaggers cancelled. Original job confirmed.'));
     }
