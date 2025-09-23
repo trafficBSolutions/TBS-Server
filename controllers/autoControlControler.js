@@ -381,7 +381,7 @@ const confirmAdditionalFlagger = async (req, res) => {
         <html>
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #efad76;; color: white; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job with additional flaggers</h1>
+              <h1 style="text-align: center; background-color: #efad76;; color: black; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job with additional flaggers</h1>
               <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected YES to approve additional flaggers. </strong>,</p>
               <p>Hi <strong>${jobs[0]?.name}, </strong>,</p>
               <p>Your traffic control job has been confirmed with <strong>${additionalFlaggerCount} additional flagger(s)</strong>.</p>
