@@ -326,12 +326,12 @@ const confirmAdditionalFlagger = async (req, res) => {
     const { token, confirm } = req.query;
     
     if (!token) {
-      return res.status(400).json({ error: 'Invalid confirmation link' });
+      return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('Invalid confirmation link'));
     }
     
     const payload = verifyQuery(token);
     if (!payload) {
-      return res.status(400).json({ error: 'Invalid or expired confirmation link' });
+      return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('Invalid or expired confirmation link'));
     }
     
     const { formData, scheduledDates, additionalFlaggerCount, userEmail } = payload;
@@ -433,7 +433,7 @@ const confirmAdditionalFlagger = async (req, res) => {
         }
       });
       
-      res.status(200).json({ message: 'Additional flaggers confirmed. Final confirmation email sent.' });
+      res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=success&message=' + encodeURIComponent('Additional flaggers confirmed. Final confirmation email sent.'));
       
     } else if (confirm === 'no') {
       // User declined - create jobs without additional flaggers
@@ -530,12 +530,12 @@ const confirmAdditionalFlagger = async (req, res) => {
         }
       });
       
-      res.status(200).json({ message: 'Additional flaggers cancelled. Original job confirmed.' });
+      res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=success&message=' + encodeURIComponent('Additional flaggers cancelled. Original job confirmed.'));
     }
     
   } catch (error) {
     console.error('Error in confirmation:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('An error occurred processing your confirmation'));
   }
 };
 
