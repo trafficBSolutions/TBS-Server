@@ -92,7 +92,39 @@ const jobCount = result[0]?.count || 0;
               day: '2-digit'
             }).format(d)
           );          
-          const createdJobs = [];       
+          const createdJobs = [];
+          for (const dateObj of scheduledDates) {
+            const newUser = await ControlUser.create({
+                name,
+                email,
+                phone,
+                company,
+                coordinator,
+                siteContact,
+                site,
+                time,
+                project,
+                emergency: emergency || false,
+                flagger,
+                additionalFlaggers: Boolean(additionalFlaggers),
+                additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
+                equipment,
+                terms,
+                address,
+                city,
+                state,
+                zip,
+                message,
+                jobDates: [
+                  {
+                    date: dateObj,
+                    cancelled: false,
+                    cancelledAt: null
+                  }
+                ]
+              });
+            createdJobs.push(newUser);
+          }       
           const cancelLinks = createdJobs
           .map(job => {
             return job.jobDates.map(jobDateObj => {
@@ -109,10 +141,9 @@ const manageLinks = createdJobs.map(job =>
 
         // Check if additional flaggers need confirmation
         if (additionalFlaggers && additionalFlaggerCount > 0) {
-          // Don't create jobs yet, just send confirmation email with form data
+          // Send confirmation email for additional flaggers
           const confirmToken = signQuery({ 
-            formData: req.body,
-            scheduledDates: scheduledDates.map(d => d.toISOString()),
+            jobIds: createdJobs.map(job => job._id),
             additionalFlaggerCount,
             userEmail: email
           });
@@ -163,44 +194,11 @@ const manageLinks = createdJobs.map(job =>
           });
           
           return res.status(201).json({
-            message: 'Please check your email to confirm additional flaggers before job submission.',
+            message: 'Job submitted. Please check your email to confirm additional flaggers.',
             requiresConfirmation: true,
-            scheduledDates: scheduledDates.map(d => d.toISOString().split('T')[0])
+            scheduledDates: scheduledDates.map(d => d.toISOString().split('T')[0]),
+            createdJobs
           });
-        }
-        
-        // Create jobs only if no additional flaggers
-        for (const dateObj of scheduledDates) {
-          const newUser = await ControlUser.create({
-              name,
-              email,
-              phone,
-              company,
-              coordinator,
-              siteContact,
-              site,
-              time,
-              project,
-              emergency: emergency || false,
-              flagger,
-              additionalFlaggers: Boolean(additionalFlaggers),
-              additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
-              equipment,
-              terms,
-              address,
-              city,
-              state,
-              zip,
-              message,
-              jobDates: [
-                {
-                  date: dateObj,
-                  cancelled: false,
-                  cancelledAt: null
-                }
-              ]
-            });
-          createdJobs.push(newUser);
         }
         
         // Compose regular email options
@@ -300,27 +298,11 @@ const confirmAdditionalFlagger = async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired confirmation link' });
     }
     
-    const { formData, scheduledDates, additionalFlaggerCount, userEmail } = payload;
-    const parsedDates = scheduledDates.map(d => new Date(d));
+    const { jobIds, additionalFlaggerCount, userEmail } = payload;
     
     if (confirm === 'yes') {
-      // User confirmed - create jobs with additional flaggers
-      const createdJobs = [];
-      for (const dateObj of parsedDates) {
-        const newUser = await ControlUser.create({
-          ...formData,
-          additionalFlaggers: true,
-          additionalFlaggerCount: Number(additionalFlaggerCount),
-          jobDates: [{
-            date: dateObj,
-            cancelled: false,
-            cancelledAt: null
-          }]
-        });
-        createdJobs.push(newUser);
-      }
-      
-      const jobs = createdJobs;
+      // User confirmed - send final confirmation email
+      const jobs = await ControlUser.find({ _id: { $in: jobIds } });
       
       const cancelLinks = jobs
         .map(job => {
@@ -347,18 +329,31 @@ const confirmAdditionalFlagger = async (req, res) => {
         <html>
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px;">JOB CONFIRMED WITH ADDITIONAL FLAGGERS</h1>
+              <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job with additional flaggers</h1>
               
               <p>Hi <strong>${jobs[0]?.name}</strong>,</p>
               <p>Your traffic control job has been confirmed with <strong>${additionalFlaggerCount} additional flagger(s)</strong>.</p>
+              <p>Your job has been scheduled on the following date(s):</p>
+              <ul>
+                ${jobs.map(job => job.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')).join('')}
+              </ul>
               
-              <h3>Job Details:</h3>
+              <h3>Summary:</h3>
               <ul>
                 <li><strong>Company:</strong> ${jobs[0]?.company}</li>
-                <li><strong>Project:</strong> ${jobs[0]?.project}</li>
+                <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
+                <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
+                <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
+                <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
+                <li><strong>Time:</strong> ${jobs[0]?.time}</li>
+                <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
                 <li><strong>Flaggers:</strong> ${jobs[0]?.flagger} + Additional: ${additionalFlaggerCount}</li>
-                <li><strong>Dates:</strong> ${jobs.map(job => job.jobDates.map(d => new Date(d.date).toLocaleDateString('en-US')).join(', ')).join(', ')}</li>
+                <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
+                <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
               </ul>
+              <h3>Additional Info:</h3>
+              <p>Terms & Conditions: ${jobs[0]?.terms}</p>
+              <p>${jobs[0]?.message}</p>
               
               <h3>Cancel Links (if needed):</h3>
               <ul>${cancelLinks}</ul>
@@ -382,23 +377,16 @@ const confirmAdditionalFlagger = async (req, res) => {
       res.status(200).json({ message: 'Additional flaggers confirmed. Final confirmation email sent.' });
       
     } else if (confirm === 'no') {
-      // User declined - create jobs without additional flaggers
-      const createdJobs = [];
-      for (const dateObj of parsedDates) {
-        const newUser = await ControlUser.create({
-          ...formData,
+      // User declined - update jobs and send original confirmation
+      await ControlUser.updateMany(
+        { _id: { $in: jobIds } },
+        { 
           additionalFlaggers: false,
-          additionalFlaggerCount: 0,
-          jobDates: [{
-            date: dateObj,
-            cancelled: false,
-            cancelledAt: null
-          }]
-        });
-        createdJobs.push(newUser);
-      }
+          additionalFlaggerCount: 0
+        }
+      );
       
-      const jobs = createdJobs;
+      const jobs = await ControlUser.find({ _id: { $in: jobIds } });
       
       const originalMailOptions = {
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
@@ -416,18 +404,31 @@ const confirmAdditionalFlagger = async (req, res) => {
         <html>
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB CONFIRMED</h1>
+              <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job</h1>
               
               <p>Hi <strong>${jobs[0]?.name}</strong>,</p>
               <p>Your traffic control job has been confirmed without additional flaggers.</p>
+              <p>Your job has been scheduled on the following date(s):</p>
+              <ul>
+                ${jobs.map(job => job.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')).join('')}
+              </ul>
               
-              <h3>Job Details:</h3>
+              <h3>Summary:</h3>
               <ul>
                 <li><strong>Company:</strong> ${jobs[0]?.company}</li>
-                <li><strong>Project:</strong> ${jobs[0]?.project}</li>
+                <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
+                <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
+                <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
+                <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
+                <li><strong>Time:</strong> ${jobs[0]?.time}</li>
+                <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
                 <li><strong>Flaggers:</strong> ${jobs[0]?.flagger}</li>
-                <li><strong>Dates:</strong> ${jobs.map(job => job.jobDates.map(d => new Date(d.date).toLocaleDateString('en-US')).join(', ')).join(', ')}</li>
+                <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
+                <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
               </ul>
+              <h3>Additional Info:</h3>
+              <p>Terms & Conditions: ${jobs[0]?.terms}</p>
+              <p>${jobs[0]?.message}</p>
               
               <p>If you have any questions, please call (706) 263-0175.</p>
               <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC</p>
