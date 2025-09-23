@@ -28,10 +28,10 @@ const submitTrafficControlJob = async (req, res) => {
         
         recentSubmissions.set(requestHash, Date.now());
         
-        // Clean up old entries (older than 30 seconds)
+        // Clean up old entries (older than 5 seconds)
         const now = Date.now();
         for (const [key, timestamp] of recentSubmissions.entries()) {
-            if (now - timestamp > 30000) {
+            if (now - timestamp > 5000) {
                 recentSubmissions.delete(key);
             }
         }
