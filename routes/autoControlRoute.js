@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { submitTrafficControlJob } = require('../controllers/autoControlControler');
+const { submitTrafficControlJob, confirmAdditionalFlagger } = require('../controllers/autoControlControler');
 const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const myEmail = 'tbsolutions9@gmail.com';
 const ControlUser = require('../models/controluser'); // Import your model
@@ -18,7 +18,7 @@ router.use(
     cors({
         credentials: true,
         /* origin: 'http://localhost:5173' // Make sure this matches your frontend*/
-        origin: ['https://www.trafficbarriersolutions.com', 'http://localhost:5173']
+        origin: ['https://www.trafficbarriersolutions.com']
     })
 );
 
@@ -27,6 +27,9 @@ router.use(bodyParser.json());
 
 // 🚦 Job Submission
 router.post('/trafficcontrol', submitTrafficControlJob);
+
+// Additional Flagger Confirmation
+router.get('/confirm-additional-flagger', confirmAdditionalFlagger);
 // PATCH /manage-job/:id – update jobDates only
 // ✅ Get a specific job by ID
 // Add this route to fetch a specific job by ID
