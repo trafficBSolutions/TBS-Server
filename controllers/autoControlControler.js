@@ -148,19 +148,23 @@ const jobCount = result[0]?.count || 0;
                   </div>
                   
                   <p>Job Details:</p>
-                  <ul>
-                    <li><strong>Company:</strong> ${company}</li>
-                    <li><strong>Coordinator:</strong> ${coordinator}</li>
-                    <li><strong>Coordinator Phone:</strong> ${phone}</li>
-                    <li><strong>On-Site Contact:</strong> ${siteContact}</li>
-                    <li><strong>On-Site Phone:</strong> ${site}</li>
-                    <li><strong>Time:</strong> ${time}</li>
-                    <li><strong>Project/Task:</strong> ${project}</li>
-                    <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
-                    <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
-                    <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
-                    <li><strong>Dates:</strong> ${scheduledDates.map(d => d.toLocaleDateString('en-US')).join(', ')}</li>
-                  </ul>
+                  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Company:</strong> ${company}</li>
+                      <li><strong>Coordinator:</strong> ${coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${site}</li>
+                      <li><strong>Time:</strong> ${time}</li>
+                    </ul>
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Project/Task:</strong> ${project}</li>
+                      <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
+                      <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
+                      <li><strong>Dates:</strong> ${scheduledDates.map(d => d.toLocaleDateString('en-US')).join(', ')}</li>
+                    </ul>
+                  </div>
                   
                   <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>Phone: (706) 263-0175</p>
                 </div>
@@ -257,18 +261,22 @@ const jobCount = result[0]?.count || 0;
                   If you have any questions or concerns regarding your job, please call (706) 263-0175.</p>
           
                   <h3>Summary:</h3>
-                  <ul>
-                    <li><strong>Company:</strong> ${company}</li>
-                    <li><strong>Coordinator:</strong> ${coordinator}</li>
-                    <li><strong>Coordinator Phone:</strong> ${phone}</li>
-                    <li><strong>On-Site Contact:</strong> ${siteContact}</li>
-                    <li><strong>On-Site Phone:</strong> ${site}</li>
-                    <li><strong>Time:</strong> ${time}</li>
-                    <li><strong>Project/Task:</strong> ${project}</li>
-                    <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
-                    <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
-                    <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
-                  </ul>
+                  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Company:</strong> ${company}</li>
+                      <li><strong>Coordinator:</strong> ${coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${site}</li>
+                    </ul>
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Time:</strong> ${time}</li>
+                      <li><strong>Project/Task:</strong> ${project}</li>
+                      <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
+                      <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
+                    </ul>
+                  </div>
                   <h3>Additional Info:</h3>
                   <p>Terms & Conditions: ${terms}</p>
                   <p>${message}</p>
@@ -384,16 +392,23 @@ const confirmAdditionalFlagger = async (req, res) => {
               
               <h3>Summary:</h3>
               <ul>
-                <li><strong>Company:</strong> ${jobs[0]?.company}</li>
-                <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
-                <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
-                <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
-                <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
-                <li><strong>Time:</strong> ${jobs[0]?.time}</li>
-                <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
-                <li><strong>Flaggers:</strong> ${jobs[0]?.flagger} + Additional: ${additionalFlaggerCount}</li>
-                <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
-                <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Company:</strong> ${jobs[0]?.company}</li>
+                      <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
+                      
+                    </ul>
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Time:</strong> ${jobs[0]?.time}</li>
+                      <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
+                      <li><strong>Flaggers:</strong> ${jobs[0]?.flagger} + Additional: ${additionalFlaggerCount}</li>
+                      <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+                    </ul>
+                  </div>
               </ul>
               <h3>Additional Info:</h3>
               <p>Terms & Conditions: ${jobs[0]?.terms}</p>
@@ -474,17 +489,24 @@ const confirmAdditionalFlagger = async (req, res) => {
               </ul>
               
               <h3>Summary:</h3>
-              <ul>
-                <li><strong>Company:</strong> ${jobs[0]?.company}</li>
-                <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
-                <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
-                <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
-                <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
-                <li><strong>Time:</strong> ${jobs[0]?.time}</li>
-                <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
-                <li><strong>Flaggers:</strong> ${jobs[0]?.flagger}</li>
-                <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
-                <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+                            <ul>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Company:</strong> ${jobs[0]?.company}</li>
+                      <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
+                      
+                    </ul>
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Time:</strong> ${jobs[0]?.time}</li>
+                      <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
+                      <li><strong>Flaggers:</strong> ${jobs[0]?.flagger}</li>
+                      <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+                    </ul>
+                  </div>
               </ul>
               <h3>Additional Info:</h3>
               <p>Terms & Conditions: ${jobs[0]?.terms}</p>
