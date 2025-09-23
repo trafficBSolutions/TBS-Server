@@ -174,7 +174,15 @@ const manageLinks = createdJobs.map(job =>
                   <p>Job Details:</p>
                   <ul>
                     <li><strong>Company:</strong> ${company}</li>
-                    <li><strong>Project:</strong> ${project}</li>
+                    <li><strong>Coordinator:</strong> ${coordinator}</li>
+                    <li><strong>Coordinator Phone:</strong> ${phone}</li>
+                    <li><strong>On-Site Contact:</strong> ${siteContact}</li>
+                    <li><strong>On-Site Phone:</strong> ${site}</li>
+                    <li><strong>Time:</strong> ${time}</li>
+                    <li><strong>Project/Task:</strong> ${project}</li>
+                    <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
+                    <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
+                    <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
                     <li><strong>Dates:</strong> ${scheduledDates.map(d => d.toLocaleDateString('en-US')).join(', ')}</li>
                   </ul>
                   
@@ -324,12 +332,12 @@ const confirmAdditionalFlagger = async (req, res) => {
           { name: 'Salvador Gonzalez', address: foremanmail },
           { name: 'Damien Diskey', address: damienemail }
         ],
-        subject: 'TRAFFIC CONTROL JOB CONFIRMED - WITH ADDITIONAL FLAGGERS',
+        subject: 'TRAFFIC CONTROL JOB REQUEST - WITH ADDITIONAL FLAGGERS',
         html: `
         <html>
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job with additional flaggers</h1>
+              <h1 style="text-align: center; background-color: #efad76;; color: white; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job with additional flaggers</h1>
               
               <p>Hi <strong>${jobs[0]?.name}</strong>,</p>
               <p>Your traffic control job has been confirmed with <strong>${additionalFlaggerCount} additional flagger(s)</strong>.</p>
@@ -357,9 +365,9 @@ const confirmAdditionalFlagger = async (req, res) => {
               
               <h3>Cancel Links (if needed):</h3>
               <ul>${cancelLinks}</ul>
-              
-              <p>If you have any questions, please call (706) 263-0175.</p>
-              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC</p>
+<p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.
+                  <hr style="margin: 20px 0;">
+                  <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
             </div>
           </body>
         </html>
