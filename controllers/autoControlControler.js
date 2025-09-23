@@ -19,8 +19,7 @@ const submitTrafficControlJob = async (req, res) => {
         const requestHash = JSON.stringify({
             email: req.body.email,
             jobDate: req.body.jobDate,
-            additionalFlaggers: req.body.additionalFlaggers,
-            timestamp: Math.floor(Date.now() / 10000) // 10-second window
+            additionalFlaggers: req.body.additionalFlaggers
         });
         
         if (recentSubmissions.has(requestHash)) {
@@ -142,25 +141,29 @@ const jobCount = result[0]?.count || 0;
                   <p>You have requested <strong>${additionalFlaggerCount} additional flagger(s)</strong> for your traffic control job.</p>
                   <p><strong>IMPORTANT:</strong> Additional flaggers incur extra charges. Please confirm if you want to proceed.</p>
                   
-                  <div style="display: flex; justify-content: center; gap: 20px; margin: 30px 0; flex-wrap: wrap;">
+                  <div style="display: flex; justify-content: center; gap: 15px; margin: 30px 0; flex-wrap: wrap;">
                     <a href="${confirmLink}&confirm=yes" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">YES - I CONFIRM</a>
                     <a href="${confirmLink}&confirm=no" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">NO - CANCEL</a>
                   </div>
                   
                   <p>Job Details:</p>
-                  <ul>
-                    <li><strong>Company:</strong> ${company}</li>
-                    <li><strong>Coordinator:</strong> ${coordinator}</li>
-                    <li><strong>Coordinator Phone:</strong> ${phone}</li>
-                    <li><strong>On-Site Contact:</strong> ${siteContact}</li>
-                    <li><strong>On-Site Phone:</strong> ${site}</li>
-                    <li><strong>Time:</strong> ${time}</li>
-                    <li><strong>Project/Task:</strong> ${project}</li>
-                    <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
-                    <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
-                    <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
-                    <li><strong>Dates:</strong> ${scheduledDates.map(d => d.toLocaleDateString('en-US')).join(', ')}</li>
-                  </ul>
+                  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Company:</strong> ${company}</li>
+                      <li><strong>Coordinator:</strong> ${coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${site}</li>
+                      <li><strong>Time:</strong> ${time}</li>
+                    </ul>
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Project/Task:</strong> ${project}</li>
+                      <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
+                      <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
+                      <li><strong>Dates:</strong> ${scheduledDates.map(d => d.toLocaleDateString('en-US')).join(', ')}</li>
+                    </ul>
+                  </div>
                   
                   <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>Phone: (706) 263-0175</p>
                 </div>
@@ -257,18 +260,22 @@ const jobCount = result[0]?.count || 0;
                   If you have any questions or concerns regarding your job, please call (706) 263-0175.</p>
           
                   <h3>Summary:</h3>
-                  <ul>
-                    <li><strong>Company:</strong> ${company}</li>
-                    <li><strong>Coordinator:</strong> ${coordinator}</li>
-                    <li><strong>Coordinator Phone:</strong> ${phone}</li>
-                    <li><strong>On-Site Contact:</strong> ${siteContact}</li>
-                    <li><strong>On-Site Phone:</strong> ${site}</li>
-                    <li><strong>Time:</strong> ${time}</li>
-                    <li><strong>Project/Task:</strong> ${project}</li>
-                    <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
-                    <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
-                    <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
-                  </ul>
+                  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Company:</strong> ${company}</li>
+                      <li><strong>Coordinator:</strong> ${coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${site}</li>
+                    </ul>
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Time:</strong> ${time}</li>
+                      <li><strong>Project/Task:</strong> ${project}</li>
+                      <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
+                      <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
+                    </ul>
+                  </div>
                   <h3>Additional Info:</h3>
                   <p>Terms & Conditions: ${terms}</p>
                   <p>${message}</p>
@@ -318,25 +325,73 @@ const confirmAdditionalFlagger = async (req, res) => {
     const { token, confirm } = req.query;
     
     if (!token) {
-      return res.status(400).json({ error: 'Invalid confirmation link' });
+      return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('Invalid confirmation link'));
     }
     
     const payload = verifyQuery(token);
     if (!payload) {
-      return res.status(400).json({ error: 'Invalid or expired confirmation link' });
+      return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('Invalid or expired confirmation link'));
     }
     
     const { formData, scheduledDates, additionalFlaggerCount, userEmail } = payload;
     const parsedDates = scheduledDates.map(d => new Date(d));
+    
+    // Validate required fields
+    if (!formData.coordinator || formData.coordinator.trim() === '') {
+      return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('Missing required coordinator information'));
+    }
+    
+    // Re-check capacity for all dates (race condition protection)
+    for (const dateObj of parsedDates) {
+      const startOfDay = new Date(dateObj);
+      const endOfDay = new Date(dateObj);
+      endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+      
+      const pipeline = [
+        { $match: { cancelled: { $ne: true } } },
+        { $unwind: "$jobDates" },
+        {
+          $match: {
+            "jobDates.date": { $gte: startOfDay, $lt: endOfDay },
+            "jobDates.cancelled": { $ne: true }
+          }
+        },
+        { $count: "count" }
+      ];
+      
+      const result = await ControlUser.aggregate(pipeline);
+      const jobCount = result[0]?.count || 0;
+      
+      if (jobCount >= 10) {
+        return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent(`Date ${dateObj.toLocaleDateString('en-US')} is now full. Please submit a new request.`));
+      }
+    }
     
     if (confirm === 'yes') {
       // User confirmed - create jobs with additional flaggers
       const createdJobs = [];
       for (const dateObj of parsedDates) {
         const newUser = await ControlUser.create({
-          ...formData,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          company: formData.company,
+          coordinator: formData.coordinator?.trim() || 'Unknown',
+          siteContact: formData.siteContact || '',
+          site: formData.site || '',
+          time: formData.time,
+          project: formData.project,
+          emergency: formData.emergency || false,
+          flagger: formData.flagger,
           additionalFlaggers: true,
           additionalFlaggerCount: Number(additionalFlaggerCount),
+          equipment: formData.equipment,
+          terms: formData.terms,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zip: formData.zip,
+          message: formData.message,
           jobDates: [{
             date: dateObj,
             cancelled: false,
@@ -384,16 +439,23 @@ const confirmAdditionalFlagger = async (req, res) => {
               
               <h3>Summary:</h3>
               <ul>
-                <li><strong>Company:</strong> ${jobs[0]?.company}</li>
-                <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
-                <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
-                <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
-                <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
-                <li><strong>Time:</strong> ${jobs[0]?.time}</li>
-                <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
-                <li><strong>Flaggers:</strong> ${jobs[0]?.flagger} + Additional: ${additionalFlaggerCount}</li>
-                <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
-                <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Company:</strong> ${jobs[0]?.company}</li>
+                      <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
+                      
+                    </ul>
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Time:</strong> ${jobs[0]?.time}</li>
+                      <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
+                      <li><strong>Flaggers:</strong> ${jobs[0]?.flagger} + Additional: ${additionalFlaggerCount}</li>
+                      <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+                    </ul>
+                  </div>
               </ul>
               <h3>Additional Info:</h3>
               <p>Terms & Conditions: ${jobs[0]?.terms}</p>
@@ -418,16 +480,33 @@ const confirmAdditionalFlagger = async (req, res) => {
         }
       });
       
-      res.status(200).json({ message: 'Additional flaggers confirmed. Final confirmation email sent.' });
+      res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=success&message=' + encodeURIComponent('Additional flaggers confirmed. Final confirmation email sent.'));
       
     } else if (confirm === 'no') {
       // User declined - create jobs without additional flaggers
       const createdJobs = [];
       for (const dateObj of parsedDates) {
         const newUser = await ControlUser.create({
-          ...formData,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          company: formData.company,
+          coordinator: formData.coordinator?.trim() || 'Unknown',
+          siteContact: formData.siteContact || '',
+          site: formData.site || '',
+          time: formData.time,
+          project: formData.project,
+          emergency: formData.emergency || false,
+          flagger: formData.flagger,
           additionalFlaggers: false,
           additionalFlaggerCount: 0,
+          equipment: formData.equipment,
+          terms: formData.terms,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zip: formData.zip,
+          message: formData.message,
           jobDates: [{
             date: dateObj,
             cancelled: false,
@@ -474,17 +553,24 @@ const confirmAdditionalFlagger = async (req, res) => {
               </ul>
               
               <h3>Summary:</h3>
-              <ul>
-                <li><strong>Company:</strong> ${jobs[0]?.company}</li>
-                <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
-                <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
-                <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
-                <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
-                <li><strong>Time:</strong> ${jobs[0]?.time}</li>
-                <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
-                <li><strong>Flaggers:</strong> ${jobs[0]?.flagger}</li>
-                <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
-                <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+                            <ul>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Company:</strong> ${jobs[0]?.company}</li>
+                      <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
+                      
+                    </ul>
+                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                      <li><strong>Time:</strong> ${jobs[0]?.time}</li>
+                      <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
+                      <li><strong>Flaggers:</strong> ${jobs[0]?.flagger}</li>
+                      <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+                    </ul>
+                  </div>
               </ul>
               <h3>Additional Info:</h3>
               <p>Terms & Conditions: ${jobs[0]?.terms}</p>
@@ -508,12 +594,12 @@ const confirmAdditionalFlagger = async (req, res) => {
         }
       });
       
-      res.status(200).json({ message: 'Additional flaggers cancelled. Original job confirmed.' });
+      res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=success&message=' + encodeURIComponent('Additional flaggers cancelled. Original job confirmed.'));
     }
     
   } catch (error) {
     console.error('Error in confirmation:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('An error occurred processing your confirmation'));
   }
 };
 
