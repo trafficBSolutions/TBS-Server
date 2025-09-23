@@ -19,8 +19,7 @@ const submitTrafficControlJob = async (req, res) => {
         const requestHash = JSON.stringify({
             email: req.body.email,
             jobDate: req.body.jobDate,
-            additionalFlaggers: req.body.additionalFlaggers,
-            timestamp: Math.floor(Date.now() / 10000) // 10-second window
+            additionalFlaggers: req.body.additionalFlaggers
         });
         
         if (recentSubmissions.has(requestHash)) {
@@ -337,6 +336,37 @@ const confirmAdditionalFlagger = async (req, res) => {
     const { formData, scheduledDates, additionalFlaggerCount, userEmail } = payload;
     const parsedDates = scheduledDates.map(d => new Date(d));
     
+    // Validate required fields
+    if (!formData.coordinator || formData.coordinator.trim() === '') {
+      return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('Missing required coordinator information'));
+    }
+    
+    // Re-check capacity for all dates (race condition protection)
+    for (const dateObj of parsedDates) {
+      const startOfDay = new Date(dateObj);
+      const endOfDay = new Date(dateObj);
+      endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+      
+      const pipeline = [
+        { $match: { cancelled: { $ne: true } } },
+        { $unwind: "$jobDates" },
+        {
+          $match: {
+            "jobDates.date": { $gte: startOfDay, $lt: endOfDay },
+            "jobDates.cancelled": { $ne: true }
+          }
+        },
+        { $count: "count" }
+      ];
+      
+      const result = await ControlUser.aggregate(pipeline);
+      const jobCount = result[0]?.count || 0;
+      
+      if (jobCount >= 10) {
+        return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent(`Date ${dateObj.toLocaleDateString('en-US')} is now full. Please submit a new request.`));
+      }
+    }
+    
     if (confirm === 'yes') {
       // User confirmed - create jobs with additional flaggers
       const createdJobs = [];
@@ -346,7 +376,7 @@ const confirmAdditionalFlagger = async (req, res) => {
           email: formData.email,
           phone: formData.phone,
           company: formData.company,
-          coordinator: formData.coordinator,
+          coordinator: formData.coordinator?.trim() || 'Unknown',
           siteContact: formData.siteContact || '',
           site: formData.site || '',
           time: formData.time,
@@ -461,7 +491,7 @@ const confirmAdditionalFlagger = async (req, res) => {
           email: formData.email,
           phone: formData.phone,
           company: formData.company,
-          coordinator: formData.coordinator,
+          coordinator: formData.coordinator?.trim() || 'Unknown',
           siteContact: formData.siteContact || '',
           site: formData.site || '',
           time: formData.time,
