@@ -92,39 +92,7 @@ const jobCount = result[0]?.count || 0;
               day: '2-digit'
             }).format(d)
           );          
-          const createdJobs = [];
-          for (const dateObj of scheduledDates) {
-            const newUser = await ControlUser.create({
-                name,
-                email,
-                phone,
-                company,
-                coordinator,
-                siteContact,
-                site,
-                time,
-                project,
-                emergency: emergency || false,
-                flagger,
-                additionalFlaggers: Boolean(additionalFlaggers),
-                additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
-                equipment,
-                terms,
-                address,
-                city,
-                state,
-                zip,
-                message,
-                jobDates: [
-                  {
-                    date: dateObj,
-                    cancelled: false,
-                    cancelledAt: null
-                  }
-                ]
-              });
-            createdJobs.push(newUser);
-          }       
+          const createdJobs = [];       
           const cancelLinks = createdJobs
           .map(job => {
             return job.jobDates.map(jobDateObj => {
@@ -141,9 +109,10 @@ const manageLinks = createdJobs.map(job =>
 
         // Check if additional flaggers need confirmation
         if (additionalFlaggers && additionalFlaggerCount > 0) {
-          // Send confirmation email for additional flaggers
+          // Don't create jobs yet, just send confirmation email with form data
           const confirmToken = signQuery({ 
-            jobIds: createdJobs.map(job => job._id),
+            formData: req.body,
+            scheduledDates: scheduledDates.map(d => d.toISOString()),
             additionalFlaggerCount,
             userEmail: email
           });
@@ -194,11 +163,44 @@ const manageLinks = createdJobs.map(job =>
           });
           
           return res.status(201).json({
-            message: 'Job submitted. Please check your email to confirm additional flaggers.',
+            message: 'Please check your email to confirm additional flaggers before job submission.',
             requiresConfirmation: true,
-            scheduledDates: scheduledDates.map(d => d.toISOString().split('T')[0]),
-            createdJobs
+            scheduledDates: scheduledDates.map(d => d.toISOString().split('T')[0])
           });
+        }
+        
+        // Create jobs only if no additional flaggers
+        for (const dateObj of scheduledDates) {
+          const newUser = await ControlUser.create({
+              name,
+              email,
+              phone,
+              company,
+              coordinator,
+              siteContact,
+              site,
+              time,
+              project,
+              emergency: emergency || false,
+              flagger,
+              additionalFlaggers: Boolean(additionalFlaggers),
+              additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
+              equipment,
+              terms,
+              address,
+              city,
+              state,
+              zip,
+              message,
+              jobDates: [
+                {
+                  date: dateObj,
+                  cancelled: false,
+                  cancelledAt: null
+                }
+              ]
+            });
+          createdJobs.push(newUser);
         }
         
         // Compose regular email options
@@ -298,11 +300,27 @@ const confirmAdditionalFlagger = async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired confirmation link' });
     }
     
-    const { jobIds, additionalFlaggerCount, userEmail } = payload;
+    const { formData, scheduledDates, additionalFlaggerCount, userEmail } = payload;
+    const parsedDates = scheduledDates.map(d => new Date(d));
     
     if (confirm === 'yes') {
-      // User confirmed - send final confirmation email
-      const jobs = await ControlUser.find({ _id: { $in: jobIds } });
+      // User confirmed - create jobs with additional flaggers
+      const createdJobs = [];
+      for (const dateObj of parsedDates) {
+        const newUser = await ControlUser.create({
+          ...formData,
+          additionalFlaggers: true,
+          additionalFlaggerCount: Number(additionalFlaggerCount),
+          jobDates: [{
+            date: dateObj,
+            cancelled: false,
+            cancelledAt: null
+          }]
+        });
+        createdJobs.push(newUser);
+      }
+      
+      const jobs = createdJobs;
       
       const cancelLinks = jobs
         .map(job => {
@@ -364,16 +382,23 @@ const confirmAdditionalFlagger = async (req, res) => {
       res.status(200).json({ message: 'Additional flaggers confirmed. Final confirmation email sent.' });
       
     } else if (confirm === 'no') {
-      // User declined - update jobs and send original confirmation
-      await ControlUser.updateMany(
-        { _id: { $in: jobIds } },
-        { 
+      // User declined - create jobs without additional flaggers
+      const createdJobs = [];
+      for (const dateObj of parsedDates) {
+        const newUser = await ControlUser.create({
+          ...formData,
           additionalFlaggers: false,
-          additionalFlaggerCount: 0
-        }
-      );
+          additionalFlaggerCount: 0,
+          jobDates: [{
+            date: dateObj,
+            cancelled: false,
+            cancelledAt: null
+          }]
+        });
+        createdJobs.push(newUser);
+      }
       
-      const jobs = await ControlUser.find({ _id: { $in: jobIds } });
+      const jobs = createdJobs;
       
       const originalMailOptions = {
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
