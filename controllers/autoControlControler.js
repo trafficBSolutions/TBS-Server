@@ -302,13 +302,18 @@ const confirmAdditionalFlagger = async (req, res) => {
     const { token, confirm } = req.query;
     
     if (!token) {
+      console.error('No token provided in confirmation request');
       return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('Invalid confirmation link'));
     }
     
+    console.log('Attempting to verify token:', token.substring(0, 50) + '...');
     const payload = verifyQuery(token);
     if (!payload) {
+      console.error('Token verification failed for token:', token.substring(0, 50) + '...');
       return res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=error&message=' + encodeURIComponent('Invalid or expired confirmation link'));
     }
+    
+    console.log('Token verified successfully, payload:', payload);
     
     const { formData, scheduledDates, additionalFlaggerCount, userEmail } = payload;
     const parsedDates = scheduledDates.map(d => new Date(d));
