@@ -124,8 +124,8 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
                   <p><strong>IMPORTANT:</strong> Additional flaggers incur extra charges. Please confirm if you want to proceed.</p>
                   
                   <div style="display: flex; justify-content: center; gap: 15px; margin: 30px 0; flex-wrap: wrap;">
-                    <a href="${confirmYes}&confirm=yes" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">YES - I CONFIRM</a>
-                    <a href="${confirmNo}&confirm=no" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">NO - CANCEL</a>
+                    <a href="${confirmYes}" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">YES - I CONFIRM</a>
+                    <a href="${confirmNo}" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">NO - CANCEL</a>
                   </div>
                   
                   <p>Job Details:</p>
