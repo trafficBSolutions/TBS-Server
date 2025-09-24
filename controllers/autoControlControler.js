@@ -95,15 +95,20 @@ const jobCount = result[0]?.count || 0;
         // Check if additional flaggers need confirmation
         if (additionalFlaggers && additionalFlaggerCount > 0) {
           // Don't create jobs yet, just send confirmation email with form data
-          const confirmToken = signQuery({ 
-            formData: req.body,
-            scheduledDates: scheduledDates.map(d => d.toISOString()),
-            additionalFlaggerCount,
-            userEmail: email
-          });
-          
-          const confirmLink = `https://www.trafficbarriersolutions.com/confirm-additional-flagger?token=${encodeURIComponent(confirmToken)}`;
-          
+const confirmToken = signQuery({ 
+  formData: req.body,
+  scheduledDates: scheduledDates.map(d => d.toISOString()),
+  additionalFlaggerCount,
+  userEmail: email
+});
+
+// IMPORTANT: encode the token
+const encoded = encodeURIComponent(confirmToken);
+
+// IMPORTANT: hit an API route (server) first, then redirect back to the SPA page
+const confirmLinkBase = 'https://tbs-server.onrender.com/confirm-additional-flagger';
+const confirmYes = `${confirmLinkBase}?token=${encoded}&confirm=yes`;
+const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
           const confirmMailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
@@ -119,8 +124,8 @@ const jobCount = result[0]?.count || 0;
                   <p><strong>IMPORTANT:</strong> Additional flaggers incur extra charges. Please confirm if you want to proceed.</p>
                   
                   <div style="display: flex; justify-content: center; gap: 15px; margin: 30px 0; flex-wrap: wrap;">
-                    <a href="${confirmLink}&confirm=yes" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">YES - I CONFIRM</a>
-                    <a href="${confirmLink}&confirm=no" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">NO - CANCEL</a>
+                    <a href="${confirmYes}&confirm=yes" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">YES - I CONFIRM</a>
+                    <a href="${confirmNo}&confirm=no" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">NO - CANCEL</a>
                   </div>
                   
                   <p>Job Details:</p>
