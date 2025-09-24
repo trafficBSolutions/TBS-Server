@@ -304,6 +304,7 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
 };
 const confirmAdditionalFlagger = async (req, res) => {
   try {
+    console.log('Confirmation request received:', req.query);
     const { token, confirm } = req.query;
     
     if (!token) {
