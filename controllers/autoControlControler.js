@@ -95,12 +95,12 @@ const jobCount = result[0]?.count || 0;
         // Check if additional flaggers need confirmation
         if (additionalFlaggers && additionalFlaggerCount > 0) {
           // Don't create jobs yet, just send confirmation email with form data
-const confirmToken = signQuery({ 
-  formData: req.body,
-  scheduledDates: scheduledDates.map(d => d.toISOString()),
-  additionalFlaggerCount,
-  userEmail: email
-});
+          const confirmToken = signQuery({ 
+            formData: req.body,
+            scheduledDates: scheduledDates.map(d => d.toISOString()),
+            additionalFlaggerCount,
+            userEmail: email
+          });
 
 // IMPORTANT: encode the token
 const encoded = encodeURIComponent(confirmToken);
@@ -119,7 +119,7 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
               <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
                 <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
                   <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">ADDITIONAL FLAGGER CONFIRMATION REQUIRED</h1>
-                  <p>Hi <strong>${name}, ${email}</strong>,</p>
+                  <p>Hi <strong>${name}, ${email}</strong></p>
                   <p>You have requested <strong>${additionalFlaggerCount} additional flagger(s)</strong> for your traffic control job.</p>
                   <p><strong>IMPORTANT:</strong> Additional flaggers incur extra charges. Please confirm if you want to proceed.</p>
                   
@@ -417,8 +417,8 @@ const confirmAdditionalFlagger = async (req, res) => {
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
               <h1 style="text-align: center; background-color: #efad76;; color: black; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job with additional flaggers</h1>
-              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected YES to approve additional flaggers. </strong>,</p>
-              <p>Hi <strong>${jobs[0]?.name}, </strong>,</p>
+              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected YES to approve additional flaggers. </strong></p>
+              <p>Hi <strong>${jobs[0]?.name}, </strong></p>
               <p>Your traffic control job has been confirmed with <strong>${additionalFlaggerCount} additional flagger(s)</strong>.</p>
               <p>Your job has been scheduled on the following date(s):</p>
               <ul>
