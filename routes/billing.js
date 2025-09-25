@@ -12,15 +12,42 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 const WorkOrder = require('../models/workorder');
-const runInterestReminderCycle = require('../services/interestBot');
+const { runInterestReminderCycle } = require('../services/interestBot');
 
 // Set the due date to a past date
-const workOrder = await WorkOrder.findById(workOrderId);
-if (workOrder) {
-  const pastDueDate = new Date();
-  pastDueDate.setDate(pastDueDate.getDate() - 15); // Set to 15 days ago for testing
-  await WorkOrder.updateOne({ _id: workOrder._id }, { $set: { 'invoiceData.dueDate': pastDueDate.toISOString().slice(0, 10) } });
-}
+router.post('/test/backdate-due', async (req, res) => {
+  try {
+    const { workOrderId, days = 15 } = req.body || {};
+    if (!workOrderId) return res.status(400).json({ message: 'workOrderId required' });
+
+    const wo = await WorkOrder.findById(workOrderId);
+    if (!wo) return res.status(404).json({ message: 'Work order not found' });
+
+    const pastDueDate = new Date();
+    pastDueDate.setDate(pastDueDate.getDate() - Number(days));
+
+    await WorkOrder.updateOne(
+      { _id: workOrderId },
+      { $set: { 'invoiceData.dueDate': pastDueDate.toISOString().slice(0, 10), paid: false } }
+    );
+
+    res.json({ ok: true, workOrderId, dueDate: pastDueDate.toISOString().slice(0,10) });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Run the interest bot once (with optional "now")
+router.post('/test/run-interest-once', async (req, res) => {
+  try {
+    const { nowISO } = req.body || {};
+    const now = nowISO ? new Date(nowISO) : new Date();
+    await runInterestReminderCycle(now);
+    res.json({ ok: true, ranAt: now.toISOString() });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
 // Call the interest bot function
 await runInterestReminderCycle();
