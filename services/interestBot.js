@@ -2,7 +2,7 @@
 const Invoice = require('../models/invoice');
 const ControlUser = require('../models/controluser');
 const { currentTotal } = require('../utils/invoiceMath');
-const { generateInvoicePdf } = require('../services/invoicePdf'); // <-- use the Invoice PDF maker
+const { generateInvoicePdf } = require('../services/invoicePDF'); // <-- use the Invoice PDF maker
 const { transporter7 } = require('../utils/emailConfig');
 
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.trafficbarriersolutions.com';
