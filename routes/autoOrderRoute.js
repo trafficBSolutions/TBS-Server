@@ -89,11 +89,17 @@ function toDataUri(absPath) {
 }
 
 function renderWorkOrderHTML(wo, assets) {
-  const { tbs, basic, mismatch } = wo;
+  const { tbs, basic } = wo;
   const m = tbs.morning || {};
   const js = tbs.jobsite || {};
   const keys = ['hardHats','vests','walkies','arrowBoards','cones','barrels','signStands','signs'];
 
+  // Coerce legacy string to boolean safely
+  const mismatchRaw = wo.mismatch;
+  const mismatch =
+    typeof mismatchRaw === 'boolean'
+      ? mismatchRaw
+      : String(mismatchRaw).toLowerCase() === 'true';
   return `<!doctype html>
 <html>
 <head>
@@ -356,7 +362,7 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       return res.status(400).json({ error: 'First two flaggers are required' });
     }
     
-    if (!keys.every(k => m[k]?.start !== undefined && m[k]?.end !== undefined)) {
+    if (!keys.every(k => m?.[k] && m[k].start !== '' && m[k].end !== '')) {
       return res.status(400).json({ error: 'All morning checklist fields are required' });
     }
     
@@ -364,7 +370,7 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
     const firstFiveOk = js.visibility && js.communication && js.siteForeman && js.signsAndStands && js.conesAndTaper;
     if (!firstFiveOk) return res.status(400).json({ error: 'First 5 jobsite checklist items are required' });
 
-    const mismatchServer = keys.some(k => Number(m[k].start) !== Number(m[k].end));
+ const mismatchServer = keys.some(k => Number(m?.[k]?.start ?? NaN) !== Number(m?.[k]?.end ?? NaN));
     if (mismatchServer && !js.equipmentLeft) {
       return res.status(400).json({ error: 'Equipment Left After Hours must be checked when counts mismatch' });
     }
@@ -376,7 +382,7 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       scheduledDate: scheduled,
       basic: { ...basic, client: basic.client || basic.company, foremanName },
       tbs,
-      mismatch: !!(mismatch || mismatchServer),
+      mismatch: mismatchServer,
       ...(foremanSignature ? { foremanSignature } : {}),
       ...(photos.length > 0 ? { photos } : {})
     });
