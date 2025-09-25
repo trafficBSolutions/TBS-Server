@@ -15,12 +15,13 @@ const WorkOrder = require('../models/workorder');
 const runInterestReminderCycle = require('../services/interestBot');
 
 // Set the due date to a past date
-const workOrder = await WorkOrder.findById(workOrderId);
+(async () => {
+  const workOrder = await WorkOrder.findById(workOrderId);
 if (workOrder) {
   const pastDueDate = new Date();
   pastDueDate.setDate(pastDueDate.getDate() - 15); // Set to 15 days ago for testing
   await WorkOrder.updateOne({ _id: workOrder._id }, { $set: { 'invoiceData.dueDate': pastDueDate.toISOString().slice(0, 10) } });
-}
+}});
 
 // Call the interest bot function
 await runInterestReminderCycle();
