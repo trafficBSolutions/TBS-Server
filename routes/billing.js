@@ -49,8 +49,6 @@ router.post('/test/run-interest-once', async (req, res) => {
   }
 });
 
-// Call the interest bot function
-await runInterestReminderCycle();
 
 function toDataUri(absPath) {
   try {
