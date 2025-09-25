@@ -505,7 +505,8 @@ router.post('/mark-paid', async (req, res) => {
         currentAmount: remainingBalance,
         lastPaymentAmount: actualPaid,
         lastPaymentAt: new Date(),
-        lastManualTotalOwed: totalOwedFinal
+        lastManualTotalOwed: totalOwedFinal,
+        interestDisabled: isPaidInFull ? true : undefined
       } },
       { runValidators: false }
     );
@@ -634,10 +635,11 @@ router.post('/process-late-fees', async (req, res) => {
     
     // Find all billed but unpaid work orders
     const unpaidInvoices = await WorkOrder.find({
-      billed: true,
-      paid: { $ne: true },
-      billedAt: { $exists: true }
-    });
+  billed: true,
+  paid: { $ne: true },
+  billedAt: { $exists: true }
+});
+
 
     let processed = 0;
     let emailsSent = 0;
