@@ -11,7 +11,19 @@ const requireInvoiceAdmin = require('../middleware/requireInvoiceAdmin');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+const WorkOrder = require('../models/workorder');
+const runInterestReminderCycle = require('../services/interestBot');
 
+// Set the due date to a past date
+const workOrder = await WorkOrder.findById(workOrderId);
+if (workOrder) {
+  const pastDueDate = new Date();
+  pastDueDate.setDate(pastDueDate.getDate() - 15); // Set to 15 days ago for testing
+  await WorkOrder.updateOne({ _id: workOrder._id }, { $set: { 'invoiceData.dueDate': pastDueDate.toISOString().slice(0, 10) } });
+}
+
+// Call the interest bot function
+await runInterestReminderCycle();
 function toDataUri(absPath) {
   try {
     if (!fs.existsSync(absPath)) {
@@ -45,6 +57,17 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
   ).join('');
   
   console.log('[PDF] serviceRowsHTML:', serviceRowsHTML);
+// routes/billing.js  (inside renderInvoiceHTML, after serviceRowsHTML is built)
+
+const lateInterest = Number(invoiceData.lateInterest || 0);
+const lateSteps    = Number(invoiceData.lateSteps || 0);
+const interestRowHTML = lateInterest > 0
+  ? `<tr>
+       <td><strong>Late Interest (2.5% × ${lateSteps} step${lateSteps === 1 ? '' : 's'})</strong></td>
+       <td style="text-align:center;">–</td>
+       <td style="text-align:right;"><strong>${formatCurrency(lateInterest)}</strong></td>
+     </tr>`
+  : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -121,9 +144,11 @@ function renderInvoiceHTML(workOrder, manualAmount, assets, invoiceData = {}) {
         <th style="text-align:right;">AMOUNT</th>
       </tr>
     </thead>
-    <tbody>
-      ${serviceRowsHTML || '<tr><td colspan="3" style="text-align:center;font-style:italic;">No services listed</td></tr>'}
-    </tbody>
+<tbody>
+  ${serviceRowsHTML || '<tr><td colspan="3" style="text-align:center;font-style:italic;">No services listed</td></tr>'}
+  ${interestRowHTML}
+</tbody>
+
   </table>
   
   <div class="totals">
