@@ -31,7 +31,7 @@ async function main() {
 
   // Daily at 09:00 Eastern (handles DST automatically)
   cron.schedule(
-    '0 9 * * *',
+    '0 14 * * *',
     () => safeRun('cron 09:00 America/New_York'),
     { timezone: 'America/New_York' }
   );
