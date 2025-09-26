@@ -24,24 +24,29 @@ async function main() {
   await mongoose.connect(uri);
   console.log('[interestBot] connected; scheduling daily run at 09:00 America/New_York');
 
-  // Optional: run once on boot (toggle via env)
+  // Optional: run once on boot (set INTEREST_RUN_ON_BOOT=1 in Render env)
   if (process.env.INTEREST_RUN_ON_BOOT === '1') {
     await safeRun('boot');
   }
 
-  // Daily at 09:00 Eastern (handles DST automatically)
-cron.schedule('0 9 * * *',  () => safeRun('cron 09:00 America/New_York'), { timezone: 'America/New_York' });
+  // Daily at 09:00 Eastern (DST-safe because of timezone option)
+  cron.schedule(
+    '0 9 * * *',
+    () => safeRun('cron 09:00 America/New_York'),
+    { timezone: 'America/New_York' }
+  );
+
+  console.log('[interestBot] worker is idle, waiting for cron…');
+}
 
 // Graceful shutdown for Render
 process.on('SIGTERM', async () => {
   console.log('[interestBot] SIGTERM: closing Mongo…');
-  await mongoose.disconnect();
-  process.exit(0);
+  try { await mongoose.disconnect(); } finally { process.exit(0); }
 });
 process.on('SIGINT', async () => {
   console.log('[interestBot] SIGINT: closing Mongo…');
-  await mongoose.disconnect();
-  process.exit(0);
+  try { await mongoose.disconnect(); } finally { process.exit(0); }
 });
 
 main().catch(err => {
