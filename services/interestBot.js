@@ -1,63 +1,63 @@
 // services/interestBot.js
 const Invoice = require('../models/invoice');
-const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.trafficbarriersolutions.com';
 
-async function buildAttachment(inv) {
-  // lazy require breaks cycles with invoicePDF/controluser
+async function buildAttachment(inv, due) {
   const ControlUser = require('../models/controluser');
-  const { generateInvoicePdf } = require('../services/invoicePDF');
+  const { generateInvoicePdfFromInvoice } = require('../services/invoicePDF');
 
   const job = inv.job ? await ControlUser.findById(inv.job).lean() : null;
-  const pdfResult = await generateInvoicePdf(inv, null, job || {});
-  if (!pdfResult) return null;
+  const pdfBuffer = await generateInvoicePdfFromInvoice(inv, due, job || {});
+  if (!pdfBuffer) return null;
 
-  return Buffer.isBuffer(pdfResult)
-    ? { filename: `invoice_${inv._id}.pdf`, content: pdfResult, contentType: 'application/pdf' }
-    : typeof pdfResult === 'string'
-    ? { filename: `invoice_${inv._id}.pdf`, path: pdfResult, contentType: 'application/pdf' }
-    : null;
+  return {
+    filename: `invoice_${inv._id}.pdf`,
+    content: pdfBuffer,
+    contentType: 'application/pdf'
+  };
 }
 
 async function sendInterestEmail(inv, due) {
-  // lazy require for the mailer
   const { transporter7 } = require('../utils/emailConfig');
 
-  const subject = `Invoice ${inv._id}: Updated balance $${Number(due.total || 0).toFixed(2)}`;
-  const payUrl = `${BASE_URL}/pay/${inv.publicKey || ''}`;
+  const subject = `INVOICE REMINDER – ${inv.company} – $${Number(due.total || 0).toFixed(2)}`;
 
-  const text = `Hello,
-
-This is a friendly reminder regarding your outstanding invoice.
-
-Principal: $${Number(due.principal||0).toFixed(2)}
-Interest steps at 2.5% (simple): ${Number(due.steps||0)}
-Interest due: $${Number(due.interest||0).toFixed(2)}
-Current total: $${Number(due.total||0).toFixed(2)}
-
-Pay by card: ${payUrl}
-Prefer to mail a check? Click “I’ll mail a check” on that page so we know it’s on the way.
-
-Note: Interest is a flat 2.5% of the original principal beginning 21 days after the invoice was sent, and every 14 days thereafter.
-
-Thank you,
-Traffic & Barrier Solutions, LLC`;
-
+  // Styled body similar to your billing.js email, but with the three numbers + Leah message
   const html = `
-    <p>Hello,</p>
-    <p>This is a friendly reminder regarding your outstanding invoice.</p>
-    <ul>
-      <li>Principal: $${Number(due.principal||0).toFixed(2)}</li>
-      <li>Interest steps at 2.5% (simple): ${Number(due.steps||0)}</li>
-      <li>Interest due: $${Number(due.interest||0).toFixed(2)}</li>
-      <li><b>Current total: $${Number(due.total||0).toFixed(2)}</b></li>
-    </ul>
-    <p>Pay by card: <a href="${payUrl}">${payUrl}</a></p>
-    <p>Prefer to mail a check? Click “I’ll mail a check” on that page so we know it’s on the way.</p>
-    <p><small>Note: Interest is a flat 2.5% of the original principal beginning 21 days after the invoice was sent, and every 14 days thereafter.</small></p>
-    <p>Thank you,<br/>Traffic & Barrier Solutions, LLC</p>
-  `;
+  <html>
+    <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+      <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+        <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">
+          Invoice Reminder – ${inv.company}
+        </h1>
 
-  const attachment = await buildAttachment(inv).catch(() => null);
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="margin: 6px 0; font-size: 16px;"><strong>Principal:</strong> $${Number(due.principal||0).toFixed(2)}</p>
+          <p style="margin: 6px 0; font-size: 16px;"><strong>Interest (2.5% simple × ${Number(due.steps||0)}):</strong> $${Number(due.interest||0).toFixed(2)}</p>
+          <p style="margin: 6px 0; font-size: 16px;"><strong>Current Total:</strong> $${Number(due.total||0).toFixed(2)}</p>
+        </div>
+
+        <p style="text-align:center; font-size:16px; margin: 24px 0;">
+          Please call <strong>Leah Davis</strong> for payment: <strong>(706) 913-3317</strong>
+        </p>
+
+        <div style="text-align: center; border-top: 2px solid #efad76; padding-top: 15px; margin-top: 30px;">
+          <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
+          <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+          <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
+        </div>
+      </div>
+    </body>
+  </html>`;
+
+  const text =
+`Invoice Reminder – ${inv.company}
+Principal: $${Number(due.principal||0).toFixed(2)}
+Interest (2.5% simple × ${Number(due.steps||0)}): $${Number(due.interest||0).toFixed(2)}
+Current Total: $${Number(due.total||0).toFixed(2)}
+
+Please call Leah Davis for payment: (706) 913-3317`;
+
+  const attachment = await buildAttachment(inv, due).catch(() => null);
 
   await transporter7.sendMail({
     from: 'trafficandbarriersolutions.ap@gmail.com',
@@ -69,9 +69,8 @@ Traffic & Barrier Solutions, LLC`;
   });
 }
 
-// unchanged
 async function runInterestReminderCycle(now = new Date()) {
-  const { currentTotal } = require('../utils/invoiceMath'); // lazy too, just in case
+  const { currentTotal } = require('../utils/invoiceMath');
 
   const invoices = await Invoice.find({ status: { $in: ['SENT', 'PARTIALLY_PAID'] } });
   for (const inv of invoices) {
@@ -91,34 +90,4 @@ async function runInterestReminderCycle(now = new Date()) {
   }
 }
 
-// existing exports
 module.exports = { runInterestReminderCycle };
-
-// --- CLI runner (only runs if you `node services/interestBot.js`) ---
-if (require.main === module) {
-  require('dotenv').config();
-  const mongoose = require('mongoose');
-
-  (async () => {
-    const MONGO = process.env.MONGO_URL;
-    if (!MONGO) {
-      console.error('❌ MONGO_URL missing in .env');
-      process.exit(1);
-    }
-
-    try {
-      await mongoose.connect(MONGO);
-      console.log('[interestBot] Connected. Running interest reminder cycle…');
-      await runInterestReminderCycle(new Date());
-      console.log('✅ Done.');
-    } catch (err) {
-      console.error('❌ Error running interest cycle:', err);
-      process.exitCode = 1;
-    } finally {
-      await mongoose.disconnect();
-      // Give any pending logs/telemetry a beat to flush
-      setTimeout(() => process.exit(), 50);
-    }
-  })();
-}
-
