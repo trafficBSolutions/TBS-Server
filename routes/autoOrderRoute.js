@@ -659,9 +659,10 @@ router.get('/work-orders', requireStaff, async (req, res) => {
     const allWorkOrders = await WorkOrder.find({}).sort({ createdAt: -1 });
     console.log(`[DEBUG] Total work orders in database: ${allWorkOrders.length}`);
     
-    const workOrders = await WorkOrder.find({
-      scheduledDate: { $gte: startDate, $lte: endDate }
-    }).sort({ createdAt: -1 });
+ const q = { scheduledDate: { $gte: startDate, $lte: endDate } };
+ if (req.query.company) q['basic.client'] = req.query.company;
+ const workOrders = await WorkOrder.find(q)
+  .sort({ scheduledDate: 1 });
     
     // Populate Invoice.principal for billed jobs missing amount fields
     const Invoice = require('../models/invoice');
@@ -701,5 +702,6 @@ router.get('/auth/debug', (req, res) => {
   });
 });
 module.exports = router;
+
 
 
