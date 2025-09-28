@@ -195,7 +195,6 @@ function renderWorkOrderHTML(wo, assets) {
     </div>
     ${js.equipmentLeft && js.equipmentLeftReason ? `<div style="margin-top: 8px; padding: 5px; background: #f9f9f9; border-radius: 3px;"><strong>Equipment Left Reason:</strong> ${js.equipmentLeftReason}</div>` : ''}
     </div>
-  </div>
 
   ${wo.photos && wo.photos.length > 0 ? `
   <div class="section">
@@ -608,8 +607,8 @@ router.get('/work-orders/month', requireStaff, async (req, res) => {
     const { month, year } = req.query;
     console.log(`[DEBUG] Monthly work orders request: month=${month}, year=${year}`);
     
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59);
+const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+ const endDate   = new Date(Date.UTC(year, month, 0, 23, 59, 59));
     console.log(`[DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
     const workOrders = await WorkOrder.find({
@@ -702,3 +701,4 @@ router.get('/auth/debug', (req, res) => {
   });
 });
 module.exports = router;
+
