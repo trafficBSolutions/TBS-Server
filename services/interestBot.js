@@ -18,6 +18,18 @@ async function buildAttachment(inv, due) {
 
 async function sendInterestEmail(inv, due) {
   const { transporter7 } = require('../utils/emailConfig');
+  const ControlUser = require('../models/controluser');
+
+  // Fallback if inv.companyEmail is empty
+  let toEmail = inv.companyEmail;
+  if (!toEmail && inv.job) {
+    const job = await ControlUser.findById(inv.job).lean().catch(() => null);
+    toEmail = job?.invoiceData?.selectedEmail || job?.basic?.email || '';
+  }
+  if (!toEmail) {
+    console.log(`[interestBot] skip ${inv._id}: no recipient email`);
+    return;
+  }
 
   const subject = `INVOICE REMINDER – ${inv.company} – $${Number(due.total || 0).toFixed(2)}`;
 
@@ -59,9 +71,9 @@ Please call Leah Davis for payment: (706) 913-3317`;
 
   const attachment = await buildAttachment(inv, due).catch(() => null);
 
-  await transporter7.sendMail({
+await transporter7.sendMail({
     from: 'trafficandbarriersolutions.ap@gmail.com',
-    to: inv.companyEmail,
+    to: toEmail,                         // ✅ use the resolved email
     subject,
     text,
     html,
@@ -91,3 +103,4 @@ async function runInterestReminderCycle(now = new Date()) {
 }
 
 module.exports = { runInterestReminderCycle };
+
