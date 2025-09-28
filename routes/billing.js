@@ -288,17 +288,10 @@ router.use((req, res, next) => {
 
 // Skip auth for bill-workorder and mark-paid routes
 router.use((req, res, next) => {
-  if (req.path === '/bill-workorder' || req.path === '/mark-paid') {
-    console.log('Skipping auth for', req.path);
-    return next();
-  }
   auth(req, res, next);
 });
 
 router.use((req, res, next) => {
-  if (req.path === '/bill-workorder' || req.path === '/mark-paid') {
-    return next();
-  }
   requireInvoiceAdmin(req, res, next);
 });
 
