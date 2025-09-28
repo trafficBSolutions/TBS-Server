@@ -522,7 +522,8 @@ router.post('/process-late-fees', async (req, res) => {
                 sheetTotal: newTotal
               };
               
-const pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);          
+// ✅ use the new total and the data object you just built
+const pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, newTotal, updatedInvoiceData);          
               const emailHtml = `
                 <html>
                   <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
