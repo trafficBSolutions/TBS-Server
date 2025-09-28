@@ -38,20 +38,6 @@ router.post('/test/backdate-due', async (req, res) => {
     res.status(500).json({ message: e.message });
   }
 });
-// routes/billing.js (add)
-router.post('/bill-plan', async (req, res) => {
-  try {
-    const { planId, manualAmount, emailOverride } = req.body || {};
-    if (!planId || !manualAmount) return res.status(400).json({ message: 'planId and manualAmount required' });
-    // TODO: fetch plan model if you have one, or at minimum send the invoice email:
-    // const pdf = await generateInvoicePdfForPlan(plan, manualAmount);  // implement similar to work orders
-    // await transporter7.sendMail({ to: emailOverride, subject: ..., html: ..., attachments:[{filename:'invoice.pdf', content: pdf }]});
-    return res.json({ ok: true });
-  } catch (e) {
-    console.error('bill-plan failed:', e);
-    res.status(500).json({ message: 'Failed to bill plan' });
-  }
-});
 
 // Run the interest bot once (with optional "now")
 router.post('/test/run-interest-once', async (req, res) => {
@@ -150,11 +136,7 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
   
   <div class="footer">
     <p><strong>Thank you for your payment!</strong></p>
-    + <p>${
-   remainingBalance === 0
-     ? 'This receipt confirms payment has been received in full.'
-    : 'This receipt confirms a partial payment was received.'
- }</p>
+    <p>This receipt confirms payment has been received in full.</p>
   </div>
 </body>
 </html>`;
@@ -288,10 +270,17 @@ router.use((req, res, next) => {
 
 // Skip auth for bill-workorder and mark-paid routes
 router.use((req, res, next) => {
+  if (req.path === '/bill-workorder' || req.path === '/mark-paid') {
+    console.log('Skipping auth for', req.path);
+    return next();
+  }
   auth(req, res, next);
 });
 
 router.use((req, res, next) => {
+  if (req.path === '/bill-workorder' || req.path === '/mark-paid') {
+    return next();
+  }
   requireInvoiceAdmin(req, res, next);
 });
 
@@ -508,9 +497,7 @@ router.post('/process-late-fees', async (req, res) => {
         
         if (lateFeeAmount > (workOrder.lateFees || 0)) {
           const newLateFees = lateFeeAmount;
-           const principal = workOrder.billedAmount || workOrder.invoiceTotal || 0;
- const alreadyPaid = (principal + (workOrder.lateFees || 0)) - (workOrder.currentAmount || principal);
- const newTotal = Math.max(0, (principal + newLateFees) - alreadyPaid);
+          const newTotal = (workOrder.billedAmount || 0) + newLateFees;
           
           await WorkOrder.updateOne(
             { _id: workOrder._id },
@@ -535,8 +522,7 @@ router.post('/process-late-fees', async (req, res) => {
                 sheetTotal: newTotal
               };
               
-// ✅ use the new total and the data object you just built
-const pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, newTotal, updatedInvoiceData);          
+const pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);          
               const emailHtml = `
                 <html>
                   <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
