@@ -83,24 +83,36 @@ await transporter7.sendMail({
 
 async function runInterestReminderCycle(now = new Date()) {
   const { currentTotal } = require('../utils/invoiceMath');
-
   const invoices = await Invoice.find({ status: { $in: ['SENT', 'PARTIALLY_PAID'] } });
+
+  let checked = 0, emailed = 0, skippedNoEmail = 0, skippedNoStep = 0;
   for (const inv of invoices) {
+    checked++;
     const due = currentTotal(inv, now);
     const prev = Number(inv.interestStepsEmailed || 0);
     const cur  = Number(due.steps || 0);
-    if (cur > prev && inv.companyEmail) {
-      await sendInterestEmail(inv, due);
-      await Invoice.updateOne(
-        { _id: inv._id },
-        {
-          $set: { interestStepsEmailed: cur, lastReminderAt: now },
-          $push: { history: { at: now, action: `INTEREST_EMAIL_STEP_${cur}`, by: 'bot' } }
-        }
-      );
+
+    if (cur <= prev) { skippedNoStep++; continue; }
+
+    // resolve recipient as in #2
+    let toEmail = inv.companyEmail;
+    if (!toEmail && inv.job) {
+      const ControlUser = require('../models/controluser');
+      const job = await ControlUser.findById(inv.job).lean().catch(() => null);
+      toEmail = job?.invoiceData?.selectedEmail || job?.basic?.email || '';
     }
+    if (!toEmail) { skippedNoEmail++; continue; }
+
+    await sendInterestEmail(inv, due);
+    emailed++;
+    await Invoice.updateOne(
+      { _id: inv._id },
+      {
+        $set: { interestStepsEmailed: cur, lastReminderAt: now },
+        $push: { history: { at: now, action: `INTEREST_EMAIL_STEP_${cur}`, by: 'bot' } }
+      }
+    );
   }
+  console.log(`[interestBot] checked=${checked} emailed=${emailed} noStep=${skippedNoStep} noEmail=${skippedNoEmail}`);
 }
-
 module.exports = { runInterestReminderCycle };
-
