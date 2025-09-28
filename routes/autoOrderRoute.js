@@ -70,9 +70,9 @@ function getUserFromReq(req) {
 const ALLOWED_ROLES = new Set(['admin','employee','invoice','invoice_admin','invoiceAdmin','superadmin']);
 
 function requireStaff(req, res, next) {
-  // Temporary bypass for development - allow all requests
-  console.log('Bypassing authentication for development');
-  req.user = { email: 'dev@tbs.com', role: 'admin', id: 'dev-user' };
+  const user = getUserFromReq(req);
+  if (!user || !ALLOWED_ROLES.has(user.role)) return res.status(401).json({ message: 'Unauthorized' });
+  req.user = user;
   next();
 }
 
@@ -701,4 +701,5 @@ router.get('/auth/debug', (req, res) => {
   });
 });
 module.exports = router;
+
 
