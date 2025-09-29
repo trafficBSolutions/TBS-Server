@@ -515,8 +515,9 @@ router.post('/mark-paid', async (req, res) => {
     );
 
     // Update Invoice record if it exists
+    console.log('[mark-paid] WorkOrder invoiceId:', workOrder.invoiceId, 'isPaidInFull:', isPaidInFull);
     if (workOrder.invoiceId) {
-      await Invoice.updateOne(
+      const invoiceUpdateResult = await Invoice.updateOne(
         { _id: workOrder.invoiceId },
         { $set: {
           status: isPaidInFull ? 'PAID' : 'PARTIALLY_PAID',
@@ -525,6 +526,27 @@ router.post('/mark-paid', async (req, res) => {
           principal: totalOwedFinal
         }}
       );
+      console.log('[mark-paid] Invoice update result:', invoiceUpdateResult);
+    } else {
+      console.log('[mark-paid] No invoiceId found on WorkOrder - trying to find Invoice by job field');
+      // Fallback: try to find Invoice by job field (WorkOrder._id)
+      try {
+        const invoiceUpdateResult = await Invoice.updateOne(
+          { job: workOrder._id },
+          { $set: {
+            status: isPaidInFull ? 'PAID' : 'PARTIALLY_PAID',
+            paidAt: isPaidInFull ? new Date() : undefined,
+           paymentMethod: paymentMethod === 'card' ? 'CARD' : 'CHECK',
+            principal: totalOwedFinal
+          }}
+        );
+        console.log('[mark-paid] Invoice update by job field result:', invoiceUpdateResult);
+        if (invoiceUpdateResult.matchedCount === 0) {
+          console.log('[mark-paid] No Invoice found for WorkOrder:', workOrder._id);
+        }
+      } catch (err) {
+        console.error('[mark-paid] Failed to update Invoice by job field:', err);
+      }
     }
 
     // Send receipt email
