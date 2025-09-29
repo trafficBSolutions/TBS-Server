@@ -429,9 +429,9 @@ router.use((req, res, next) => {
   next();
 });
 
-// Skip auth for bill-workorder and mark-paid routes
+// Skip auth for bill-workorder, mark-paid, and invoice-status routes
 router.use((req, res, next) => {
-  if (req.path === '/bill-workorder' || req.path === '/mark-paid') {
+  if (req.path === '/bill-workorder' || req.path === '/mark-paid' || req.path === '/invoice-status') {
     console.log('Skipping auth for', req.path);
     return next();
   }
@@ -439,7 +439,7 @@ router.use((req, res, next) => {
 });
 
 router.use((req, res, next) => {
-  if (req.path === '/bill-workorder' || req.path === '/mark-paid') {
+  if (req.path === '/bill-workorder' || req.path === '/mark-paid' || req.path === '/invoice-status') {
     return next();
   }
   requireInvoiceAdmin(req, res, next);
