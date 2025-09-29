@@ -455,11 +455,13 @@ router.post('/mark-paid', async (req, res) => {
     if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
     if (workOrder.paid) return res.status(409).json({ message: 'Work order already paid' });
     
-    // If WorkOrder is missing amount fields but has an invoice, populate from Invoice.principal
-    if (workOrder.billed && workOrder.invoiceId && !workOrder.billedAmount && !workOrder.invoiceTotal && !workOrder.currentAmount) {
+    // Always fetch Invoice data for authoritative amount if available
+    let invoicePrincipal = 0;
+    if (workOrder.invoiceId) {
       try {
         const invoice = await Invoice.findById(workOrder.invoiceId).lean();
         if (invoice?.principal) {
+          invoicePrincipal = invoice.principal;
           workOrder.invoicePrincipal = invoice.principal;
         }
       } catch (err) {
@@ -472,6 +474,7 @@ router.post('/mark-paid', async (req, res) => {
       enteredTotalOwed > 0
         ? enteredTotalOwed
         : Number(
+            invoicePrincipal ?? // PRIORITY: Use authoritative Invoice.principal from MongoDB
             workOrder.invoiceData?.sheetTotal ??
             workOrder.invoiceTotal ??
             workOrder.invoicePrincipal ??
