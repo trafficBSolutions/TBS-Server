@@ -143,7 +143,6 @@ async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmou
   return buf;
 }
 // services/invoiceLatePDF.js
-const { printHtmlToPdfBuffer } = require('./invoicePDF'); // reuse same printer
 function money(n){ return `$${Number(n||0).toFixed(2)}`; }
 
 function lateContentHTML({ rows }) {
