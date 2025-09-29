@@ -870,5 +870,36 @@ const mailOptions = {
     res.status(500).json({ message: 'Failed to bill work order', error: e.message });
   }
 });
+// Get invoice status for one or more work orders
+router.get('/invoice-status', async (req, res) => {
+  try {
+    const idsParam = (req.query.workOrderIds || '').trim();
+    if (!idsParam) return res.json({ byWorkOrder: {} });
+
+    const ids = idsParam.split(',').map(s => s.trim()).filter(Boolean);
+    const objectIds = ids.map(id => new mongoose.Types.ObjectId(id));
+
+    const invoices = await Invoice.find({ job: { $in: objectIds } })
+      .select('_id job principal status paidAt sentAt publicKey')
+      .lean();
+
+    // Normalize into a dictionary by workOrderId
+    const byWorkOrder = {};
+    for (const inv of invoices) {
+      byWorkOrder[String(inv.job)] = {
+        invoiceId: String(inv._id),
+        status: inv.status,                // DRAFT | SENT | PARTIALLY_PAID | PAID | VOID
+        principal: Number(inv.principal) || 0,
+        sentAt: inv.sentAt || null,
+        paidAt: inv.paidAt || null,
+        publicKey: inv.publicKey || null
+      };
+    }
+    res.json({ byWorkOrder });
+  } catch (e) {
+    console.error('[GET /billing/invoice-status] error:', e);
+    res.status(500).json({ message: 'Failed to load invoice status' });
+  }
+});
 
 module.exports = router;
