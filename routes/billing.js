@@ -8,7 +8,6 @@
  const auth = require('../middleware/auth');
 const requireInvoiceAdmin = require('../middleware/requireInvoiceAdmin');
  const { generateInvoicePdfFromWorkOrder } = require('../services/invoicePDF');
-const puppeteer = require('puppeteer');
 const { loadStdAssets } = require('../services/v42Base'); // add this
 const { printHtmlToPdfBuffer } = require('../services/invoicePDF'); // optional: reuse the shared printer
 const fs = require('fs');
@@ -54,7 +53,7 @@ router.post('/test/run-interest-once', async (req, res) => {
 const os = require('os');
 
 async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, totalOwedAmount = null) {
-  const logoPath = path.resolve(__dirname, '../public/TBSPDF7.png');
+  const { logo } = loadStdAssets();
   const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   
   const paidAmount = Number(paymentAmount) || 0;
@@ -88,7 +87,7 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
 <body>
   <div class="header">
     <div class="brand">
-      <img src="${assets.logo}" alt="TBS Logo" />
+      <img src="${logo}" alt="TBS Logo" />
       <div class="company">
         <div style="font-size:14px; font-weight:bold;">TBS</div>
         <div>Traffic and Barrier Solutions, LLC</div>
@@ -140,47 +139,14 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
 </body>
 </html>`;
 
-  let browser;
   try {
-    const possiblePaths = [
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-      process.env.PUPPETEER_EXECUTABLE_PATH
-    ].filter(Boolean);
-
-    let executablePath;
-    for (const chromePath of possiblePaths) {
-      if (fs.existsSync(chromePath)) {
-        executablePath = chromePath;
-        break;
-      }
-    }
-
-    browser = await puppeteer.launch({
-      headless: true,
-      executablePath,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
-    });
-
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1240, height: 1754, deviceScaleFactor: 2 });
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
-    await page.emulateMediaType('screen');
-
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '18mm', right: '18mm', bottom: '18mm', left: '18mm' }
-    });
-    
+    const pdfBuffer = await printHtmlToPdfBuffer(html);
     console.log('[receipt] PDF generated, size:', pdfBuffer.length, 'bytes');
     return pdfBuffer;
   } catch (e) {
     console.error('[receipt] PDF generation failed:', e);
     return null;
-  } finally {
-    if (browser) await browser.close();
-  }
+    }
 }
  const { exportInvoicesXlsx } = require('../services/invoiceExcel');
  const { currentTotal } = require('../utils/invoiceMath');
