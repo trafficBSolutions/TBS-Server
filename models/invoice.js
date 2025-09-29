@@ -20,7 +20,7 @@ const InvoiceSchema = new mongoose.Schema({
   principal: { type: Number, required: true },    // dollars
   interestRate: { type: Number, default: 0.025 }, // 2.5% per step
 
-  status: { type: String, enum: ['DRAFT','SENT','PAID','VOID'], default: 'DRAFT' },
+  status: { type: String, enum: ['DRAFT','SENT','PARTIALLY_PAID','PAID','VOID'], default: 'DRAFT' },
   sentAt: { type: Date },
   paidAt: { type: Date },
 
