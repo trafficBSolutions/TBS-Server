@@ -31,7 +31,10 @@ router.post('/test/backdate-due', async (req, res) => {
       { _id: workOrderId },
       { $set: { 'invoiceData.dueDate': pastDueDate.toISOString().slice(0, 10), paid: false } }
     );
-
+ await Invoice.updateOne(
+   { job: workOrderId },
+   { $set: { dueDate: pastDueDate } }
+ );
     res.json({ ok: true, workOrderId, dueDate: pastDueDate.toISOString().slice(0,10) });
   } catch (e) {
     res.status(500).json({ message: e.message });
