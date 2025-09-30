@@ -45,8 +45,8 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:20px;}
   max-width:220px;                 /* keeps the stack compact */
 }
 .brand-stack .cone{
-  height:72px;                     /* simple, predictable size */
-  max-width:90px;                 /* extra guard */
+  height:56px;          /* smaller cone */
+  max-width:70px;       /* keep it compact */
   width:auto; object-fit:contain;
 }
 .brand-stack .logo{
