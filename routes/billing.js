@@ -569,11 +569,12 @@ router.post('/bill-workorder', async (req, res) => {
       // Generate invoice PDF
       let pdfBuffer = null;
       try {
-        console.log('Starting PDF generation…');
-        pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
-      } catch (e) {
-        console.error('[invoice] PDF generation failed:', e);
-      }
+  console.log('[invoice] starting PDF generation…');
+  pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
+  console.log('[invoice] PDF buffer size:', pdfBuffer?.length || 0);
+} catch (e) {
+  console.error('[invoice] PDF generation failed:', e?.stack || e);
+}
 
       const emailHtml = `
         <html>
@@ -606,22 +607,31 @@ const mailOptions = {
   html: emailHtml,
   attachments: []
 };
-      if (pdfBuffer && pdfBuffer.length > 0) {
-        console.log('Adding PDF attachment, size:', pdfBuffer.length, 'bytes');
-        const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
-        mailOptions.attachments.push({
-          filename: `invoice-${safeClient}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf'
-        });
-      } else {
-        console.warn('[invoice] No PDF buffer available; sending without attachment');
-      }
+if (pdfBuffer && pdfBuffer.length > 0) {
+  const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
+  mailOptions.attachments.push({
+    filename: `invoice-${safeClient}.pdf`,
+    content: pdfBuffer,
+    contentType: 'application/pdf'
+  });
+} else {
+  // Fallback so “attached: true” is still true with a readable artifact
+  mailOptions.attachments.push({
+    filename: 'invoice.html',
+    content: emailHtml,
+    contentType: 'text/html'
+  });
+  console.warn('[invoice] PDF missing; attaching HTML fallback');
+}
       try {
         const info = await transporter7.sendMail(mailOptions);
-        console.log('[invoice] email sent', { to: emailOverride, messageId: info.messageId, attached: !!mailOptions.attachments.length });
-        
-
+console.log('[invoice] email sent', {
+  to: emailOverride,
+  messageId: info.messageId,
+  attached: !!mailOptions.attachments.length,
+  attachmentTypes: mailOptions.attachments.map(a => a.contentType)
+});
+      
       } catch (emailError) {
         console.error('Email sending failed:', emailError);
       }
