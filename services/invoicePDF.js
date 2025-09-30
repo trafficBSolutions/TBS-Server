@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const { renderV42Document, loadStdAssets } = require('./v42Base');
 
+/* ---------- shared PDF printer ---------- */
 async function printHtmlToPdfBuffer(html) {
   let browser;
   try {
@@ -38,52 +39,86 @@ async function printHtmlToPdfBuffer(html) {
   }
 }
 
+/* ---------- helpers ---------- */
 function money(n){ return `$${Number(n||0).toFixed(2)}`; }
 
-/** includeFLV=true adds the section at the bottom of the table */
-function serviceTableHTML(rows, { includeFLV = true } = {}) {
-  const normalRows = (rows?.length ? rows : []).map(r => `
+/* 3-column service line items (SERVICE | TAXED | AMOUNT) */
+function serviceLineItemsHTML(rows) {
+  const body = (rows?.length ? rows : []).map(r => `
     <tr>
       <td>${r.service}</td>
-      <td style="text-align:center;">${r.taxed ? 'X' : ''}</td>
-      <td style="text-align:right;">${money(r.amount)}</td>
-    </tr>`).join('');
-
-  const flvSection = includeFLV ? `
-    <tr class="section"><td><strong>Fully Loaded Vehicle</strong></td><td></td><td></td></tr>
-    <tr><td>• 8 to 10 signs for flagging and lane operations</td><td></td><td></td></tr>
-    <tr><td>• 2 STOP &amp; GO paddles &nbsp;&nbsp;• 2 Certified Flaggers &amp; Vehicle with Strobes</td><td></td><td></td></tr>
-    <tr><td>• 30 Cones &amp; 2 Barricades</td><td></td><td></td></tr>
-  ` : '';
-
-  const body = (normalRows || '') + flvSection;
+      <td style="text-align:center; width:90px;">${r.taxed ? 'X' : ''}</td>
+      <td style="text-align:right; width:160px;">${money(r.amount)}</td>
+    </tr>`).join('') || `
+    <tr><td colspan="3" style="text-align:center;font-style:italic;">No services listed</td></tr>`;
 
   return `
   <table class="table">
     <thead>
       <tr>
         <th>SERVICE</th>
-        <th style="text-align:center;">TAXED</th>
-        <th style="text-align:right;">AMOUNT</th>
+        <th style="text-align:center; width:90px;">TAXED</th>
+        <th style="text-align:right; width:160px;">AMOUNT</th>
       </tr>
     </thead>
-    <tbody>
-      ${body || '<tr><td colspan="3" style="text-align:center;font-style:italic;">No services listed</td></tr>'}
-    </tbody>
-  </table>
-
-  <div class="notes">
-    <div>Per Secondary Street Intersections/Closing signs: $25.00</div>
-    <div>Signs and additional equipment left after hours: $- per/sign</div>
-    <div>Arrow Board $- ( Used ) &nbsp; Message Board $- ( )</div>
-    <div>Mobilization: If applicable: 25 miles from TBS\'s building • $0.82/mile/vehicle (–)</div>
-    <div>All quotes based off a "TBS HR" – hour day, anything over 8 hours will be billed at $-/hr per crew member. CREWS OF ____ WORKED ____ HRS OT</div>
-    <div>TBS HOURS: ____ AM – ____ PM</div>
-  </div>`;
+    <tbody>${body}</tbody>
+  </table>`;
 }
 
+/* One-column notes list INSIDE the Services section */
+function serviceNotesOneColHTML() {
+  return `
+  <table class="onecol-table">
+    <tbody>
+      <tr>
+        <td>
+          <ul class="dotlist">
+            <li>Per Secondary Street Intersections/Closing signs: $25.00</li>
+            <li>Signs and additional equipment left after hours: $- per/sign</li>
+            <li>Arrow Board $- ( Used ) &nbsp; Message Board $- ( )</li>
+            <li>Mobilization: If applicable: 25 miles from TBS's building • $0.82/mile/vehicle (–)</li>
+            <li>All quotes based off a "TBS HR" – hour day, anything over 8 hours will be billed at $-/hr per crew member. CREWS OF ____ WORKED ____ HRS OT</li>
+            <li>TBS HOURS: ____ AM – ____ PM</li>
+          </ul>
+        </td>
+      </tr>
+    </tbody>
+  </table>`;
+}
 
-function totalsHTML({subtotal, taxRate, taxDue, other, total}) {
+/* Whole Services section (navy heading + 3-col + one-col notes) */
+function servicesSectionHTML(rows) {
+  return `
+    <div class="section-title">SERVICE</div>
+    ${serviceLineItemsHTML(rows)}
+    ${serviceNotesOneColHTML()}
+  `;
+}
+
+/* Fully Loaded Vehicle as its own section (navy heading + one column) */
+function fullyLoadedVehicleSectionHTML() {
+  return `
+    <div class="section-title">FULLY LOADED VEHICLE</div>
+    <table class="onecol-table">
+      <tbody>
+        <tr>
+          <td>
+            <ul class="dotlist">
+              <li>8 to 10 signs for flagging and lane operations.</li>
+              <li>2 STOP &amp; GO paddles &nbsp;&nbsp; 2 Certified Flaggers &amp; Vehicle with Strobes.</li>
+              <li>30 Cones &amp; 2 Barricades.</li>
+              <li>Arrow Board upon request: additional fees will be applied.</li>
+              <li>Late payment fee will go into effect if payment is not by due date after receiving invoice.</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+/* Totals block (no collisions with “late” version) */
+function totalsBlock({subtotal, taxRate, taxDue, other, total}) {
   return `
   <div class="totals">
     <div class="row"><span>Subtotal</span><span>${money(subtotal)}</span></div>
@@ -93,21 +128,15 @@ function totalsHTML({subtotal, taxRate, taxDue, other, total}) {
   </div>`;
 }
 
-function footerHTML() {
+/* optional footer (kept minimal since FLV moved to its own section) */
+function footerBlock() {
   return `
-    <div><strong>Fully Loaded Vehicle</strong></div>
-    <div>• 8 to 10 signs for flagging and lane operations</div>
-    <div>• 2 STOP &amp; GO paddles • 2 Certified Flaggers &amp; Vehicle with Strobes</div>
-    <div>• 30 Cones &amp; 2 Barricades</div>
-    <div style="margin-top:10px;">** Arrow Board upon request: additional fees will be applied</div>
-    <div>Late payment fee will go into effect if payment is not received 30 days after receiving Invoice.</div>
     <div style="margin-top:10px;"><strong>Make all checks payable to TBS</strong></div>
     <div style="margin-top:10px;">If you have any questions about this invoice, please contact<br/>[Bryson Davis, 706-263-0715, tbsolutions3@gmail.com]</div>
     <div style="margin-top:10px; font-weight:bold;">Thank You For Your Business!</div>`;
 }
 
-// === PUBLIC API ===
-// Build from work order + editor data you already collect
+/* ---------- MAIN: build invoice from work order ---------- */
 async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmount, invoiceData = {}) {
   const { logo, cone } = loadStdAssets();
 
@@ -136,18 +165,21 @@ async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmou
       foreman: invoiceData.foreman,
       location: invoiceData.location
     },
-    contentHTML: serviceTableHTML(invoiceData.sheetRows || []),
-    totalsHTML: totalsHTML({
+    contentHTML: [
+      servicesSectionHTML(invoiceData.sheetRows || []),
+      fullyLoadedVehicleSectionHTML(),
+    ].join(''),
+    totalsHTML: totalsBlock({
       subtotal: invoiceData.sheetSubtotal ?? manualAmount ?? 0,
       taxRate:  invoiceData.sheetTaxRate  ?? 0,
       taxDue:   invoiceData.sheetTaxDue   ?? 0,
       other:    invoiceData.sheetOther    ?? 0,
       total:    invoiceData.sheetTotal    ?? manualAmount ?? 0
     }),
-    footerHTML: footerHTML()
+    footerHTML: footerBlock()
   });
 
-    console.log('[PDF][v42] generating for workOrder:', String(workOrder?._id));
+  // tag & print
   const htmlWithMarker = html.replace('<body>', '<body><!-- v42base:1 -->');
   const buf = await printHtmlToPdfBuffer(htmlWithMarker);
 
@@ -159,26 +191,30 @@ async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmou
   } catch {}
   return buf;
 }
-// services/invoiceLatePDF.js
-function money(n){ return `$${Number(n||0).toFixed(2)}`; }
 
+/* ---------- LATE/INTEREST invoice (interest bot) ---------- */
 function lateContentHTML({ rows }) {
-  // rows: [{service, taxed:false, amount}, ...]
   const body = rows.map(r => `
     <tr>
       <td>${r.service}</td>
-      <td style="text-align:center;">${r.taxed ? 'X' : ''}</td>
-      <td style="text-align:right;">${money(r.amount)}</td>
+      <td style="text-align:center; width:90px;">${r.taxed ? 'X' : ''}</td>
+      <td style="text-align:right; width:160px;">${money(r.amount)}</td>
     </tr>`).join('');
 
   return `
     <table class="table">
-      <thead><tr><th>SERVICE</th><th style="text-align:center;">TAXED</th><th style="text-align:right;">AMOUNT</th></tr></thead>
+      <thead>
+        <tr>
+          <th>SERVICE</th>
+          <th style="text-align:center; width:90px;">TAXED</th>
+          <th style="text-align:right; width:160px;">AMOUNT</th>
+        </tr>
+      </thead>
       <tbody>${body}</tbody>
     </table>`;
 }
 
-function totalsHTML({principal, interest, total}) {
+function lateTotalsBlock({principal, interest, total}) {
   return `
   <div class="totals">
     <div class="row"><span>Subtotal</span><span>${money(principal + interest)}</span></div>
@@ -215,7 +251,7 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
       location: job.location
     },
     contentHTML: lateContentHTML({ rows }),
-    totalsHTML: totalsHTML({
+    totalsHTML: lateTotalsBlock({
       principal: Number(due.principal||0),
       interest: Number(due.interest||0),
       total: Number(due.total||0)
@@ -228,4 +264,8 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
   return await printHtmlToPdfBuffer(html);
 }
 
-module.exports = { generateInvoicePdfFromWorkOrder, generateInvoicePdfFromInvoice, printHtmlToPdfBuffer };
+module.exports = {
+  generateInvoicePdfFromWorkOrder,
+  generateInvoicePdfFromInvoice,
+  printHtmlToPdfBuffer
+};
