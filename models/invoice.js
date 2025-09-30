@@ -11,7 +11,7 @@ const LineItemSchema = new mongoose.Schema({
 }, { _id: false });
 
 const InvoiceSchema = new mongoose.Schema({
-  job: { type: mongoose.Schema.Types.ObjectId, ref: 'ControlUser', required: false },
+  job: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkOrder', required: false },
   plan: { type: mongoose.Schema.Types.ObjectId, ref: 'PlanUser', required: false },
 
   company: { type: String, required: true },
@@ -34,6 +34,9 @@ const InvoiceSchema = new mongoose.Schema({
     phone: String
   },
 
+  accruedInterest: { type: Number, default: 0 },   // computed and stored by bot
+  computedTotalDue: { type: Number, default: 0 },  // principal + accruedInterest
+  lastComputedAt: { type: Date },   
   // NEW: public payment link + reminder bookkeeping
   publicKey: { type: String, default: () => randomUUID() },
   interestStepsEmailed: { type: Number, default: 0 },
