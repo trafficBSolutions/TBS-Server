@@ -82,8 +82,10 @@ await transporter7.sendMail({
 }
 
 // services/interestBot.js
+// services/interestBot.js
 async function runInterestReminderCycle(now = new Date()) {
   const { currentTotal } = require('../utils/invoiceMath');
+  const ControlUser = require('../models/controluser'); // <-- move up so we can reuse
   const invoices = await Invoice.find({ status: { $in: ['SENT', 'PARTIALLY_PAID'] } });
 
   let checked = 0, emailed = 0, skippedNoEmail = 0, skippedNoStep = 0;
@@ -91,48 +93,59 @@ async function runInterestReminderCycle(now = new Date()) {
   for (const inv of invoices) {
     checked++;
 
-    // --- NEW: base the clock off dueDate when available
-    const baseDate = inv.dueDate ? new Date(inv.dueDate) : (inv.sentAt ? new Date(inv.sentAt) : null);
+    // Resolve base date:
+    let baseDate = inv.dueDate ? new Date(inv.dueDate) : null;
+
+    // Fallback: pull from job.invoiceData.dueDate if not on invoice
+    if (!baseDate && inv.job) {
+      const job = await ControlUser.findById(inv.job).lean().catch(() => null);
+      const dueStr = job?.invoiceData?.dueDate; // "YYYY-MM-DD"
+      if (dueStr) baseDate = new Date(`${dueStr}T00:00:00Z`);
+    }
+
     if (!baseDate) { skippedNoStep++; continue; }
 
-    const MS_PER_DAY = 24 * 60 * 60 * 1000;
-    const daysPast = Math.floor((now - baseDate) / MS_PER_DAY);
-
-    // --- NEW: step schedule:
-    //  - 1 day late => step 1 (first 2.5%)
-    //  - every 14 more days => step++
-    // If you still want a grace window, subtract it from daysPast here.
+    // Calendar-day late logic (first day after due date = step 1)
+    const MS = 24 * 60 * 60 * 1000;
+    const daysPast = Math.floor((now - baseDate) / MS);
     const stepsByDue = daysPast >= 1 ? Math.floor((daysPast - 1) / 14) + 1 : 0;
 
-    // Keep using your central math (can use stepsByDue inside it if you prefer)
-    const due = currentTotal(inv, now); // If currentTotal uses sentAt/grace, replace its internal logic or bypass with stepsByDue.
-
-    // --- OPTIONAL: override due.steps with our by-due-date steps
-    if (typeof stepsByDue === 'number') {
-      due.steps = stepsByDue;
-      // recompute interest if your currentTotal didn't use stepsByDue:
-      due.interest = Number((inv.principal || 0) * (inv.interestRate || 0.025) * stepsByDue);
-      due.total = Number((inv.principal || 0) + due.interest);
-    }
+    // Central math
+    const due = currentTotal(inv, now) || {};
+    // Force our step schedule
+    due.steps = stepsByDue;
+    const principal = Number(inv.principal || 0);
+    const rate = Number(inv.interestRate || 0.025);
+    due.interest = principal * rate * stepsByDue;
+    due.total = principal + due.interest;
+    due.principal = principal;
 
     const prev = Number(inv.interestStepsEmailed || 0);
     const cur  = Number(due.steps || 0);
-
     if (cur <= prev) { skippedNoStep++; continue; }
 
-    // Resolve recipient as you already do…
+    // Resolve recipient
     let toEmail = inv.companyEmail;
     if (!toEmail && inv.job) {
-      const ControlUser = require('../models/controluser');
       const job = await ControlUser.findById(inv.job).lean().catch(() => null);
       toEmail = job?.invoiceData?.selectedEmail || job?.basic?.email || '';
     }
     if (!toEmail) { skippedNoEmail++; continue; }
 
+    // Persist computed totals (handy for UI/queries)
+    await Invoice.updateOne(
+      { _id: inv._id },
+      { $set: {
+          accruedInterest: Number(due.interest.toFixed(2)),
+          computedTotalDue: Number(due.total.toFixed(2)),
+          lastComputedAt: now
+        }}
+    );
+
     await sendInterestEmail(inv, due);
     emailed++;
 
-    // record the step
+    // Record the step we emailed
     await Invoice.updateOne(
       { _id: inv._id },
       {
@@ -141,7 +154,7 @@ async function runInterestReminderCycle(now = new Date()) {
       }
     );
   }
+
   console.log(`[interestBot] checked=${checked} emailed=${emailed} noStep=${skippedNoStep} noEmail=${skippedNoEmail}`);
 }
-
 module.exports = { runInterestReminderCycle };
