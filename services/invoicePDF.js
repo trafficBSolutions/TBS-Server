@@ -1,223 +1,317 @@
-// services/v42Base.js
-const fs = require('fs');
+// services/invoicePDF.js
+const puppeteer = require('puppeteer');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const { renderV42Document, loadStdAssets } = require('./v42Base');
 
-function toDataUri(absPath) {
+/* ---------- shared PDF printer ---------- */
+// services/invoicePDF.js
+const puppeteer = require('puppeteer');
+const fs = require('fs');
+
+async function printHtmlToPdfBuffer(html) {
+  let browser;
   try {
-    if (!fs.existsSync(absPath)) return '';
-    const ext = path.extname(absPath).toLowerCase();
-    const mime =
-      ext === '.png'  ? 'image/png'  :
-      ext === '.jpg'  ? 'image/jpeg' :
-      ext === '.jpeg' ? 'image/jpeg' :
-      ext === '.svg'  ? 'image/svg+xml' :
-      'application/octet-stream';
-    const buf = fs.readFileSync(absPath);
-    return `data:${mime};base64,${buf.toString('base64')}`;
-  } catch {
-    return '';
+    // Robust executable path resolution
+    const candidates = [];
+
+    try {
+      const p = await puppeteer.executablePath(); // works when bundled Chromium is available
+      if (p) candidates.push(p);
+    } catch (_) {}
+
+    // Common Linux paths
+    candidates.push(
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/google-chrome',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium'
+    );
+
+    // Windows paths
+    candidates.push(
+      'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
+      'C:\\\\Program Files (x86)\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe'
+    );
+
+    // Env override last (if you set it)
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      candidates.unshift(process.env.PUPPETEER_EXECUTABLE_PATH);
+    }
+
+    let executablePath = undefined;
+    for (const p of candidates) {
+      try {
+        if (p && fs.existsSync(p)) { executablePath = p; break; }
+      } catch (_) {}
+    }
+
+    console.log('[pdf] using executablePath:', executablePath || '(bundled/default)');
+
+    browser = await puppeteer.launch({
+      headless: true,
+      ...(executablePath ? { executablePath } : {}),
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1240, height: 1754, deviceScaleFactor: 2 });
+
+    // Be more forgiving than 'networkidle0' to avoid hangs
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
+    await page.emulateMediaType('screen');
+
+    const buf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '18mm', right: '18mm', bottom: '18mm', left: '18mm' }
+    });
+
+    if (!buf || !buf.length) {
+      throw new Error('Empty PDF buffer');
+    }
+    return buf;
+  } finally {
+    if (browser) {
+      try { await browser.close(); } catch (_) {}
+    }
   }
 }
 
-const V42_CSS = `
-:root { --tbs-navy:#17365D; --tbs-blue:#2F5597; --muted:#6b7280; --border:#d1d5db; }
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
-body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:20px;}
 
-/* ===== HEADER: 3 columns (left info | center cone+TBS | right meta) ===== */
-.header{
-  display:grid;
-  grid-template-columns: 1fr auto 270px;
-  align-items:start;
-  gap:16px;
-  margin-bottom:8px;
+/* ---------- helpers ---------- */
+function money(n){ return `$${Number(n||0).toFixed(2)}`; }
+
+/* 3-column service line items (SERVICE | TAXED | AMOUNT) */
+function serviceLineItemsHTML(rows) {
+  const body = (rows?.length ? rows : []).map(r => `
+    <tr>
+      <td>${r.service}</td>
+      <td style="text-align:center; width:90px;">${r.taxed ? 'X' : ''}</td>
+      <td style="text-align:right; width:160px;">${money(r.amount)}</td>
+    </tr>`).join('') || `
+    <tr><td colspan="3" style="text-align:center;font-style:italic;">No services listed</td></tr>`;
+
+  return `
+  <table class="table">
+    <thead>
+      <tr>
+        <th>SERVICE</th>
+        <th style="text-align:center; width:90px;">TAXED</th>
+        <th style="text-align:right; width:160px;">AMOUNT</th>
+      </tr>
+    </thead>
+    <tbody>${body}</tbody>
+  </table>`;
 }
 
-/* left info block (address etc.) */
-.company{font-weight:700;font-size:12px;line-height:1.12;}
-.company .name{font-size:26px; font-weight:900; letter-spacing:1px; color:#0b1f3a;}
-.company .site{word-break:break-all;}
-
-/* center: cone stacked above TBS wordmark */
-.brand-stack{
-  display:flex; flex-direction:column; align-items:center; gap:6px; padding:2px 8px;
-  max-width:220px;                 /* keeps the stack compact */
-}
-.brand-stack .cone{
-  height:56px;          /* smaller cone */
-  max-width:70px;       /* keep it compact */
-  width:auto; object-fit:contain;
-}
-.brand-stack .logo{
-  height:60px;                     /* TBSPDF7.png height */
-  max-width:180px;                 /* keep narrow so it never exceeds the page */
-  width:auto; object-fit:contain;
-}
-
-/* right: INVOICE title above meta rows */
-.meta{font-size:12px;}
-.meta .meta-title{
-  text-align:center;
-  font-weight:900;
-  letter-spacing:1px;
-  font-size:28px;
-  color:var(--tbs-blue);
-  margin-bottom:6px;
-}
-.meta .box{display:grid; grid-template-columns:auto 1fr; gap:6px 10px;}
-.meta .label{color:#0b1f3a; font-weight:700;}
-.meta .value{}
-
-/* BILL-TO + TABLE + TOTALS + FOOTER unchanged except minor polish */
-.billto-bar{background:var(--tbs-navy);color:#fff;padding:6px 10px;font-weight:700;margin:12px 0 8px;}
-.billto{display:flex;gap:16px;justify-content:space-between;font-size:13px;}
-.billto .right{display:flex;flex-direction:column;gap:4px;}
-.table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}
-.table th{background:var(--tbs-navy);color:#fff;text-align:left;padding:8px;font-weight:700;border:1px solid #1f2d44;}
-.table td{padding:8px;border:1px solid var(--border);}
-.table tr:nth-child(even) td{background:#f9fafb;}
-
-/* section row inside table (e.g., Fully Loaded Vehicle) */
-.table .section td{
-  background:#e8ecf7;
-  color:#0b1f3a;
-  font-weight:700;
+/* One-column notes list INSIDE the Services section */
+function serviceNotesOneColHTML() {
+  return `
+  <table class="onecol-table">
+    <tbody>
+      <tr>
+        <td>
+          <ul class="dotlist">
+            <li>Per Secondary Street Intersections/Closing signs: $25.00</li>
+            <li>Signs and additional equipment left after hours: $- per/sign</li>
+            <li>Arrow Board $- ( Used ) &nbsp; Message Board $- ( )</li>
+            <li>Mobilization: If applicable: 25 miles from TBS's building • $0.82/mile/vehicle (–)</li>
+            <li>All quotes based off a "TBS HR" – hour day, anything over 8 hours will be billed at $-/hr per crew member. CREWS OF ____ WORKED ____ HRS OT</li>
+            <li>TBS HOURS: ____ AM – ____ PM</li>
+          </ul>
+        </td>
+      </tr>
+    </tbody>
+  </table>`;
 }
 
-.notes{font-size:12px;color:#111;margin-top:6px;}
-.totals{margin-top:14px;width:50%;margin-left:auto;font-size:13px;}
-.totals .row{display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #e5e7eb;}
-.totals .grand{font-weight:700;border-top:2px solid #111;}
-.footer{margin-top:14px;font-size:11.5px;color:#111;border-top:2px solid var(--tbs-navy);padding-top:10px;text-align:center;}
-@page{size:A4;margin:18mm;}
-/* ===== Right meta: key/value table with bordered value cells ===== */
-.meta .box{display:grid; grid-template-columns:auto 1fr; gap:0 10px;}
-.meta .row{display:contents;}                     /* lets us lay rows with the grid */
-.meta .label{color:#0b1f3a; font-weight:700; text-align:left; padding:6px 0;}
-.meta .value{border:1px solid var(--border); min-height:22px; padding:4px 6px;}
-
-/* ===== Split navy heading: Bill To | Job Details (attached) ===== */
-.split-bar{
-  display:grid; grid-template-columns:1fr 1fr;
-  background:var(--tbs-navy); color:#fff; margin:12px 0 0; /* no gap between halves */
+/* Whole Services section (navy heading + 3-col + one-col notes) */
+function servicesSectionHTML(rows) {
+  return `
+    ${serviceLineItemsHTML(rows)}    <!-- just the table -->
+    ${serviceNotesOneColHTML()}      <!-- and the one-column notes -->
+  `;
 }
-.split-bar .pane{padding:6px 10px; font-weight:700;}
 
-/* Details area under split bar */
-.billto-job-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; border:1px solid var(--border); border-top:none; padding:10px;}
-.billto-job-grid .block{font-size:13px; line-height:1.35;}
-.billto-job-grid .kv{display:grid; grid-template-columns:auto 1fr; gap:6px 8px;}
-.billto-job-grid .kv .k{font-weight:700;}
 
-/* ===== One-column section with navy title ===== */
-.section-title{background:var(--tbs-navy); color:#fff; padding:6px 10px; font-weight:700; margin:14px 0 0;}
-.onecol-table{width:100%; border-collapse:collapse; font-size:13px;}
-.onecol-table td{border:1px solid var(--border); padding:8px;}
-.onecol-table .dotlist{margin:0; padding-left:18px;}
-.onecol-table .dotlist li{margin:2px 0;}
-`;
+/* Fully Loaded Vehicle as its own section (navy heading + one column) */
+function fullyLoadedVehicleSectionHTML() {
+  return `
+    <div class="section-title">FULLY LOADED VEHICLE</div>
+    <table class="onecol-table">
+      <tbody>
+        <tr>
+          <td>
+            <ul class="dotlist">
+              <li>8 to 10 signs for flagging and lane operations.</li>
+              <li>2 STOP &amp; GO paddles &nbsp;&nbsp; 2 Certified Flaggers &amp; Vehicle with Strobes.</li>
+              <li>30 Cones &amp; 2 Barricades.</li>
+              <li>Arrow Board upon request: additional fees will be applied.</li>
+              <li>Late payment fee will go into effect if payment is not by due date after receiving invoice.</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
 
-/* Single source-of-truth template */
-function renderV42Document({
-  title = 'INVOICE',
-  coneDataUri = '',
-  logoDataUri = '',
-  companyBox = {},
-  metaBox = {},
-  billTo = {},
-  contentHTML = '',
-  totalsHTML = '',
-  footerHTML = '',
-}) {
-  const fmt = (v) => (v ?? '').toString();
-
-  const leftInfo = `
-    <div class="company">
-      <div class="name">TBS</div>
-      <div>Traffic and Barrier Solutions, LLC</div>
-      <div>1999 Dews Pond Rd SE</div>
-      <div>Calhoun, GA 30701</div>
-      <div>Cell: 706-263-0175</div>
-      <div>Email: tbsolutions3@gmail.com</div>
-      <div class="site">Website: www.TrafficBarrierSolutions.com</div>
-    </div>`;
-const centerStack = `
-  <div class="brand-stack">
-    ${coneDataUri ? `<img class="cone" src="${coneDataUri}" alt="cone"/>` : ''}
-    ${logoDataUri ? `<img class="logo" src="${logoDataUri}" alt="TBS Logo"/>` : ''}
+/* Totals block (no collisions with “late” version) */
+function totalsBlock({subtotal, taxRate, taxDue, other, total}) {
+  return `
+  <div class="totals">
+    <div class="row"><span>Subtotal</span><span>${money(subtotal)}</span></div>
+    ${taxDue > 0 ? `<div class="row"><span>Tax (${Number(taxRate||0)}%)</span><span>${money(taxDue)}</span></div>` : ''}
+    ${(Number.isFinite(other) && other !== 0) ? `<div class="row"><span>Other</span><span>${money(other)}</span></div>` : ''}
+    <div class="row grand"><span>TOTAL</span><span>${money(total)}</span></div>
   </div>`;
-
-const rightMeta = `
-  <div class="meta">
-    <div class="meta-title">${title}</div>
-    <div class="box">
-      ${[
-        ['DATE', metaBox.date],
-        ['INVOICE #', metaBox.invoiceNo],
-        ['WR#', metaBox.wr1],
-        ['WR#', metaBox.wr2],
-        ['DUE DATE', metaBox.dueDate],
-      ].filter(([_, v]) => v !== undefined).map(([k, v]) => `
-        <div class="row">
-          <div class="label">${k}</div>
-          <div class="value">${(v ?? '')}</div>
-        </div>
-      `).join('')}
-    </div>
-  </div>`;
-
-
-const billToHTML = `
-  <div class="split-bar">
-    <div class="pane">BILL TO</div>
-    <div class="pane">JOB DETAILS</div>
-  </div>
-
-  <div class="billto-job-grid">
-    <!-- Left: Bill To -->
-    <div class="block">
-      <div><strong>${(billTo.company || companyBox.client || '')}</strong></div>
-      <div>${(billTo.address || [companyBox.address, companyBox.city, companyBox.state, companyBox.zip].filter(Boolean).join(', '))}</div>
-    </div>
-
-    <!-- Right: Job Details -->
-    <div class="block">
-      <div class="kv">
-        ${billTo.workType ? `<div class="k">Work Type:</div><div>${billTo.workType}</div>` : ''}
-        ${billTo.foreman  ? `<div class="k">Foreman:</div><div>${billTo.foreman}</div>` : ''}
-        ${billTo.location ? `<div class="k">Job Site:</div><div>${billTo.location}</div>` : ''}
-      </div>
-    </div>
-  </div>`;
-
-
-  return `<!doctype html>
-<html><head><meta charset="utf-8"/><style>${V42_CSS}</style></head>
-<body>
-  <div class="header">
-    ${leftInfo}
-    ${centerStack}
-    ${rightMeta}
-  </div>
-
-  ${billToHTML}
-
-  ${contentHTML}
-
-  ${totalsHTML}
-
-  <div class="footer">
-    ${footerHTML}
-  </div>
-</body></html>`;
 }
 
-function loadStdAssets() {
-  const logo = toDataUri(path.resolve(__dirname, '../public/TBSPDF7.png'));
-  const cone = toDataUri(path.resolve(__dirname, '../public/tbs cone.svg'));
-  return { logo, cone };
+/* optional footer (kept minimal since FLV moved to its own section) */
+function footerBlock() {
+  return `
+    <div style="margin-top:10px;"><strong>Make all checks payable to TBS</strong></div>
+    <div style="margin-top:10px;">If you have any questions about this invoice, please contact<br/>[Bryson Davis, 706-263-0715, tbsolutions3@gmail.com]</div>
+    <div style="margin-top:10px; font-weight:bold;">Thank You For Your Business!</div>`;
 }
 
+/* ---------- MAIN: build invoice from work order ---------- */
+async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmount, invoiceData = {}) {
+  const { logo, cone } = loadStdAssets();
 
-module.exports = { renderV42Document, loadStdAssets, toDataUri };
+  const html = renderV42Document({
+    title: 'INVOICE',
+    coneDataUri: cone,
+    logoDataUri: logo,
+    companyBox: {
+      client: workOrder?.basic?.client,
+      address: workOrder?.basic?.address,
+      city: workOrder?.basic?.city,
+      state: workOrder?.basic?.state,
+      zip: workOrder?.basic?.zip,
+    },
+    metaBox: {
+      date: invoiceData.invoiceDate || new Date().toLocaleDateString(),
+      invoiceNo: invoiceData.invoiceNumber || String(workOrder?._id || 'INV001').slice(-6),
+      wr1: invoiceData.workRequestNumber1,
+      wr2: invoiceData.workRequestNumber2,
+      dueDate: invoiceData.dueDate
+    },
+    billTo: {
+      company: invoiceData.billToCompany || workOrder?.basic?.client,
+      address: invoiceData.billToAddress,
+      workType: invoiceData.workType,
+      foreman: invoiceData.foreman,
+      location: invoiceData.location
+    },
+    contentHTML: [
+      servicesSectionHTML(invoiceData.sheetRows || []),
+      fullyLoadedVehicleSectionHTML(),
+    ].join(''),
+    totalsHTML: totalsBlock({
+      subtotal: invoiceData.sheetSubtotal ?? manualAmount ?? 0,
+      taxRate:  invoiceData.sheetTaxRate  ?? 0,
+      taxDue:   invoiceData.sheetTaxDue   ?? 0,
+      other:    invoiceData.sheetOther    ?? 0,
+      total:    invoiceData.sheetTotal    ?? manualAmount ?? 0
+    }),
+    footerHTML: footerBlock()
+  });
+
+  // tag & print
+  const htmlWithMarker = html.replace('<body>', '<body><!-- v42base:1 -->');
+  const buf = await printHtmlToPdfBuffer(htmlWithMarker);
+
+  // (optional) save a temp copy
+  try {
+    const safeClient = (workOrder?.basic?.client || 'client').replace(/[^a-z0-9]+/gi,'-');
+    const datePart = workOrder?.basic?.dateOfJob || new Date().toISOString().slice(0,10);
+    fs.writeFileSync(path.join(os.tmpdir(), `invoice-${safeClient}-${datePart}.pdf`), buf);
+  } catch {}
+  return buf;
+}
+
+/* ---------- LATE/INTEREST invoice (interest bot) ---------- */
+function lateContentHTML({ rows }) {
+  const body = rows.map(r => `
+    <tr>
+      <td>${r.service}</td>
+      <td style="text-align:center; width:90px;">${r.taxed ? 'X' : ''}</td>
+      <td style="text-align:right; width:160px;">${money(r.amount)}</td>
+    </tr>`).join('');
+
+  return `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>SERVICE</th>
+          <th style="text-align:center; width:90px;">TAXED</th>
+          <th style="text-align:right; width:160px;">AMOUNT</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>`;
+}
+
+function lateTotalsBlock({principal, interest, total}) {
+  return `
+  <div class="totals">
+    <div class="row"><span>Subtotal</span><span>${money(principal + interest)}</span></div>
+    <div class="row grand"><span>TOTAL</span><span>${money(total)}</span></div>
+  </div>`;
+}
+
+async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
+  const { logo, cone } = loadStdAssets();
+
+  const rows = [
+    { service: 'Principal', taxed: false, amount: Number(due.principal || inv.principal || 0) },
+    { service: `Interest (2.5% simple × ${Number(due.steps||0)})`, taxed: false, amount: Number(due.interest || 0) }
+  ];
+
+  const html = renderV42Document({
+    title: 'INVOICE',
+    coneDataUri: cone,
+    logoDataUri: logo,
+    companyBox: {
+      client: inv.company,
+      address: job.address, city: job.city, state: job.state, zip: job.zip
+    },
+    metaBox: {
+      date: new Date().toLocaleDateString(),
+      invoiceNo: String(inv._id).slice(-6),
+      dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : ''
+    },
+    billTo: {
+      company: inv.company,
+      address: job.billingAddress || '',
+      workType: job.workType,
+      foreman: job.foreman,
+      location: job.location
+    },
+    contentHTML: lateContentHTML({ rows }),
+    totalsHTML: lateTotalsBlock({
+      principal: Number(due.principal||0),
+      interest: Number(due.interest||0),
+      total: Number(due.total||0)
+    }),
+    footerHTML: `
+      <div>Please call <strong>Leah Davis</strong> for payment: <strong>(706) 913-3317</strong></div>
+      <div style="margin-top:10px; font-weight:bold;">Thank You For Your Business!</div>`
+  });
+
+  return await printHtmlToPdfBuffer(html);
+}
+
+module.exports = {
+  generateInvoicePdfFromWorkOrder,
+  generateInvoicePdfFromInvoice,
+  printHtmlToPdfBuffer
+};
