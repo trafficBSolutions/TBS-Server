@@ -531,6 +531,7 @@ router.post('/bill-workorder', async (req, res) => {
       principal: finalInvoiceTotal,
       status: 'SENT',
       sentAt: new Date(),
+      dueDate: invoiceData?.dueDate ? new Date(invoiceData.dueDate) : undefined, // <-- add
       lineItems: (invoiceData.sheetRows || []).map(row => ({
         description: row.service,
         qty: 1,
