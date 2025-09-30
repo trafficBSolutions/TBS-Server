@@ -6,9 +6,6 @@ const os = require('os');
 const { renderV42Document, loadStdAssets } = require('./v42Base');
 
 /* ---------- shared PDF printer ---------- */
-// services/invoicePDF.js
-const puppeteer = require('puppeteer');
-const fs = require('fs');
 
 async function printHtmlToPdfBuffer(html) {
   let browser;
