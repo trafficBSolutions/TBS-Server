@@ -1,10 +1,10 @@
 // services/interestBot.js
 const Invoice = require('../models/invoice');
 async function buildAttachment(inv, due) {
-  const ControlUser = require('../models/controluser');
+  const WorkOrder = require('../models/workorder');
   const { generateInvoicePdfFromInvoice } = require('../services/invoicePDF');
 
-  const job = inv.job ? await ControlUser.findById(inv.job).lean() : null;
+  const job = inv.job ? await WorkOrder.findById(inv.job).lean() : null;
   const pdfBuffer = await generateInvoicePdfFromInvoice(inv, due, job || {});
   if (!pdfBuffer) return null;
 
@@ -17,12 +17,12 @@ async function buildAttachment(inv, due) {
 
 async function sendInterestEmail(inv, due) {
   const { transporter7 } = require('../utils/emailConfig');
-  const ControlUser = require('../models/controluser');
+  const WorkOrder = require('../models/workorder');
 
   // Fallback if inv.companyEmail is empty
   let toEmail = inv.companyEmail;
   if (!toEmail && inv.job) {
-    const job = await ControlUser.findById(inv.job).lean().catch(() => null);
+    const job = await WorkOrder.findById(inv.job).lean().catch(() => null);
     toEmail = job?.invoiceData?.selectedEmail || job?.basic?.email || '';
   }
   if (!toEmail) {
@@ -85,7 +85,7 @@ await transporter7.sendMail({
 // services/interestBot.js
 async function runInterestReminderCycle(now = new Date()) {
   const { currentTotal } = require('../utils/invoiceMath');
-  const ControlUser = require('../models/controluser'); // <-- move up so we can reuse
+  const WorkOrder = require('../models/workorder');
   const invoices = await Invoice.find({ status: { $in: ['SENT', 'PARTIALLY_PAID'] } });
 
   let checked = 0, emailed = 0, skippedNoEmail = 0, skippedNoStep = 0;
@@ -98,7 +98,7 @@ async function runInterestReminderCycle(now = new Date()) {
 
     // Fallback: pull from job.invoiceData.dueDate if not on invoice
     if (!baseDate && inv.job) {
-      const job = await ControlUser.findById(inv.job).lean().catch(() => null);
+      const job = await WorkOrder.findById(inv.job).lean().catch(() => null);
       const dueStr = job?.invoiceData?.dueDate; // "YYYY-MM-DD"
       if (dueStr) baseDate = new Date(`${dueStr}T00:00:00Z`);
     }
@@ -127,7 +127,7 @@ async function runInterestReminderCycle(now = new Date()) {
     // Resolve recipient
     let toEmail = inv.companyEmail;
     if (!toEmail && inv.job) {
-      const job = await ControlUser.findById(inv.job).lean().catch(() => null);
+      const job = await WorkOrder.findById(inv.job).lean().catch(() => null);
       toEmail = job?.invoiceData?.selectedEmail || job?.basic?.email || '';
     }
     if (!toEmail) { skippedNoEmail++; continue; }
