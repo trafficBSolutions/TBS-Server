@@ -40,33 +40,48 @@ async function printHtmlToPdfBuffer(html) {
 
 function money(n){ return `$${Number(n||0).toFixed(2)}`; }
 
-function serviceTableHTML(rows) {
-  const body = rows.length
-    ? rows.map(r => `
-        <tr>
-          <td>${r.service}</td>
-          <td style="text-align:center;">${r.taxed ? 'X' : ''}</td>
-          <td style="text-align:right;">${money(r.amount)}</td>
-        </tr>`).join('')
-    : `<tr><td colspan="3" style="text-align:center;font-style:italic;">No services listed</td></tr>`;
+/** includeFLV=true adds the section at the bottom of the table */
+function serviceTableHTML(rows, { includeFLV = true } = {}) {
+  const normalRows = (rows?.length ? rows : []).map(r => `
+    <tr>
+      <td>${r.service}</td>
+      <td style="text-align:center;">${r.taxed ? 'X' : ''}</td>
+      <td style="text-align:right;">${money(r.amount)}</td>
+    </tr>`).join('');
+
+  const flvSection = includeFLV ? `
+    <tr class="section"><td><strong>Fully Loaded Vehicle</strong></td><td></td><td></td></tr>
+    <tr><td>• 8 to 10 signs for flagging and lane operations</td><td></td><td></td></tr>
+    <tr><td>• 2 STOP &amp; GO paddles &nbsp;&nbsp;• 2 Certified Flaggers &amp; Vehicle with Strobes</td><td></td><td></td></tr>
+    <tr><td>• 30 Cones &amp; 2 Barricades</td><td></td><td></td></tr>
+  ` : '';
+
+  const body = (normalRows || '') + flvSection;
 
   return `
   <table class="table">
     <thead>
-      <tr><th>SERVICE</th><th style="text-align:center;">TAXED</th><th style="text-align:right;">AMOUNT</th></tr>
+      <tr>
+        <th>SERVICE</th>
+        <th style="text-align:center;">TAXED</th>
+        <th style="text-align:right;">AMOUNT</th>
+      </tr>
     </thead>
-    <tbody>${body}</tbody>
+    <tbody>
+      ${body || '<tr><td colspan="3" style="text-align:center;font-style:italic;">No services listed</td></tr>'}
+    </tbody>
   </table>
 
   <div class="notes">
     <div>Per Secondary Street Intersections/Closing signs: $25.00</div>
     <div>Signs and additional equipment left after hours: $- per/sign</div>
-    <div>Arrow Board $- ( Used )  Message Board $- ( )</div>
-    <div>Mobilization: If applicable: 25 miles from TBS's building • $0.82/mile/vehicle (–)</div>
+    <div>Arrow Board $- ( Used ) &nbsp; Message Board $- ( )</div>
+    <div>Mobilization: If applicable: 25 miles from TBS\'s building • $0.82/mile/vehicle (–)</div>
     <div>All quotes based off a "TBS HR" – hour day, anything over 8 hours will be billed at $-/hr per crew member. CREWS OF ____ WORKED ____ HRS OT</div>
     <div>TBS HOURS: ____ AM – ____ PM</div>
   </div>`;
 }
+
 
 function totalsHTML({subtotal, taxRate, taxDue, other, total}) {
   return `
@@ -132,7 +147,9 @@ async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmou
     footerHTML: footerHTML()
   });
 
-  const buf = await printHtmlToPdfBuffer(html);
+    console.log('[PDF][v42] generating for workOrder:', String(workOrder?._id));
+  const htmlWithMarker = html.replace('<body>', '<body><!-- v42base:1 -->');
+  const buf = await printHtmlToPdfBuffer(htmlWithMarker);
 
   // (optional) save a temp copy
   try {
