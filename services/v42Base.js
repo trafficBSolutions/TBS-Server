@@ -45,9 +45,10 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:20px;}
   max-width:220px;                 /* keeps the stack compact */
 }
 .brand-stack .cone{
-  height:56px;          /* smaller cone */
-  max-width:70px;       /* keep it compact */
-  width:auto; object-fit:contain;
+  height:36px;
+  max-width:45px;
+  width:auto;
+  object-fit:contain;
 }
 .brand-stack .logo{
   height:60px;                     /* TBSPDF7.png height */
