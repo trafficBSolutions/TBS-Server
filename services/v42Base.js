@@ -46,7 +46,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:20px;}
 }
 .brand-stack .cone{
   height:72px;                     /* simple, predictable size */
-  max-width:160px;                 /* extra guard */
+  max-width:90px;                 /* extra guard */
   width:auto; object-fit:contain;
 }
 .brand-stack .logo{
@@ -91,6 +91,31 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:20px;}
 .totals .grand{font-weight:700;border-top:2px solid #111;}
 .footer{margin-top:14px;font-size:11.5px;color:#111;border-top:2px solid var(--tbs-navy);padding-top:10px;text-align:center;}
 @page{size:A4;margin:18mm;}
+/* ===== Right meta: key/value table with bordered value cells ===== */
+.meta .box{display:grid; grid-template-columns:auto 1fr; gap:0 10px;}
+.meta .row{display:contents;}                     /* lets us lay rows with the grid */
+.meta .label{color:#0b1f3a; font-weight:700; text-align:left; padding:6px 0;}
+.meta .value{border:1px solid var(--border); min-height:22px; padding:4px 6px;}
+
+/* ===== Split navy heading: Bill To | Job Details (attached) ===== */
+.split-bar{
+  display:grid; grid-template-columns:1fr 1fr;
+  background:var(--tbs-navy); color:#fff; margin:12px 0 0; /* no gap between halves */
+}
+.split-bar .pane{padding:6px 10px; font-weight:700;}
+
+/* Details area under split bar */
+.billto-job-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; border:1px solid var(--border); border-top:none; padding:10px;}
+.billto-job-grid .block{font-size:13px; line-height:1.35;}
+.billto-job-grid .kv{display:grid; grid-template-columns:auto 1fr; gap:6px 8px;}
+.billto-job-grid .kv .k{font-weight:700;}
+
+/* ===== One-column section with navy title ===== */
+.section-title{background:var(--tbs-navy); color:#fff; padding:6px 10px; font-weight:700; margin:14px 0 0;}
+.onecol-table{width:100%; border-collapse:collapse; font-size:13px;}
+.onecol-table td{border:1px solid var(--border); padding:8px;}
+.onecol-table .dotlist{margin:0; padding-left:18px;}
+.onecol-table .dotlist li{margin:2px 0;}
 `;
 
 /* Single source-of-truth template */
@@ -123,31 +148,49 @@ const centerStack = `
     ${logoDataUri ? `<img class="logo" src="${logoDataUri}" alt="TBS Logo"/>` : ''}
   </div>`;
 
-  const rightMeta = `
-    <div class="meta">
-      <div class="meta-title">${title}</div>
-      <div class="box">
-        ${metaBox.date ? `<div class="label">DATE</div><div class="value">${fmt(metaBox.date)}</div>` : ''}
-        ${metaBox.invoiceNo ? `<div class="label">INVOICE #</div><div class="value">${fmt(metaBox.invoiceNo)}</div>` : ''}
-        ${metaBox.wr1 ? `<div class="label">WR#</div><div class="value">${fmt(metaBox.wr1)}</div>` : ''}
-        ${metaBox.wr2 ? `<div class="label">WR#</div><div class="value">${fmt(metaBox.wr2)}</div>` : ''}
-        ${metaBox.dueDate ? `<div class="label">DUE DATE</div><div class="value">${fmt(metaBox.dueDate)}</div>` : ''}
-      </div>
-    </div>`;
+const rightMeta = `
+  <div class="meta">
+    <div class="meta-title">${title}</div>
+    <div class="box">
+      ${[
+        ['DATE', metaBox.date],
+        ['INVOICE #', metaBox.invoiceNo],
+        ['WR#', metaBox.wr1],
+        ['WR#', metaBox.wr2],
+        ['DUE DATE', metaBox.dueDate],
+      ].filter(([_, v]) => v !== undefined).map(([k, v]) => `
+        <div class="row">
+          <div class="label">${k}</div>
+          <div class="value">${(v ?? '')}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
 
-  const billToHTML = `
-    <div class="billto-bar">BILL TO</div>
-    <div class="billto">
-      <div class="left">
-        <div><strong>${fmt(billTo.company || companyBox.client)}</strong></div>
-        <div>${fmt(billTo.address || [companyBox.address, companyBox.city, companyBox.state, companyBox.zip].filter(Boolean).join(', '))}</div>
+
+const billToHTML = `
+  <div class="split-bar">
+    <div class="pane">BILL TO</div>
+    <div class="pane">JOB DETAILS</div>
+  </div>
+
+  <div class="billto-job-grid">
+    <!-- Left: Bill To -->
+    <div class="block">
+      <div><strong>${(billTo.company || companyBox.client || '')}</strong></div>
+      <div>${(billTo.address || [companyBox.address, companyBox.city, companyBox.state, companyBox.zip].filter(Boolean).join(', '))}</div>
+    </div>
+
+    <!-- Right: Job Details -->
+    <div class="block">
+      <div class="kv">
+        ${billTo.workType ? `<div class="k">Work Type:</div><div>${billTo.workType}</div>` : ''}
+        ${billTo.foreman  ? `<div class="k">Foreman:</div><div>${billTo.foreman}</div>` : ''}
+        ${billTo.location ? `<div class="k">Job Site:</div><div>${billTo.location}</div>` : ''}
       </div>
-      <div class="right">
-        ${billTo.workType ? `<div><strong>Work Type:</strong> ${fmt(billTo.workType)}</div>` : ''}
-        ${billTo.foreman ? `<div><strong>Foreman:</strong> ${fmt(billTo.foreman)}</div>` : ''}
-        ${billTo.location ? `<div><strong>Job Site Location:</strong> ${fmt(billTo.location)}</div>` : ''}
-      </div>
-    </div>`;
+    </div>
+  </div>`;
+
 
   return `<!doctype html>
 <html><head><meta charset="utf-8"/><style>${V42_CSS}</style></head>
