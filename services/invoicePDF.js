@@ -86,14 +86,15 @@ async function printHtmlToPdfBuffer(html) {
 function money(n){ return `$${Number(n||0).toFixed(2)}`; }
 
 /* 3-column service line items (SERVICE | TAXED | AMOUNT) */
-function serviceLineItemsHTML(rows) {
-  const body = (rows?.length ? rows : []).map(r => `
+ function serviceLineItemsHTML(rows) {
+  const billable = (rows || []).filter(r => Number(r?.amount) > 0);
+  const body = (billable.length ? billable : []).map(r => `
     <tr>
       <td>${r.service}</td>
       <td style="text-align:center; width:90px;">${r.taxed ? 'X' : ''}</td>
       <td style="text-align:right; width:160px;">${money(r.amount)}</td>
     </tr>`).join('') || `
-    <tr><td colspan="3" style="text-align:center;font-style:italic;">No services listed</td></tr>`;
+    <tr><td colspan="3" style="text-align:center;font-style:italic;">No billable services</td></tr>`;
 
   return `
   <table class="table">
@@ -109,19 +110,42 @@ function serviceLineItemsHTML(rows) {
 }
 
 /* One-column notes list INSIDE the Services section */
-function serviceNotesOneColHTML() {
+ function serviceNotesOneColHTML(invoiceData = {}, fallbackMileRate = 0.82) {
+  // Pull values the same way your React editor does
+  const rows = Array.isArray(invoiceData.sheetRows) ? invoiceData.sheetRows : [];
+  const findRow = (needle) =>
+    rows.find(r => (r.service || '').toLowerCase().includes(needle));
+
+  const intersections = findRow('intersection');         // e.g. “Secondary intersections/closing signs”
+  const afterHours    = findRow('after-hours');          // “after-hours signs”
+  const arrowBoard    = findRow('arrow board');
+  const messageBoard  = findRow('message board');
+  const mobilization  = findRow('mobilization');
+
+  const intersectionsPer = Number(intersections?.amount) || 0;
+  const afterHoursPer    = Number(afterHours?.amount)    || 0;
+  const arrowAmt         = Number(arrowBoard?.amount)    || 0;
+  const messageAmt       = Number(messageBoard?.amount)  || 0;
+  const mobilizationAmt  = Number(mobilization?.amount)  || 0; // this could be a line total if you keyed it that way
+
+  const crewsCount = invoiceData.crewsCount ?? '';
+  const otHours    = invoiceData.otHours ?? '';
+  const tbsHours   = invoiceData.tbsHours ?? '';
+  
   return `
   <table class="onecol-table">
     <tbody>
       <tr>
         <td>
           <ul class="dotlist">
-            <li>Per Secondary Street Intersections/Closing signs: $25.00</li>
-            <li>Signs and additional equipment left after hours: $- per/sign</li>
-            <li>Arrow Board $- ( Used ) &nbsp; Message Board $- ( )</li>
-            <li>Mobilization: If applicable: 25 miles from TBS's building • $0.82/mile/vehicle (–)</li>
-            <li>All quotes based off a "TBS HR" – hour day, anything over 8 hours will be billed at $-/hr per crew member. CREWS OF ____ WORKED ____ HRS OT</li>
-            <li>TBS HOURS: ____ AM – ____ PM</li>
+            <li>Per Secondary Street Intersections/Closing signs: ${intersectionsPer > 0 ? money(intersectionsPer) : '$-'}</li>
+            <li>Signs and additional equipment left after hours: ${afterHoursPer > 0 ? money(afterHoursPer) + ' per/sign' : '$- per/sign'}</li>
+            <li>Arrow Board ${arrowAmt > 0 ? money(arrowAmt) : '$-'} (${arrowAmt > 0 ? 'Used' : '—'})
+                &nbsp; Message Board ${messageAmt > 0 ? money(messageAmt) : '$-'} (${messageAmt > 0 ? 'Used' : '—'})</li>
+            <li>Mobilization: If applicable: 25 miles from TBS's building • ${mobilizationAmt > 0 ? money(mobilizationAmt) + ' total' : money(fallbackMileRate) + '/mile/vehicle (–)'}</li>
+            <li>All quotes based off a "TBS HR" – hour day, anything over 8 hours will be billed at $-/hr per crew member.
+                CREWS OF ${crewsCount || '____'} WORKED ${otHours || '____'} HRS OT</li>
+            <li>TBS HOURS: ${tbsHours || '____ AM – ____ PM'}</li>
           </ul>
         </td>
       </tr>
@@ -130,11 +154,12 @@ function serviceNotesOneColHTML() {
 }
 
 /* Whole Services section (navy heading + 3-col + one-col notes) */
-function servicesSectionHTML(rows) {
-  return `
-    ${serviceLineItemsHTML(rows)}    <!-- just the table -->
-    ${serviceNotesOneColHTML()}      <!-- and the one-column notes -->
-  `;
+ function servicesSectionHTML(invoiceData) {
+  const rows = invoiceData?.sheetRows || [];
+   return `  
+    ${serviceLineItemsHTML(rows)}                    
+    ${serviceNotesOneColHTML(invoiceData)}            
+   `;
 }
 
 
@@ -208,10 +233,10 @@ async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmou
       foreman: invoiceData.foreman,
       location: invoiceData.location
     },
-    contentHTML: [
-      servicesSectionHTML(invoiceData.sheetRows || []),
-      fullyLoadedVehicleSectionHTML(),
-    ].join(''),
+ contentHTML: [
+   servicesSectionHTML(invoiceData),
+   fullyLoadedVehicleSectionHTML(),
+ ].join(''),
     totalsHTML: totalsBlock({
       subtotal: invoiceData.sheetSubtotal ?? manualAmount ?? 0,
       taxRate:  invoiceData.sheetTaxRate  ?? 0,
