@@ -37,6 +37,7 @@ const InvoiceSchema = new mongoose.Schema({
   accruedInterest: { type: Number, default: 0 },   // computed and stored by bot
   computedTotalDue: { type: Number, default: 0 },  // principal + accruedInterest
   lastComputedAt: { type: Date },   
+  dueDate: { type: Date }, // <-- add this
   // NEW: public payment link + reminder bookkeeping
   publicKey: { type: String, default: () => randomUUID() },
   interestStepsEmailed: { type: Number, default: 0 },
