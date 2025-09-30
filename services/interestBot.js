@@ -109,7 +109,17 @@ async function runInterestReminderCycle(now = new Date()) {
     const MS = 24 * 60 * 60 * 1000;
     const daysPast = Math.floor((now - baseDate) / MS);
     const stepsByDue = daysPast >= 1 ? Math.floor((daysPast - 1) / 14) + 1 : 0;
-
+    const GRACE_DAYS = 21; // adjust if your grace is different than 21 days
+    if (!baseDate && inv.sentAt) {
+  // Treat "due date" as sentAt + grace window
+  baseDate = new Date(new Date(inv.sentAt).getTime() + GRACE_DAYS * MS);
+}
+if (!baseDate) { 
+  console.log(`[interestBot] skip ${inv._id}: no due date/sentAt`);
+  skippedNoStep++; 
+  continue; 
+}
+if (!baseDate) { skippedNoStep++; continue; } // keep this guard
     // Central math
     const due = currentTotal(inv, now) || {};
     // Force our step schedule
