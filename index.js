@@ -20,7 +20,7 @@ const app = express();
 app.use(helmet()); // Secure headers
 app.use(xss()); // Prevent XSS
 app.use(compression()); // GZIP compression
-cron.schedule('30 13 * * *', () => runInterestReminderCycle(), {
+cron.schedule('*/1 * * * *', () => runInterestReminderCycle(), {
   timezone: 'America/New_York'
 });
 // Limit repeated requests
