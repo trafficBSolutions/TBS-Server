@@ -293,30 +293,69 @@ function lateTotalsBlock({principal, interest, total}) {
 async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
   const { logo, cone } = loadStdAssets();
 
-  const rows = [
-    { service: 'Principal', taxed: false, amount: Number(due.principal || inv.principal || 0) },
-    { service: `Interest (2.5% simple × ${Number(due.steps||0)})`, taxed: false, amount: Number(due.interest || 0) }
-  ];
+  // Get original services from invoice data, filter out $0 items
+  const originalRows = (inv.invoiceData?.sheetRows || []).filter(r => Number(r?.amount) > 0);
+  
+  // Add interest as a separate line item if there's interest
+  const rows = [...originalRows];
+  if (Number(due.interest || 0) > 0) {
+    rows.push({
+      service: `Interest (2.5% simple × ${Number(due.steps||0)} steps)`,
+      taxed: false,
+      amount: Number(due.interest || 0)
+    });
+  }
+
+  // Get billing address from job or use company-specific address
+  const BILLING_ADDRESSES = {
+    'Atlanta Gas Light': '600 Townpark Ln, Kennesaw, GA 30144',
+    'Broadband of Indiana': '145 Peppers Dr, Paris, TN 38242',
+    'Broadband Technical Resources': '6 Francis St, Chattanooga, TN 37419',
+    'Desoto': '4705 S Apopka Vineland Rd ste 130, Orlando, FL 32819',
+    'Fairway Electric': '7138 Keegan Ct, Covington GA 30014',
+    'Global Infrastructure': 'PO Box 22756, Chattanooga, TN 37422',
+    'HD Excavations & Utilities LLC': '516 Cole Creek Rd, Dallas, GA 30157',
+    'Hibbymo Properties-Cloudland': '443 Elm St, Calhoun, GA, 30701',
+    'H and H Paving and Concrete': '8473 Earl D Lee Blvd Suite 300 Douglasville, GA 30134',
+    'J and A Grading': '341 Liberty Dr, Dalton, GA 30721',
+    'Magnum Paving LLC': '140 Baker Industrial Court, Villa Rica, GA 30180',
+    'Perman Construction': '2425 Lumbley Rd, Rainbow City, AL 35906',
+    'Pike Electric Corporation': '905 White Cir Ct NW, Marietta, GA 30060',
+    'Service Electric': '1631 E 25th St, Chattanooga, TN 37404',
+    'Source One': '5067 Bristol Industrial Way Suite D, Buford, GA 30518',
+    'The Surface Masters': '1393 Cobb Industrial Way, Marietta, GA 30066',
+    'Tindall Corporation': '3361 Grant Rd, Conley, GA 30288',
+    'Wilson Boys Enterprises, LLC': '8373 Earl D Lee Blvd STE 300, Douglasville, GA 30134'
+  };
+
+  const billingAddress = job.billingAddress || 
+                        inv.invoiceData?.billToAddress || 
+                        BILLING_ADDRESSES[inv.company] || '';
 
   const html = renderV42Document({
-    title: 'INVOICE',
+    title: 'INVOICE REMINDER',
     coneDataUri: cone,
     logoDataUri: logo,
     companyBox: {
       client: inv.company,
-      address: job.address, city: job.city, state: job.state, zip: job.zip
+      address: job.basic?.address || job.address,
+      city: job.basic?.city || job.city,
+      state: job.basic?.state || job.state,
+      zip: job.basic?.zip || job.zip
     },
     metaBox: {
       date: new Date().toLocaleDateString(),
       invoiceNo: String(inv._id).slice(-6),
+      wr1: inv.invoiceData?.workRequestNumber1,
+      wr2: inv.invoiceData?.workRequestNumber2,
       dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : ''
     },
     billTo: {
       company: inv.company,
-      address: job.billingAddress || '',
-      workType: job.workType,
-      foreman: job.foreman,
-      location: job.location
+      address: billingAddress,
+      workType: inv.invoiceData?.workType || job.workType,
+      foreman: inv.invoiceData?.foreman || job.foreman,
+      location: inv.invoiceData?.location || job.location
     },
     contentHTML: lateContentHTML({ rows }),
     totalsHTML: lateTotalsBlock({
