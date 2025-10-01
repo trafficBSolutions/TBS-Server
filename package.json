@@ -8,7 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "interest:once": "node scripts/run-interest-once.js",
-    "interest:worker": "node scripts/interest-cron.js"
+    "interest:worker": "node scripts/interest-cron.js",
+    "backfill:invoices": "node scripts/backfill-invoice-snapshots.js"
   },
   "author": "",
   "license": "ISC",
