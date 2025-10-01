@@ -122,13 +122,14 @@ async function runInterestReminderCycle(now = new Date(), opts = {}) {
     const stepsByDue = daysPast >= 1 ? Math.floor((daysPast - 1) / 14) + 1 : 0;
 
     // 5) Central math
-    const due = currentTotal(inv, now) || {};
     const principal = Number(inv.principal || 0);
     const rate = Number(inv.interestRate || 0.025);
-    due.steps = stepsByDue;
-    due.interest = principal * rate * stepsByDue;
-    due.total = principal + due.interest;
-    due.principal = principal;
+    const due = {
+      steps: stepsByDue,
+      interest: principal * rate * stepsByDue,
+      total: principal + (principal * rate * stepsByDue),
+      principal: principal
+    };
     // after computing `daysPast` and `stepsByDue`
 console.log(
   `[interestBot] inv=${inv._id} company=${inv.company} baseDate=${baseDate?.toISOString?.() || 'n/a'} daysPast=${daysPast} steps=${stepsByDue} prev=${inv.interestStepsEmailed||0}`
