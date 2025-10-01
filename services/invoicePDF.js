@@ -325,7 +325,7 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
  const invoiceNo =
    inv.invoiceData?.invoiceNumber ||
    inv.invoiceNumber ||
-   (inv.job ? String(inv.job).slice(-6) : String(inv._id).slice(-6));
+   String(inv._id).slice(-6);
   // 4) Billing address logic (same as you had, but preserved)
   const BILLING_ADDRESSES = {
     'Atlanta Gas Light': '600 Townpark Ln, Kennesaw, GA 30144',
@@ -349,7 +349,8 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
   };
 
   const billingAddress =
-    (inv.invoiceData?.billToAddress || job.billingAddress) ||
+    inv.invoiceData?.billToAddress ||
+    job.invoiceData?.billToAddress ||
     BILLING_ADDRESSES[inv.company] ||
     '';
 
@@ -371,20 +372,19 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
     // Right meta box (same as main invoice)
     metaBox: {
       date: new Date().toLocaleDateString(),
-      invoiceNo: String(inv._id).slice(-6),
-           invoiceNo,
-     wr1: inv.invoiceData?.workRequestNumber1 || inv.workRequestNumber1,
-     wr2: inv.invoiceData?.workRequestNumber2 || inv.workRequestNumber2,
+      invoiceNo: invoiceNo,
+      wr1: inv.invoiceData?.workRequestNumber1 || job.invoiceData?.workRequestNumber1 || inv.workRequestNumber1,
+      wr2: inv.invoiceData?.workRequestNumber2 || job.invoiceData?.workRequestNumber2 || inv.workRequestNumber2,
       dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : ''
     },
 
     // Bill To block (same as main invoice)
     billTo: {
-           company: inv.invoiceData?.billToCompany || inv.company,
-     address: billingAddress,
-     workType: inv.invoiceData?.workType || job.workType,
-     foreman: inv.invoiceData?.foreman  || job.foreman,
-     location: inv.invoiceData?.location || job.location
+      company: inv.invoiceData?.billToCompany || job.invoiceData?.billToCompany || inv.company,
+      address: billingAddress,
+      workType: inv.invoiceData?.workType || job.invoiceData?.workType || job.workType,
+      foreman: inv.invoiceData?.foreman || job.invoiceData?.foreman || job.foreman,
+      location: inv.invoiceData?.location || job.invoiceData?.location || job.location
     },
 
     // Services table + notes, using the shared components
