@@ -164,6 +164,13 @@ const corsOptions = {
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
 };
+router.use(cors(corsOptions));
+router.options('*', cors(corsOptions));
+
+router.use((req, res, next) => {
+  console.log('[billing router]', req.method, req.originalUrl, req.path);
+  next();
+});
 const PUBLIC_PATHS = new Set([
   '/bill-workorder',
   '/mark-paid',
@@ -187,14 +194,6 @@ router.use((req, res, next) => {
   if (PUBLIC_PATHS.has(req.path)) return next();
   requireInvoiceAdmin(req, res, next);
 });
-router.use(cors(corsOptions));
-router.options('*', cors(corsOptions));
-
-router.use((req, res, next) => {
-  console.log('[billing router]', req.method, req.originalUrl, req.path);
-  next();
-});
-
 // Skip auth for bill-workorder, mark-paid, and invoice-status routes
 router.use((req, res, next) => {
   if (req.path === '/bill-workorder' || req.path === '/mark-paid' || req.path === '/invoice-status') {
