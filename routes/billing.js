@@ -195,20 +195,6 @@ router.use((req, res, next) => {
   requireInvoiceAdmin(req, res, next);
 });
 // Skip auth for bill-workorder, mark-paid, and invoice-status routes
-router.use((req, res, next) => {
-  if (req.path === '/bill-workorder' || req.path === '/mark-paid' || req.path === '/invoice-status') {
-    console.log('Skipping auth for', req.path);
-    return next();
-  }
-  auth(req, res, next);
-});
-
-router.use((req, res, next) => {
-  if (req.path === '/bill-workorder' || req.path === '/mark-paid' || req.path === '/invoice-status') {
-    return next();
-  }
-  requireInvoiceAdmin(req, res, next);
-});
 
 // Mark invoice as paid
 router.post('/mark-paid', async (req, res) => {
