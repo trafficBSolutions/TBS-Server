@@ -164,7 +164,29 @@ const corsOptions = {
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
 };
+const PUBLIC_PATHS = new Set([
+  '/bill-workorder',
+  '/mark-paid',
+  '/invoice-status',
+  '/test/run-interest-once', // <-- add this
+  // optionally:
+  // '/test/backdate-due',    // if you want this open too
+]);
 
+// Skip auth for public paths
+router.use((req, res, next) => {
+  if (PUBLIC_PATHS.has(req.path)) {
+    console.log('Skipping auth for', req.path);
+    return next();
+  }
+  auth(req, res, next);
+});
+
+// Require invoice admin for non-public paths
+router.use((req, res, next) => {
+  if (PUBLIC_PATHS.has(req.path)) return next();
+  requireInvoiceAdmin(req, res, next);
+});
 router.use(cors(corsOptions));
 router.options('*', cors(corsOptions));
 
