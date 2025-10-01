@@ -300,9 +300,14 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
   const { logo, cone } = loadStdAssets();
 
   // 1) Original, non-zero service rows from the saved invoice data
-  const originalRows =
-    (inv.invoiceData?.sheetRows || []).filter(r => Number(r?.amount) > 0);
-
+ const originalRows = (
+   inv.invoiceData?.sheetRows ||
+   (inv.lineItems || []).map(li => ({
+     service: li.description,
+     taxed: false,                 // no tax column stored; keep false
+     amount: Number(li.total ?? li.unitPrice ?? 0)
+   }))
+ ).filter(r => Number(r?.amount) > 0);
   // 2) Append an Interest line if applicable (non-taxed)
   const rows = [...originalRows];
   const interestAmt = Number(due.interest || 0);
@@ -317,7 +322,10 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
   // 3) Compute totals the same way your main invoice block renders
   const principal = Number(due.principal || 0);
   const total     = Number(due.total || (principal + interestAmt));
-
+ const invoiceNo =
+   inv.invoiceData?.invoiceNumber ||
+   inv.invoiceNumber ||
+   (inv.job ? String(inv.job).slice(-6) : String(inv._id).slice(-6));
   // 4) Billing address logic (same as you had, but preserved)
   const BILLING_ADDRESSES = {
     'Atlanta Gas Light': '600 Townpark Ln, Kennesaw, GA 30144',
@@ -341,8 +349,7 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
   };
 
   const billingAddress =
-    job.billingAddress ||
-    inv.invoiceData?.billToAddress ||
+    (inv.invoiceData?.billToAddress || job.billingAddress) ||
     BILLING_ADDRESSES[inv.company] ||
     '';
 
@@ -365,22 +372,27 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
     metaBox: {
       date: new Date().toLocaleDateString(),
       invoiceNo: String(inv._id).slice(-6),
-      wr1: inv.invoiceData?.workRequestNumber1,
-      wr2: inv.invoiceData?.workRequestNumber2,
+           invoiceNo,
+     wr1: inv.invoiceData?.workRequestNumber1 || inv.workRequestNumber1,
+     wr2: inv.invoiceData?.workRequestNumber2 || inv.workRequestNumber2,
       dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : ''
     },
 
     // Bill To block (same as main invoice)
     billTo: {
-      company: inv.company,
-      address: billingAddress,
-      workType: inv.invoiceData?.workType || job.workType,
-      foreman: inv.invoiceData?.foreman  || job.foreman,
-      location: inv.invoiceData?.location || job.location
+           company: inv.invoiceData?.billToCompany || inv.company,
+     address: billingAddress,
+     workType: inv.invoiceData?.workType || job.workType,
+     foreman: inv.invoiceData?.foreman  || job.foreman,
+     location: inv.invoiceData?.location || job.location
     },
 
     // Services table + notes, using the shared components
-    contentHTML: servicesSectionFromRowsHTML(rows, inv.invoiceData),
+       contentHTML: servicesSectionFromRowsHTML(
+     rows,
+     // pass something sensible so your notes block can still render
+     inv.invoiceData || { sheetRows: originalRows }
+   ),
 
     // Totals shown with "Other" == interest, no tax
     totalsHTML: totalsBlock({
