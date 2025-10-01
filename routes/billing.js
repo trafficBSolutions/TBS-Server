@@ -44,9 +44,9 @@ router.post('/test/backdate-due', async (req, res) => {
 // Run the interest bot once (with optional "now")
 router.post('/test/run-interest-once', async (req, res) => {
   try {
-    const { nowISO } = req.body || {};
+    const { nowISO, force = false } = req.body || {};
     const now = nowISO ? new Date(nowISO) : new Date();
-    await runInterestReminderCycle(now);
+    await runInterestReminderCycle(now, { force });
     res.json({ ok: true, ranAt: now.toISOString() });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -207,32 +207,38 @@ router.post('/mark-paid', async (req, res) => {
     if (workOrder.paid) return res.status(409).json({ message: 'Work order already paid' });
     
     // Always fetch Invoice data for authoritative amount if available
-    let invoicePrincipal = 0;
-    if (workOrder.invoiceId) {
-      try {
-        const invoice = await Invoice.findById(workOrder.invoiceId).lean();
-        if (invoice?.principal) {
-          invoicePrincipal = invoice.principal;
-          workOrder.invoicePrincipal = invoice.principal;
-        }
-      } catch (err) {
-        console.warn('Failed to fetch invoice principal:', err);
-      }
+   // --- NEW: load invoice (prefer id, fallback to job) so we can use accrued interest ---
+  let invoiceDoc = null;
+   if (workOrder.invoiceId) {
+     invoiceDoc = await Invoice.findById(workOrder.invoiceId).lean().catch(() => null);
+   }
+   if (!invoiceDoc) {
+     invoiceDoc = await Invoice.findOne({ job: workOrder._id }).lean().catch(() => null);   
     }
+       const invPrincipal = Number(invoiceDoc?.principal ?? 0);
+   const invAccrued   = Number(invoiceDoc?.accruedInterest ?? 0);
+   const invComputed  = Number(invoiceDoc?.computedTotalDue ?? 0); // principal + accrued
     const enteredTotalOwed = Number(totalOwed ?? 0);
     const requestedPaid    = Number(paymentAmount ?? 0);
-    const totalOwedFinal   =
-      enteredTotalOwed > 0
-        ? enteredTotalOwed
-        : Number(
-            invoicePrincipal ?? // PRIORITY: Use authoritative Invoice.principal from MongoDB
-            workOrder.invoiceData?.sheetTotal ??
-            workOrder.invoiceTotal ??
-            workOrder.invoicePrincipal ??
-            workOrder.currentAmount ??
-            workOrder.billedAmount ??
-            0
-          );
+   // Priorities:
+   // 1) user-entered override
+   // 2) invoice.computedTotalDue (bot output)
+   // 3) invoice.principal + invoice.accruedInterest
+   // 4) old fallbacks
+   const fallbackLegacy =
+     Number(
+       workOrder.invoiceData?.sheetTotal ??
+       workOrder.invoiceTotal ??
+       workOrder.invoicePrincipal ??
+       workOrder.currentAmount ??
+       workOrder.billedAmount ??
+       0
+     );
+   const totalOwedFinal = enteredTotalOwed > 0
+     ? enteredTotalOwed
+     : (invComputed > 0
+         ? invComputed
+         : ((invPrincipal + invAccrued) || fallbackLegacy));
     const actualPaid       = Math.max(0, Math.min(requestedPaid, totalOwedFinal));
     const remainingBalance = Math.max(0, totalOwedFinal - actualPaid);
     const isPaidInFull     = remainingBalance === 0;
@@ -254,8 +260,9 @@ router.post('/mark-paid', async (req, res) => {
         cardLast4: cardLast4 || undefined,
         cardType: cardType || undefined,
         checkNumber: checkNumber || undefined,
-        lateFees: 0,
-        billedAmount: totalOwedFinal,
+           // reflect the currently due total & show interest as "lateFees"
+        lateFees: Number(invAccrued.toFixed(2)),
+        billedAmount: totalOwedFinal, 
         currentAmount: remainingBalance,
         lastPaymentAmount: actualPaid,
         lastPaymentAt: new Date(),
@@ -274,7 +281,9 @@ router.post('/mark-paid', async (req, res) => {
           status: isPaidInFull ? 'PAID' : 'PARTIALLY_PAID',
           paidAt: isPaidInFull ? new Date() : undefined,
          paymentMethod: paymentMethod === 'card' ? 'CARD' : 'CHECK',
-          principal: totalOwedFinal
+               principal: totalOwedFinal,
+               accruedInterest: Number(invAccrued.toFixed(2)),
+               computedTotalDue: Number(totalOwedFinal.toFixed(2)),
         }}
       );
       console.log('[mark-paid] Invoice update result:', invoiceUpdateResult);
@@ -667,7 +676,7 @@ router.get('/invoice-status', async (req, res) => {
     const objectIds = ids.map(id => new mongoose.Types.ObjectId(id));
 
     const invoices = await Invoice.find({ job: { $in: objectIds } })
-      .select('_id job principal status paidAt sentAt publicKey')
+      .select('_id job principal status paidAt sentAt publicKey accruedInterest computedTotalDue interestStepsEmailed')
       .lean();
 
     // Normalize into a dictionary by workOrderId
@@ -677,6 +686,9 @@ router.get('/invoice-status', async (req, res) => {
         invoiceId: String(inv._id),
         status: inv.status,                // DRAFT | SENT | PARTIALLY_PAID | PAID | VOID
         principal: Number(inv.principal) || 0,
+         accruedInterest: Number(inv.accruedInterest) || 0,
+ computedTotalDue: Number(inv.computedTotalDue) || 0,
+ interestStepsEmailed: Number(inv.interestStepsEmailed) || 0,
         sentAt: inv.sentAt || null,
         paidAt: inv.paidAt || null,
         publicKey: inv.publicKey || null
