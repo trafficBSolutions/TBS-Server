@@ -363,10 +363,10 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
     // Left company/job box (same shape as main invoice)
     companyBox: {
       client: inv.company,
-      address: job.basic?.address || job.address,
-      city:    job.basic?.city    || job.city,
-      state:   job.basic?.state   || job.state,
-      zip:     job.basic?.zip     || job.zip
+       address: job?.basic?.address || job?.address || inv.invoiceData?.location || '',
+ city:    job?.basic?.city    || job?.city    || '',
+ state:   job?.basic?.state   || job?.state   || '',
+ zip:     job?.basic?.zip     || job?.zip     || ''
     },
 
     // Right meta box (same as main invoice)
@@ -381,7 +381,7 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
     // Bill To block (same as main invoice)
     billTo: {
       company: inv.invoiceData?.billToCompany || job.invoiceData?.billToCompany || inv.company,
-      address: billingAddress,
+      address: normalize(billingAddress),
       workType: inv.invoiceData?.workType || job.invoiceData?.workType || job.workType,
       foreman: inv.invoiceData?.foreman || job.invoiceData?.foreman || job.foreman,
       location: inv.invoiceData?.location || job.invoiceData?.location || job.location
