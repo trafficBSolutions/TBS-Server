@@ -22,17 +22,17 @@ async function main() {
   }
 
   await mongoose.connect(uri);
-  console.log('[interestBot] connected; scheduling daily run at 09:00 America/New_York');
+  console.log('[interestBot] connected; scheduling test run every minute');
 
   // Optional: run once on boot (set INTEREST_RUN_ON_BOOT=1 in Render env)
   if (process.env.INTEREST_RUN_ON_BOOT === '1') {
     await safeRun('boot');
   }
 
-  // Daily at 09:00 Eastern (DST-safe because of timezone option)
+  // Every minute for testing
   cron.schedule(
-    '0 9 * * *',
-    () => safeRun('cron 09:00 America/New_York'),
+    '*/1 * * * *',
+    () => safeRun('cron every minute TEST'),
     { timezone: 'America/New_York' }
   );
 
