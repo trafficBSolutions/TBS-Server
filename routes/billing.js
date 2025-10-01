@@ -551,6 +551,11 @@ router.post('/bill-workorder', async (req, res) => {
       status: 'SENT',
       sentAt: new Date(),
       dueDate: invoiceData?.dueDate ? new Date(invoiceData.dueDate) : undefined, // <-- add
+         invoiceData,                                     // <-- persist the full snapshot
+   invoiceNumber: invoiceData?.invoiceNumber ||     // <-- persist a stable invoice #
+                  String(workOrder?._id || '').slice(-6),
+   workRequestNumber1: invoiceData?.workRequestNumber1,
+   workRequestNumber2: invoiceData?.workRequestNumber2,
       lineItems: (invoiceData.sheetRows || []).map(row => ({
         description: row.service,
         qty: 1,
