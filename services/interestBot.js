@@ -31,7 +31,9 @@ async function sendInterestEmail(inv, due) {
   }
 
   // services/interestBot.js sendInterestEmail()
-const subject = `INVOICE REMINDER – ${inv.company} – $${Number(due.total || inv.computedTotalDue || 0).toFixed(2)}`;
+ const invNo =
+   inv.invoiceData?.invoiceNumber || inv.invoiceNumber || String(inv._id).slice(-6);
+ const subject = `INVOICE REMINDER – ${inv.company} – INV ${invNo} – $${Number(due.total || inv.computedTotalDue || 0).toFixed(2)}`;
 
   // Styled body similar to your billing.js email, but with the three numbers + Leah message
   const html = `
