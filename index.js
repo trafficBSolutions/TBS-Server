@@ -13,6 +13,7 @@ const cron = require('node-cron');
 const { runInterestReminderCycle } = require('./services/interestBot');
 const workOrdersRouter = require('./routes/autoOrderRoute');
 const employeeAuth = require('./routes/employeeAuth');
+const paymentsRouter = require('./routes/payments');
 // Create Express app
 const app = express();
 
@@ -20,7 +21,7 @@ const app = express();
 app.use(helmet()); // Secure headers
 app.use(xss()); // Prevent XSS
 app.use(compression()); // GZIP compression
-cron.schedule('15 9 * * *', () => runInterestReminderCycle(), {
+cron.schedule('30 13 * * *', () => runInterestReminderCycle(), {
   timezone: 'America/New_York'
 });
 // Limit repeated requests
