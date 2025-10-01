@@ -85,6 +85,12 @@ async function printHtmlToPdfBuffer(html) {
 /* ---------- helpers ---------- */
 function money(n){ return `$${Number(n||0).toFixed(2)}`; }
 
+function servicesSectionFromRowsHTML(rows, invoiceData) {
+  return [
+    serviceLineItemsHTML(rows),          // the 3-column SERVICES table
+    serviceNotesOneColHTML(invoiceData), // the one-column notes list (same as main invoice)
+  ].join('');
+}
 /* 3-column service line items (SERVICE | TAXED | AMOUNT) */
  function serviceLineItemsHTML(rows) {
   const billable = (rows || []).filter(r => Number(r?.amount) > 0);
@@ -293,20 +299,26 @@ function lateTotalsBlock({principal, interest, total}) {
 async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
   const { logo, cone } = loadStdAssets();
 
-  // Get original services from invoice data, filter out $0 items
-  const originalRows = (inv.invoiceData?.sheetRows || []).filter(r => Number(r?.amount) > 0);
-  
-  // Add interest as a separate line item if there's interest
+  // 1) Original, non-zero service rows from the saved invoice data
+  const originalRows =
+    (inv.invoiceData?.sheetRows || []).filter(r => Number(r?.amount) > 0);
+
+  // 2) Append an Interest line if applicable (non-taxed)
   const rows = [...originalRows];
-  if (Number(due.interest || 0) > 0) {
+  const interestAmt = Number(due.interest || 0);
+  if (interestAmt > 0) {
     rows.push({
-      service: `Interest (2.5% simple × ${Number(due.steps||0)} steps)`,
+      service: `Interest (2.5% simple × ${Number(due.steps || 0)} steps)`,
       taxed: false,
-      amount: Number(due.interest || 0)
+      amount: interestAmt
     });
   }
 
-  // Get billing address from job or use company-specific address
+  // 3) Compute totals the same way your main invoice block renders
+  const principal = Number(due.principal || 0);
+  const total     = Number(due.total || (principal + interestAmt));
+
+  // 4) Billing address logic (same as you had, but preserved)
   const BILLING_ADDRESSES = {
     'Atlanta Gas Light': '600 Townpark Ln, Kennesaw, GA 30144',
     'Broadband of Indiana': '145 Peppers Dr, Paris, TN 38242',
@@ -328,21 +340,28 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
     'Wilson Boys Enterprises, LLC': '8373 Earl D Lee Blvd STE 300, Douglasville, GA 30134'
   };
 
-  const billingAddress = job.billingAddress || 
-                        inv.invoiceData?.billToAddress || 
-                        BILLING_ADDRESSES[inv.company] || '';
+  const billingAddress =
+    job.billingAddress ||
+    inv.invoiceData?.billToAddress ||
+    BILLING_ADDRESSES[inv.company] ||
+    '';
 
+  // 5) Render using the SAME v42 frame + blocks as the main invoice
   const html = renderV42Document({
     title: 'INVOICE REMINDER',
     coneDataUri: cone,
     logoDataUri: logo,
+
+    // Left company/job box (same shape as main invoice)
     companyBox: {
       client: inv.company,
       address: job.basic?.address || job.address,
-      city: job.basic?.city || job.city,
-      state: job.basic?.state || job.state,
-      zip: job.basic?.zip || job.zip
+      city:    job.basic?.city    || job.city,
+      state:   job.basic?.state   || job.state,
+      zip:     job.basic?.zip     || job.zip
     },
+
+    // Right meta box (same as main invoice)
     metaBox: {
       date: new Date().toLocaleDateString(),
       invoiceNo: String(inv._id).slice(-6),
@@ -350,24 +369,35 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
       wr2: inv.invoiceData?.workRequestNumber2,
       dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : ''
     },
+
+    // Bill To block (same as main invoice)
     billTo: {
       company: inv.company,
       address: billingAddress,
       workType: inv.invoiceData?.workType || job.workType,
-      foreman: inv.invoiceData?.foreman || job.foreman,
+      foreman: inv.invoiceData?.foreman  || job.foreman,
       location: inv.invoiceData?.location || job.location
     },
-    contentHTML: lateContentHTML({ rows }),
-    totalsHTML: lateTotalsBlock({
-      principal: Number(due.principal||0),
-      interest: Number(due.interest||0),
-      total: Number(due.total||0)
+
+    // Services table + notes, using the shared components
+    contentHTML: servicesSectionFromRowsHTML(rows, inv.invoiceData),
+
+    // Totals shown with "Other" == interest, no tax
+    totalsHTML: totalsBlock({
+      subtotal: principal,      // original services total (principal)
+      taxRate:  0,
+      taxDue:   0,
+      other:    interestAmt,    // interest shown as its own row
+      total:    total           // principal + interest
     }),
+
+    // Footer—kept minimal like your reminder
     footerHTML: `
       <div>Please call <strong>Leah Davis</strong> for payment: <strong>(706) 913-3317</strong></div>
       <div style="margin-top:10px; font-weight:bold;">Thank You For Your Business!</div>`
   });
 
+  // Keep the shared printer & margins
   return await printHtmlToPdfBuffer(html);
 }
 
