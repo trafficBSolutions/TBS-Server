@@ -13,7 +13,6 @@ const cron = require('node-cron');
 const { runInterestReminderCycle } = require('./services/interestBot');
 const workOrdersRouter = require('./routes/autoOrderRoute');
 const employeeAuth = require('./routes/employeeAuth');
-const paymentsRouter = require('./routes/payments');
 // Create Express app
 const app = express();
 
