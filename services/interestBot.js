@@ -82,7 +82,8 @@ await transporter7.sendMail({
 }
 
 // services/interestBot.js
-async function runInterestReminderCycle(now = new Date()) {
+async function runInterestReminderCycle(now = new Date(), opts = {}) {
+  const force = !!opts.force;
   const { currentTotal } = require('../utils/invoiceMath');
   const WorkOrder = require('../models/workorder');
   const MS = 24*60*60*1000;
@@ -128,11 +129,19 @@ async function runInterestReminderCycle(now = new Date()) {
     due.interest = principal * rate * stepsByDue;
     due.total = principal + due.interest;
     due.principal = principal;
+    // after computing `daysPast` and `stepsByDue`
+console.log(
+  `[interestBot] inv=${inv._id} company=${inv.company} baseDate=${baseDate?.toISOString?.() || 'n/a'} daysPast=${daysPast} steps=${stepsByDue} prev=${inv.interestStepsEmailed||0}`
+);
 
     // 6) Don’t re-email prior steps
     const prev = Number(inv.interestStepsEmailed || 0);
     const cur  = Number(due.steps || 0);
-    if (cur <= prev || cur <= 0) { skippedNoStep++; continue; }
+    if (!force && (cur <= prev || cur <= 0)) {
+  console.log(`[interestBot] skip (no step) inv=${inv._id} cur=${cur} prev=${prev}`);
+  skippedNoStep++;
+  continue;
+}
 
     // 7) Resolve recipient
     let toEmail = inv.companyEmail;
