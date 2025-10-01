@@ -4,7 +4,14 @@ async function buildAttachment(inv, due) {
   const WorkOrder = require('../models/workorder');
   const { generateInvoicePdfFromInvoice } = require('../services/invoicePDF');
 
-  const job = inv.job ? await WorkOrder.findById(inv.job).lean() : null;
+   let job = null;
+ if (inv.job) {
+   job = await WorkOrder.findById(inv.job).lean().catch(() => null);
+ }
+ if (!job) {
+   // fallback path for older invoices that didn’t save inv.job
+   job = await WorkOrder.findOne({ invoiceId: inv._id }).lean().catch(() => null);
+ }
   const pdfBuffer = await generateInvoicePdfFromInvoice(inv, due, job || {});
   if (!pdfBuffer) return null;
 
