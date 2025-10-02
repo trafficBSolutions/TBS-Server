@@ -211,38 +211,48 @@ function footerBlock() {
 }
 
 /* ---------- MAIN: build invoice from work order ---------- */
-async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmount, invoiceData = {}) {
+async function generateInvoicePdfFromWorkOrder(workOrder, manualAmount, invoiceData = {}) {
   const { logo, cone } = loadStdAssets();
+
+  // derive the correct invoice number for the FIRST email
+  const invoiceNo =
+    invoiceData?.invoiceNumber ||
+    (workOrder?._id ? String(workOrder._id).slice(-6) : 'INV001');
 
   const html = renderV42Document({
     title: 'INVOICE',
     coneDataUri: cone,
     logoDataUri: logo,
+
     companyBox: {
       client: workOrder?.basic?.client,
       address: workOrder?.basic?.address,
-      city: workOrder?.basic?.city,
-      state: workOrder?.basic?.state,
-      zip: workOrder?.basic?.zip,
+      city:    workOrder?.basic?.city,
+      state:   workOrder?.basic?.state,
+      zip:     workOrder?.basic?.zip,
     },
+
     metaBox: {
-    date: new Date().toLocaleDateString(),
-    invoiceNo: invoiceNo,              // <- use the computed number
-    wr1: inv.workRequestNumber1 || inv.invoiceData?.workRequestNumber1 || job?.invoiceData?.workRequestNumber1,
-    wr2: inv.workRequestNumber2 || inv.invoiceData?.workRequestNumber2 || job?.invoiceData?.workRequestNumber2,
-    dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : ''
-  },
+      date:      invoiceData.invoiceDate || new Date().toLocaleDateString(),
+      invoiceNo: invoiceNo,
+      wr1:       invoiceData?.workRequestNumber1,
+      wr2:       invoiceData?.workRequestNumber2,
+      dueDate:   invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : ''
+    },
+
     billTo: {
       company: invoiceData.billToCompany || workOrder?.basic?.client,
       address: invoiceData.billToAddress,
       workType: invoiceData.workType,
-      foreman: invoiceData.foreman,
+      foreman:  invoiceData.foreman,
       location: invoiceData.location
     },
- contentHTML: [
-   servicesSectionHTML(invoiceData),
-   fullyLoadedVehicleSectionHTML(),
- ].join(''),
+
+    contentHTML: [
+      servicesSectionHTML(invoiceData),    // already filters out $0.00 lines
+      fullyLoadedVehicleSectionHTML(),
+    ].join(''),
+
     totalsHTML: totalsBlock({
       subtotal: invoiceData.sheetSubtotal ?? manualAmount ?? 0,
       taxRate:  invoiceData.sheetTaxRate  ?? 0,
@@ -250,13 +260,12 @@ async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmou
       other:    invoiceData.sheetOther    ?? 0,
       total:    invoiceData.sheetTotal    ?? manualAmount ?? 0
     }),
+
     footerHTML: footerBlock()
   });
 
-  // tag & print
   const htmlWithMarker = html.replace('<body>', '<body><!-- v42base:1 -->');
   const buf = await printHtmlToPdfBuffer(htmlWithMarker);
-
   // (optional) save a temp copy
   try {
     const safeClient = (workOrder?.basic?.client || 'client').replace(/[^a-z0-9]+/gi,'-');
