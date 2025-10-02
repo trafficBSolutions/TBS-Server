@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Invoice = require('../models/invoice');
 const { currentTotal } = require('../utils/invoiceMath');
-const transporter2 = require('../utils/emailConfig');
+const { transporter7 }= require('../utils/emailConfig');
 
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.trafficbarriersolutions.com';
 
@@ -37,7 +37,7 @@ router.post('/public/invoice/:key/ack-check', async (req,res) => {
 
   // (Optional) notify AP mailbox
   try {
-    await transporter2.sendMail({
+    await transporter7.sendMail({
       from: 'trafficandbarriersolutions.ap@gmail.com',
       to: 'trafficandbarriersolutions.ap@gmail.com',
       subject: `Invoice ${inv._id}: customer chose CHECK`,
@@ -45,6 +45,49 @@ router.post('/public/invoice/:key/ack-check', async (req,res) => {
     });
   } catch {}
   res.json({ ok:true });
+});
+
+// 3) Admin marks check as received
+router.post('/admin/invoice/:id/check-received', async (req, res) => {
+  try {
+    const { checkNumber, receivedDate, amount } = req.body;
+    const inv = await Invoice.findById(req.params.id);
+    if (!inv) return res.status(404).json({ message: 'Invoice not found' });
+
+    inv.checkReceivedAt = receivedDate ? new Date(receivedDate) : new Date();
+    inv.status = amount >= inv.principal ? 'PAID' : 'PARTIALLY_PAID';
+    inv.paidAt = inv.status === 'PAID' ? inv.checkReceivedAt : undefined;
+    inv.history.push({ 
+      at: new Date(), 
+      action: `CHECK_RECEIVED_${checkNumber}`, 
+      by: 'admin',
+      amount: amount
+    });
+    await inv.save();
+
+    // Update related work order
+    if (inv.job) {
+      await WorkOrder.updateOne(
+        { _id: inv.job },
+        {
+          $set: {
+            paid: inv.status === 'PAID',
+            paymentMethod: `Check #${checkNumber}`,
+            paidAt: inv.paidAt,
+            checkNumber: checkNumber,
+            lastPaymentAmount: amount,
+            lastPaymentAt: inv.checkReceivedAt,
+            currentAmount: Math.max(0, inv.principal - amount)
+          }
+        }
+      );
+    }
+
+    res.json({ message: 'Check receipt recorded', invoice: inv });
+  } catch (error) {
+    console.error('Check received error:', error);
+    res.status(500).json({ message: 'Failed to record check receipt' });
+  }
 });
 
 module.exports = router;
