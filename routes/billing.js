@@ -199,7 +199,23 @@ router.use((req, res, next) => {
 // Mark invoice as paid
 router.post('/mark-paid', async (req, res) => {
   try {
-    const { workOrderId, paymentMethod, emailOverride, cardLast4, cardType, checkNumber, paymentAmount, totalOwed } = req.body;
+    const { 
+      workOrderId, 
+      paymentMethod, 
+      emailOverride, 
+      cardLast4, 
+      cardType, 
+      checkNumber, 
+      paymentAmount, 
+      totalOwed,
+      // New Stripe fields
+      stripePaymentIntentId,
+      cardNumber,
+      expMonth,
+      expYear,
+      cvc,
+      processStripe = false
+    } = req.body;
     const WorkOrder = require('../models/workorder');
 
     const workOrder = await WorkOrder.findById(workOrderId);
@@ -242,10 +258,64 @@ router.post('/mark-paid', async (req, res) => {
     const actualPaid       = Math.max(0, Math.min(requestedPaid, totalOwedFinal));
     const remainingBalance = Math.max(0, totalOwedFinal - actualPaid);
     const isPaidInFull     = remainingBalance === 0;
+    
+    // Process Stripe payment if requested
+    let stripeResult = null;
+    if (processStripe && paymentMethod === 'card' && cardNumber) {
+      try {
+        const Stripe = require('stripe');
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+        
+        const paymentMethod = await stripe.paymentMethods.create({
+          type: 'card',
+          card: {
+            number: cardNumber,
+            exp_month: expMonth,
+            exp_year: expYear,
+            cvc: cvc,
+          },
+        });
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(actualPaid * 100), // Convert to cents
+          currency: 'usd',
+          payment_method: paymentMethod.id,
+          confirm: true,
+          metadata: {
+            workOrderId: String(workOrder._id),
+            invoiceId: workOrder.invoiceId ? String(workOrder.invoiceId) : '',
+            client: workOrder.basic?.client || '',
+            project: workOrder.basic?.project || ''
+          }
+        });
+
+        if (paymentIntent.status === 'succeeded') {
+          stripeResult = {
+            success: true,
+            paymentIntentId: paymentIntent.id,
+            cardLast4: paymentMethod.card.last4,
+            cardBrand: paymentMethod.card.brand
+          };
+        } else {
+          throw new Error(`Payment failed with status: ${paymentIntent.status}`);
+        }
+      } catch (stripeError) {
+        console.error('Stripe payment error:', stripeError);
+        return res.status(400).json({ 
+          message: 'Card payment failed', 
+          error: stripeError.message 
+        });
+      }
+    }
+    
     // Prepare payment details
     let paymentDetails = paymentMethod;
-    if (paymentMethod === 'card' && cardLast4 && cardType) {
-      paymentDetails = `${cardType} ****${cardLast4}`;
+    if (paymentMethod === 'card') {
+      if (stripeResult) {
+        paymentDetails = `${stripeResult.cardBrand.toUpperCase()} ****${stripeResult.cardLast4}`;
+      } else if (cardLast4 && cardType) {
+        paymentDetails = `${cardType} ****${cardLast4}`;
+      }
     } else if (paymentMethod === 'check' && checkNumber) {
       paymentDetails = `Check #${checkNumber}`;
     }
@@ -640,12 +710,7 @@ if (pdfBuffer && pdfBuffer.length > 0) {
   });
 } else {
   // Fallback so “attached: true” is still true with a readable artifact
-  mailOptions.attachments.push({
-    filename: 'invoice.html',
-    content: emailHtml,
-    contentType: 'text/html'
-  });
-  console.warn('[invoice] PDF missing; attaching HTML fallback');
+  console.error('[invoice] PDF generation failed - no attachment will be sent');
 }
       try {
         const info = await transporter7.sendMail(mailOptions);
