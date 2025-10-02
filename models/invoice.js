@@ -49,7 +49,11 @@ const InvoiceSchema = new mongoose.Schema({
   checkReceivedAt: { type: Date },    // admin put a check in
 
   notes: String,
-  history: [{ at: Date, action: String, by: String }]
+  history: [{ at: Date, action: String, by: String }],
+  invoiceNumber: { type: String, index: true },     // <- add
+  invoiceData:   { type: mongoose.Schema.Types.Mixed }, // <- add snapshot if you want to reuse editor data
+  workRequestNumber1: { type: String }, // optional but you already set these
+  workRequestNumber2: { type: String }, // optional
 }, { timestamps: true });
 
 InvoiceSchema.index(
