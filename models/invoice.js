@@ -42,6 +42,7 @@ const InvoiceSchema = new mongoose.Schema({
   publicKey: { type: String, default: () => randomUUID() },
   interestStepsEmailed: { type: Number, default: 0 },
   lastReminderAt: { type: Date },
+  remindersSent: [{ type: Number }], // Track pre-due reminder steps (-3, -2, -1)
 
   // NEW: customer intent + admin bookkeeping
   paymentMethod: { type: String, enum: ['UNSET','CARD','CHECK'], default: 'UNSET' },
