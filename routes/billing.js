@@ -104,12 +104,14 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
   ` : '';
   
   // Bill To section HTML
-  const billToHtml = invoiceData.billToCompany || invoiceData.billToAddress ? `
+  const billToCompany = invoiceData.billToCompany || workOrder.basic?.client;
+  const billToAddress = invoiceData.billToAddress;
+  const billToHtml = billToCompany ? `
     <div style="margin: 20px 0;">
-      <h3 style="color: var(--tbs-navy); border-bottom: 2px solid var(--tbs-navy); padding-bottom: 5px;">BILL TO</h3>
+      <h3 style="color: var(--tbs-navy); border-bottom: 2px solid var(--tbs-navy); padding-bottom: 5px;">BILLED TO</h3>
       <div style="background: #f9f9f9; padding: 15px; border-radius: 6px;">
-        ${invoiceData.billToCompany ? `<div><strong>${invoiceData.billToCompany}</strong></div>` : ''}
-        ${invoiceData.billToAddress ? `<div>${invoiceData.billToAddress}</div>` : ''}
+        <div><strong>${billToCompany}</strong></div>
+        ${billToAddress ? `<div>${billToAddress}</div>` : ''}
       </div>
     </div>
   ` : '';
