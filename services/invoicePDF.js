@@ -10,6 +10,8 @@ const { renderV42Document, loadStdAssets } = require('./v42Base');
 async function printHtmlToPdfBuffer(html) {
   let browser;
   try {
+    console.log('[pdf] Starting PDF generation...');
+    
     // Robust executable path resolution
     const candidates = [];
 
@@ -57,13 +59,16 @@ async function printHtmlToPdfBuffer(html) {
       ]
     });
 
+    console.log('[pdf] Browser launched successfully');
     const page = await browser.newPage();
     await page.setViewport({ width: 1240, height: 1754, deviceScaleFactor: 2 });
 
+    console.log('[pdf] Setting page content...');
     // Be more forgiving than 'networkidle0' to avoid hangs
     await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
     await page.emulateMediaType('screen');
 
+    console.log('[pdf] Generating PDF...');
     const buf = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -73,10 +78,20 @@ async function printHtmlToPdfBuffer(html) {
     if (!buf || !buf.length) {
       throw new Error('Empty PDF buffer');
     }
+    
+    console.log('[pdf] PDF generated successfully, size:', buf.length, 'bytes');
     return buf;
+  } catch (error) {
+    console.error('[pdf] PDF generation failed:', error);
+    throw error;
   } finally {
     if (browser) {
-      try { await browser.close(); } catch (_) {}
+      try { 
+        await browser.close(); 
+        console.log('[pdf] Browser closed');
+      } catch (e) {
+        console.error('[pdf] Error closing browser:', e);
+      }
     }
   }
 }
