@@ -226,12 +226,12 @@ async function generateInvoicePdfFromWorkOrder(workOrder, /* number */manualAmou
       zip: workOrder?.basic?.zip,
     },
     metaBox: {
-      date: invoiceData.invoiceDate || new Date().toLocaleDateString(),
-      invoiceNo: invoiceData.invoiceNumber || String(workOrder?._id || 'INV001').slice(-6),
-      wr1: invoiceData.workRequestNumber1,
-      wr2: invoiceData.workRequestNumber2,
-      dueDate: invoiceData.dueDate
-    },
+    date: new Date().toLocaleDateString(),
+    invoiceNo: invoiceNo,              // <- use the computed number
+    wr1: inv.workRequestNumber1 || inv.invoiceData?.workRequestNumber1 || job?.invoiceData?.workRequestNumber1,
+    wr2: inv.workRequestNumber2 || inv.invoiceData?.workRequestNumber2 || job?.invoiceData?.workRequestNumber2,
+    dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : ''
+  },
     billTo: {
       company: invoiceData.billToCompany || workOrder?.basic?.client,
       address: invoiceData.billToAddress,
@@ -322,10 +322,11 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
   // 3) Compute totals the same way your main invoice block renders
   const principal = Number(due.principal || 0);
   const total     = Number(due.total || (principal + interestAmt));
- const invoiceNo =
-   inv.invoiceData?.invoiceNumber ||
-   inv.invoiceNumber ||
-   String(inv._id).slice(-6);
+const invoiceNo =
+  inv.invoiceNumber ||
+  inv.invoiceData?.invoiceNumber ||
+  job?.invoiceData?.invoiceNumber ||
+  String(inv._id).slice(-6);
   // 4) Billing address logic (same as you had, but preserved)
   const BILLING_ADDRESSES = {
     'Atlanta Gas Light': '600 Townpark Ln, Kennesaw, GA 30144',
