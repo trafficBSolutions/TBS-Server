@@ -78,16 +78,25 @@ Current Total: $${Number(due.total||0).toFixed(2)}
 
 Please call Leah Davis for payment: (706) 913-3317`;
 
-  const attachment = await buildAttachment(inv, due).catch(() => null);
+  const attachment = await buildAttachment(inv, due).catch(err => {
+    console.error(`[sendInterestEmail] buildAttachment failed for ${inv._id}:`, err);
+    return null;
+  });
+  
+  console.log(`[sendInterestEmail] Attachment status for ${inv._id}: ${attachment ? 'SUCCESS' : 'FAILED'}`);
 
-await transporter7.sendMail({
+  const mailOptions = {
     from: 'trafficandbarriersolutions.ap@gmail.com',
-    to: toEmail,                         // ✅ use the resolved email
+    to: toEmail,
     subject,
     text,
     html,
     attachments: attachment ? [attachment] : []
-  });
+  };
+  
+  console.log(`[sendInterestEmail] Sending email to ${toEmail} with ${attachment ? 'PDF attachment' : 'NO attachment'}`);
+  await transporter7.sendMail(mailOptions);
+  console.log(`[sendInterestEmail] Email sent successfully to ${toEmail}`);
 }
 
 // services/interestBot.js
