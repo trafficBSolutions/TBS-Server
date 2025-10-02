@@ -66,6 +66,69 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
   const actualPaid = Math.min(paidAmount, totalOwed);
   const remainingBalance = Math.max(0, totalOwed - actualPaid);
   
+  // Get invoice data for detailed receipt
+  const invoiceData = workOrder.invoiceData || {};
+  const sheetRows = invoiceData.sheetRows || [];
+  const billableRows = sheetRows.filter(r => Number(r?.amount) > 0);
+  const lateFees = Number(workOrder.lateFees || 0);
+  const accruedInterest = Number(workOrder._invoice?.accruedInterest || 0);
+  const interestAmount = Math.max(lateFees, accruedInterest);
+  
+  // Services section HTML
+  const servicesHtml = billableRows.length > 0 ? `
+    <div style="margin: 20px 0;">
+      <h3 style="color: var(--tbs-navy); border-bottom: 2px solid var(--tbs-navy); padding-bottom: 5px;">SERVICES PROVIDED</h3>
+      <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+        <thead>
+          <tr style="background: #f0f0f0;">
+            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Service</th>
+            <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${billableRows.map(row => `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 8px;">${row.service}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${formatCurrency(row.amount)}</td>
+            </tr>
+          `).join('')}
+          ${interestAmount > 0 ? `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 8px; color: #d32f2f;"><strong>Late Payment Interest</strong></td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right; color: #d32f2f;"><strong>${formatCurrency(interestAmount)}</strong></td>
+            </tr>
+          ` : ''}
+        </tbody>
+      </table>
+    </div>
+  ` : '';
+  
+  // Bill To section HTML
+  const billToHtml = invoiceData.billToCompany || invoiceData.billToAddress ? `
+    <div style="margin: 20px 0;">
+      <h3 style="color: var(--tbs-navy); border-bottom: 2px solid var(--tbs-navy); padding-bottom: 5px;">BILL TO</h3>
+      <div style="background: #f9f9f9; padding: 15px; border-radius: 6px;">
+        ${invoiceData.billToCompany ? `<div><strong>${invoiceData.billToCompany}</strong></div>` : ''}
+        ${invoiceData.billToAddress ? `<div>${invoiceData.billToAddress}</div>` : ''}
+      </div>
+    </div>
+  ` : '';
+  
+  // Job Details section HTML
+  const jobDetailsHtml = `
+    <div style="margin: 20px 0;">
+      <h3 style="color: var(--tbs-navy); border-bottom: 2px solid var(--tbs-navy); padding-bottom: 5px;">JOB DETAILS</h3>
+      <div style="background: #f9f9f9; padding: 15px; border-radius: 6px;">
+        <div><strong>Work Type:</strong> ${invoiceData.workType || 'Traffic Control'}</div>
+        <div><strong>Foreman:</strong> ${invoiceData.foreman || workOrder.basic?.foremanName || ''}</div>
+        <div><strong>Location:</strong> ${invoiceData.location || [workOrder.basic?.address, workOrder.basic?.city, workOrder.basic?.state, workOrder.basic?.zip].filter(Boolean).join(', ')}</div>
+        <div><strong>Date of Service:</strong> ${workOrder.basic?.dateOfJob || new Date(workOrder.createdAt).toLocaleDateString()}</div>
+        ${invoiceData.invoiceNumber ? `<div><strong>Invoice #:</strong> ${invoiceData.invoiceNumber}</div>` : ''}
+        ${invoiceData.dueDate ? `<div><strong>Due Date:</strong> ${new Date(invoiceData.dueDate).toLocaleDateString()}</div>` : ''}
+      </div>
+    </div>
+  `;
+  
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -104,6 +167,10 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
   
   <h1 class="title">PAYMENT RECEIPT</h1>
   
+  ${billToHtml}
+  ${jobDetailsHtml}
+  ${servicesHtml}
+  
   <div class="receipt-box">
     <div class="receipt-row">
       <span>Client:</span>
@@ -122,7 +189,17 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
       <span>${paymentDetails}</span>
     </div>
     <div class="receipt-row">
-      <span>Total Owed:</span>
+      <span>Original Invoice Total:</span>
+      <span>${formatCurrency(totalOwed - interestAmount)}</span>
+    </div>
+    ${interestAmount > 0 ? `
+    <div class="receipt-row" style="color: #d32f2f;">
+      <span>Late Payment Interest:</span>
+      <span>${formatCurrency(interestAmount)}</span>
+    </div>
+    ` : ''}
+    <div class="receipt-row">
+      <span>Total Amount Due:</span>
       <span>${formatCurrency(totalOwed)}</span>
     </div>
     <div class="receipt-row total">
@@ -137,7 +214,8 @@ async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, tota
   
   <div class="footer">
     <p><strong>Thank you for your payment!</strong></p>
-    <p>This receipt confirms payment has been received in full.</p>
+    <p>This receipt confirms payment has been received.</p>
+    ${remainingBalance === 0 ? '<p><strong>Account Paid in Full</strong></p>' : `<p>Remaining balance of ${formatCurrency(remainingBalance)} is still due.</p>`}
   </div>
 </body>
 </html>`;
