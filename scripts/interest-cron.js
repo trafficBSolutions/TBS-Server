@@ -31,8 +31,8 @@ async function main() {
 
   // Daily at 1:30 PM Eastern
   cron.schedule(
-    '30 13 * * *',
-   // '*/1 * * * *',
+    //'30 13 * * *',
+    '*/1 * * * *',
     () => safeRun('cron 1:30 PM EST'),
     { timezone: 'America/New_York' }
   );
