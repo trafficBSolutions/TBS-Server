@@ -388,11 +388,11 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
     },
 
     // Services table + notes, using the shared components
-       contentHTML: servicesSectionFromRowsHTML(
-     rows,
-     // pass something sensible so your notes block can still render
-     inv.invoiceData || { sheetRows: originalRows }
-   ),
+    contentHTML: servicesSectionFromRowsHTML(
+      rows,
+      // pass something sensible so your notes block can still render
+      inv.invoiceData || { sheetRows: originalRows }
+    ),
 
     // Totals shown with "Other" == interest, no tax
     totalsHTML: totalsBlock({
@@ -411,6 +411,11 @@ async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
 
   // Keep the shared printer & margins
   return await printHtmlToPdfBuffer(html);
+}
+
+// Helper function to normalize address strings
+function normalize(str) {
+  return (str || '').trim();
 }
 
 module.exports = {
