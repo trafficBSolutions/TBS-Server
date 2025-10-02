@@ -388,28 +388,28 @@ const invoiceNo =
     // Left company/job box (same shape as main invoice)
     companyBox: {
       client: inv.company,
-       address: job?.basic?.address || job?.address || inv.invoiceData?.location || '',
- city:    job?.basic?.city    || job?.city    || '',
- state:   job?.basic?.state   || job?.state   || '',
- zip:     job?.basic?.zip     || job?.zip     || ''
+      address: job?.basic?.address || job?.address || inv.invoiceData?.location || '',
+      city:    job?.basic?.city    || job?.city    || '',
+      state:   job?.basic?.state   || job?.state   || '',
+      zip:     job?.basic?.zip     || job?.zip     || ''
     },
 
     // Right meta box (same as main invoice)
     metaBox: {
       date: new Date().toLocaleDateString(),
       invoiceNo: invoiceNo,
-      wr1: inv.invoiceData?.workRequestNumber1 || job.invoiceData?.workRequestNumber1 || inv.workRequestNumber1,
-      wr2: inv.invoiceData?.workRequestNumber2 || job.invoiceData?.workRequestNumber2 || inv.workRequestNumber2,
+      wr1: inv.invoiceData?.workRequestNumber1 || job?.invoiceData?.workRequestNumber1 || inv.workRequestNumber1 || job?.workRequestNumber1,
+      wr2: inv.invoiceData?.workRequestNumber2 || job?.invoiceData?.workRequestNumber2 || inv.workRequestNumber2 || job?.workRequestNumber2,
       dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : ''
     },
 
     // Bill To block (same as main invoice)
     billTo: {
-      company: inv.invoiceData?.billToCompany || job.invoiceData?.billToCompany || inv.company,
+      company: inv.invoiceData?.billToCompany || job?.invoiceData?.billToCompany || inv.company,
       address: normalize(billingAddress),
-      workType: inv.invoiceData?.workType || job.invoiceData?.workType || job.workType,
-      foreman: inv.invoiceData?.foreman || job.invoiceData?.foreman || job.foreman,
-      location: inv.invoiceData?.location || job.invoiceData?.location || job.location
+      workType: inv.invoiceData?.workType || job?.invoiceData?.workType || job?.workType,
+      foreman: inv.invoiceData?.foreman || job?.invoiceData?.foreman || job?.foreman,
+      location: inv.invoiceData?.location || job?.invoiceData?.location || job?.location
     },
 
     // Services table + notes, using the shared components
