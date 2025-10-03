@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const WorkOrder = require('../models/workorder');
 const { runInterestReminderCycle } = require('../services/interestBot');
-
+PUBLIC_PATHS.add('/create-payment-intent');
 // Set the due date to a past date
 router.post('/test/backdate-due', async (req, res) => {
   try {
@@ -340,65 +340,49 @@ router.post('/mark-paid', async (req, res) => {
     const isPaidInFull     = remainingBalance === 0;
     
     // Process Stripe payment if requested
-    let stripeResult = null;
-    if (processStripe && paymentMethod === 'card' && cardNumber) {
-      try {
-        const Stripe = require('stripe');
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-        
-        const paymentMethod = await stripe.paymentMethods.create({
-          type: 'card',
-          card: {
-            number: cardNumber,
-            exp_month: expMonth,
-            exp_year: expYear,
-            cvc: cvc,
-          },
-        });
+   // inside POST /mark-paid (replace the "processStripe && cardNumber" block)
+let stripeResult = null;
 
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: Math.round(actualPaid * 100), // Convert to cents
-          currency: 'usd',
-          payment_method: paymentMethod.id,
-          confirm: true,
-          metadata: {
-            workOrderId: String(workOrder._id),
-            invoiceId: workOrder.invoiceId ? String(workOrder.invoiceId) : '',
-            client: workOrder.basic?.client || '',
-            project: workOrder.basic?.project || ''
-          }
-        });
+if (stripePaymentIntentId) {
+  try {
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const pi = await stripe.paymentIntents.retrieve(stripePaymentIntentId, { expand: ['charges.data.payment_method_details'] });
 
-        if (paymentIntent.status === 'succeeded') {
-          stripeResult = {
-            success: true,
-            paymentIntentId: paymentIntent.id,
-            cardLast4: paymentMethod.card.last4,
-            cardBrand: paymentMethod.card.brand
-          };
-        } else {
-          throw new Error(`Payment failed with status: ${paymentIntent.status}`);
-        }
-      } catch (stripeError) {
-        console.error('Stripe payment error:', stripeError);
-        return res.status(400).json({ 
-          message: 'Card payment failed', 
-          error: stripeError.message 
-        });
-      }
+    if (pi.status !== 'succeeded') {
+      return res.status(400).json({ message: `PaymentIntent not succeeded (status: ${pi.status})` });
     }
-    
-    // Prepare payment details
-    let paymentDetails = paymentMethod;
-    if (paymentMethod === 'card') {
-      if (stripeResult) {
-        paymentDetails = `${stripeResult.cardBrand.toUpperCase()} ****${stripeResult.cardLast4}`;
-      } else if (cardLast4 && cardType) {
-        paymentDetails = `${cardType} ****${cardLast4}`;
-      }
-    } else if (paymentMethod === 'check' && checkNumber) {
-      paymentDetails = `Check #${checkNumber}`;
-    }
+
+    // extract brand/last4
+    const ch = pi.charges?.data?.[0];
+    const pmd = ch?.payment_method_details;
+    const card = pmd?.card;
+
+    stripeResult = {
+      success: true,
+      paymentIntentId: pi.id,
+      amount: pi.amount / 100,
+      cardLast4: card?.last4,
+      cardBrand: card?.brand
+    };
+
+    // override paymentAmount with what Stripe actually charged, for safety
+    req.body.paymentAmount = stripeResult.amount;
+  } catch (stripeError) {
+    console.error('Stripe verify error:', stripeError);
+    return res.status(400).json({ message: 'Unable to verify Stripe payment', error: stripeError.message });
+  }
+}
+
+// later, when you build `paymentDetails`:
+if (paymentMethod === 'card') {
+  if (stripeResult) {
+    paymentDetails = `${(stripeResult.cardBrand || '').toUpperCase()} ****${stripeResult.cardLast4 || ''}`;
+  } else if (cardLast4 && cardType) {
+    paymentDetails = `${cardType} ****${cardLast4}`;
+  }
+}
+
     
     // Update work order with payment info
     await WorkOrder.updateOne(
@@ -678,6 +662,124 @@ router.post('/process-late-fees', async (req, res) => {
   }
 });
 
+// Update existing invoice
+router.post('/update-invoice', async (req, res) => {
+  try {
+    const { workOrderId, manualAmount, emailOverride, invoiceData } = req.body;
+    const WorkOrder = require('../models/workorder');
+
+    const workOrder = await WorkOrder.findById(workOrderId);
+    if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
+    if (!workOrder.billed) return res.status(400).json({ message: 'Work order not yet billed' });
+
+    const finalInvoiceTotal = invoiceData.sheetTotal || manualAmount;
+    
+    // Update existing Invoice record
+    const updateData = {
+      principal: finalInvoiceTotal,
+      invoiceData,
+      invoiceNumber: invoiceData?.invoiceNumber,
+      workRequestNumber1: invoiceData?.workRequestNumber1,
+      workRequestNumber2: invoiceData?.workRequestNumber2,
+      lineItems: (invoiceData.sheetRows || []).map(row => ({
+        description: row.service,
+        qty: 1,
+        unitPrice: row.amount,
+        total: row.amount
+      })),
+      billedTo: {
+        name: invoiceData.billToCompany || workOrder.basic?.client,
+        email: emailOverride
+      }
+    };
+
+    // Update by invoiceId first, fallback to job field
+    let invoiceUpdateResult;
+    if (workOrder.invoiceId) {
+      invoiceUpdateResult = await Invoice.updateOne({ _id: workOrder.invoiceId }, { $set: updateData });
+    } else {
+      invoiceUpdateResult = await Invoice.updateOne({ job: workOrder._id }, { $set: updateData });
+    }
+
+    // Update work order with new invoice data
+    await WorkOrder.updateOne(
+      { _id: workOrder._id },
+      { $set: { 
+        billedAmount: finalInvoiceTotal,
+        currentAmount: finalInvoiceTotal,
+        invoiceTotal: finalInvoiceTotal,
+        invoiceData: invoiceData
+      } },
+      { runValidators: false }
+    );
+
+    // Send updated invoice email
+    if (emailOverride) {
+      let pdfBuffer = null;
+      try {
+        pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
+      } catch (e) {
+        console.error('[update-invoice] PDF generation failed:', e);
+      }
+
+      const emailHtml = `
+        <html>
+          <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+            <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+              <h1 style="text-align: center; background-color: #17365D; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">UPDATED Invoice - ${workOrder.basic?.client}</h1>
+              
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Updated Invoice Amount:</strong> $${Number(finalInvoiceTotal).toFixed(2)}</p>
+                <p style="margin: 5px 0;"><strong>Work Order Date:</strong> ${workOrder.basic?.dateOfJob}</p>
+                <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
+                <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'Same as original'}</p>
+              </div>
+              
+              <p style="text-align: center; font-size: 16px; margin: 30px 0;">This is an updated version of your invoice. Please find the revised invoice PDF attached.</p>
+              
+              <div style="text-align: center; border-top: 2px solid #17365D; padding-top: 15px; margin-top: 30px;">
+                <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
+                <p style="margin: 5px 0;">1995 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const mailOptions = {
+        from: 'trafficandbarriersolutions.ap@gmail.com',
+        to: emailOverride,
+        subject: `UPDATED INVOICE – ${workOrder.basic?.client} – $${Number(finalInvoiceTotal).toFixed(2)}`,
+        html: emailHtml,
+        attachments: []
+      };
+
+      if (pdfBuffer && pdfBuffer.length > 0) {
+        const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
+        mailOptions.attachments.push({
+          filename: `updated-invoice-${safeClient}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        });
+      }
+
+      try {
+        await transporter7.sendMail(mailOptions);
+        console.log('[update-invoice] email sent to:', emailOverride);
+      } catch (emailError) {
+        console.error('Updated invoice email failed:', emailError);
+      }
+    }
+
+    const updated = await WorkOrder.findById(workOrder._id).lean();
+    res.json({ message: 'Invoice updated successfully', workOrder: updated });
+  } catch (e) {
+    console.error('Update invoice error:', e);
+    res.status(500).json({ message: 'Failed to update invoice', error: e.message });
+  }
+});
+
 router.post('/bill-workorder', async (req, res) => {
   console.log('*** BILLING ROUTER - BILL WORKORDER HIT ***');
   console.log('Request body:', JSON.stringify(req.body, null, 2));
@@ -850,5 +952,52 @@ router.get('/invoice-status', async (req, res) => {
     res.status(500).json({ message: 'Failed to load invoice status' });
   }
 });
+router.post('/create-payment-intent', async (req, res) => {
+  try {
+    const { workOrderId, paymentAmount } = req.body;
+    const WorkOrder = require('../models/workorder');
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+    const wo = await WorkOrder.findById(workOrderId).lean();
+    if (!wo) return res.status(404).json({ message: 'Work order not found' });
+
+    // Reuse your authoritative total logic:
+    let invoiceDoc = null;
+    if (wo.invoiceId) invoiceDoc = await Invoice.findById(wo.invoiceId).lean().catch(()=>null);
+    if (!invoiceDoc) invoiceDoc = await Invoice.findOne({ job: wo._id }).lean().catch(()=>null);
+
+    const invPrincipal = Number(invoiceDoc?.principal ?? 0);
+    const invAccrued   = Number(invoiceDoc?.accruedInterest ?? 0);
+    const invComputed  = Number(invoiceDoc?.computedTotalDue ?? 0);
+
+    const fallbackLegacy = Number(
+      wo.invoiceData?.sheetTotal ?? wo.invoiceTotal ?? wo.invoicePrincipal ?? wo.currentAmount ?? wo.billedAmount ?? 0
+    );
+
+    const totalOwedFinal = (invComputed > 0 ? invComputed : (invPrincipal + invAccrued) || fallbackLegacy);
+    const requestedPaid  = Number(paymentAmount ?? 0);
+    const actualPaid     = Math.max(0, Math.min(requestedPaid, totalOwedFinal));
+
+    if (actualPaid <= 0) return res.status(400).json({ message: 'Payment amount must be > 0' });
+
+    const pi = await stripe.paymentIntents.create({
+      amount: Math.round(actualPaid * 100),
+      currency: 'usd',
+      // use the modern Payment Element:
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        workOrderId: String(wo._id),
+        invoiceId: wo.invoiceId ? String(wo.invoiceId) : '',
+        client: wo.basic?.client || '',
+        project: wo.basic?.project || ''
+      }
+    });
+
+    return res.json({ clientSecret: pi.client_secret, paymentIntentId: pi.id, amount: actualPaid });
+  } catch (e) {
+    console.error('[create-payment-intent] error:', e);
+    res.status(500).json({ message: 'Failed to create PaymentIntent' });
+  }
+});
 module.exports = router;
