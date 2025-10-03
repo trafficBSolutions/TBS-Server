@@ -14,7 +14,6 @@ const fs = require('fs');
 const path = require('path');
 const WorkOrder = require('../models/workorder');
 const { runInterestReminderCycle } = require('../services/interestBot');
-PUBLIC_PATHS.add('/create-payment-intent');
 // Set the due date to a past date
 router.post('/test/backdate-due', async (req, res) => {
   try {
@@ -251,30 +250,6 @@ router.use((req, res, next) => {
   console.log('[billing router]', req.method, req.originalUrl, req.path);
   next();
 });
-const PUBLIC_PATHS = new Set([
-  '/bill-workorder',
-  '/mark-paid',
-  '/invoice-status',
-  '/test/run-interest-once', // <-- add this
-  // optionally:
-  // '/test/backdate-due',    // if you want this open too
-]);
-
-// Skip auth for public paths
-router.use((req, res, next) => {
-  if (PUBLIC_PATHS.has(req.path)) {
-    console.log('Skipping auth for', req.path);
-    return next();
-  }
-  auth(req, res, next);
-});
-
-// Require invoice admin for non-public paths
-router.use((req, res, next) => {
-  if (PUBLIC_PATHS.has(req.path)) return next();
-  requireInvoiceAdmin(req, res, next);
-});
-// Skip auth for bill-workorder, mark-paid, and invoice-status routes
 
 // Mark invoice as paid
 router.post('/mark-paid', async (req, res) => {
