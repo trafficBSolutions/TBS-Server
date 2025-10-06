@@ -64,7 +64,7 @@ app.use('/', require('./routes/adminRoute'));
 app.use(require('./routes/invoiceRoute'));
 app.use(require('./routes/payCard'));  // if using Stripe
  const complaintsRouter = require('./routes/complaints');
- app.use('/employee-complaints', complaintsRouter);
+ app.use('/employee-complaint-form', complaintsRouter);
 app.use('/employee', employeeAuth);
 // ✅ Static file routes
 app.use('/forms', express.static(path.join(__dirname, 'forms')));
