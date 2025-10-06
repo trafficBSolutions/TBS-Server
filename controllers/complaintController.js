@@ -9,7 +9,7 @@ const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
 const leah = "trafficandbarriersolutions.ap@gmail.com";
-const APP_URL = process.env.APP_URL || 'http://localhost:5173';
+const APP_URL = process.env.APP_URL || 'https://www.trafficbarriersolutions.com';
 
 // tiny helper for required checks
 function requireFields(body, fields) {
@@ -92,7 +92,12 @@ const listComplaintsByDate = async (req, res) => {
 // GET /employee-complaints/:id
 const getComplaintById = async (req, res) => {
   try {
-    const doc = await Complaint.findById(req.params.id);
+    const { id } = req.params;
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res.status(400).json({ error: 'Invalid complaint ID format' });
+    }
+    const doc = await Complaint.findById(id);
     if (!doc) return res.status(404).json({ error: 'Not found' });
     res.json(doc);
   } catch (e) {
