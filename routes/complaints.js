@@ -28,6 +28,6 @@ router.post('/employee-complaint-form', submitComplaint);
 router.get('/month', listComplaintsByMonth); // ?month=10&year=2025
 router.get('/day', listComplaintsByDate);    // ?date=2025-10-06
 router.get('/', listComplaints); // ?page=1&limit=50 (optional)
-router.get('/:id', getComplaintById); // This must be LAST to avoid conflicts
+ router.get('/:id([0-9a-fA-F]{24})', getComplaintById); // keep LAST
 
 module.exports = router;
