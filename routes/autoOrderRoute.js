@@ -303,7 +303,95 @@ router.use((req, _res, next) => {
 });
 
 
+router.get('/work-orders', requireStaff, async (req, res) => {
+  try {
+       const { date } = req.query;
+    console.log(`[DEBUG] *** WORK ORDERS ROUTE HIT *** date=${date}`);
+    if (!date) return res.status(400).json({ error: 'Date parameter required (YYYY-MM-DD)' });
+    // Basic YYYY-MM-DD guard
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
+    }
 
+    // Normalize to America/New_York day range without libs.
+    // 1) Build a "local" midnight (server-local) same as you do when creating:
+    //    scheduled = new Date(scheduledDate + 'T00:00:00')
+    // 2) End is 23:59:59 local.
+    const startDate = new Date(`${date}T00:00:00`);
+    const endDate   = new Date(`${date}T23:59:59`);
+    // Log in both local and ISO to diagnose TZ if needed
+    console.log(`[DEBUG] Local range: ${startDate} - ${endDate}`);
+    console.log(`[DEBUG] ISO range: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+    
+    const workOrders = await WorkOrder.find({
+      scheduledDate: { $gte: startDate, $lte: endDate }
+    }).sort({ createdAt: -1 });
+    
+    // Populate Invoice.principal for billed jobs missing amount fields
+    const Invoice = require('../models/invoice');
+    const workOrdersWithPrincipal = await Promise.all(workOrders.map(async (wo) => {
+      const woObj = wo.toObject();
+      if (wo.billed && wo.invoiceId && !wo.billedAmount && !wo.invoiceTotal && !wo.currentAmount) {
+        try {
+          const invoice = await Invoice.findById(wo.invoiceId).lean();
+          if (invoice?.principal) {
+            woObj.invoicePrincipal = invoice.principal;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch invoice principal for work order', String(wo?._id || ''), err?.message);
+        }
+      }
+      return woObj;
+    }));
+    
+    console.log(`[DEBUG] Found ${workOrdersWithPrincipal.length} work orders for date ${date}`);
+    
+    res.json(workOrdersWithPrincipal);
+  } catch (e) {
+        console.error('Failed to fetch daily work orders:', e?.message, e?.stack);
+   // Return a little more info in dev; keep generic in prod if you prefer.
+    res.status(500).json({ error: 'Internal Server Error', detail: e?.message });
+  }
+});
+router.get('/work-orders/month', requireStaff, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    console.log(`[DEBUG] Monthly work orders request: month=${month}, year=${year}`);
+    
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+    console.log(`[DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    
+    const workOrders = await WorkOrder.find({
+      scheduledDate: { $gte: startDate, $lte: endDate }
+    }).sort({ scheduledDate: 1 });
+    
+    // Populate Invoice.principal for billed jobs missing amount fields
+    const Invoice = require('../models/invoice');
+    for (const wo of workOrders) {
+      if (wo.billed && wo.invoiceId && !wo.billedAmount && !wo.invoiceTotal && !wo.currentAmount) {
+        try {
+          const invoice = await Invoice.findById(wo.invoiceId).lean();
+          if (invoice?.principal) {
+            wo.invoicePrincipal = invoice.principal;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch invoice principal for work order', wo._id, err);
+        }
+      }
+    }
+    
+    console.log(`[DEBUG] Found ${workOrders.length} work orders for month ${month}/${year}`);
+    workOrders.forEach((wo, i) => {
+      console.log(`[DEBUG] Work Order ${i + 1}: ${wo.basic?.client} on ${wo.scheduledDate?.toISOString()}`);
+    });
+    
+    res.json(workOrders);
+  } catch (e) {
+    console.error('Failed to fetch monthly work orders:', e);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, res) => {
   try {
     let {
@@ -600,97 +688,6 @@ router.get('/work-order/:id/pdf', requireStaff, async (req, res) => {
   } catch (e) {
     console.error('Error generating PDF:', e);
     res.status(500).send('Error generating PDF');
-  }
-});
-
-router.get('/work-orders/month', requireStaff, async (req, res) => {
-  try {
-    const { month, year } = req.query;
-    console.log(`[DEBUG] Monthly work orders request: month=${month}, year=${year}`);
-    
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59);
-    console.log(`[DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-    
-    const workOrders = await WorkOrder.find({
-      scheduledDate: { $gte: startDate, $lte: endDate }
-    }).sort({ scheduledDate: 1 });
-    
-    // Populate Invoice.principal for billed jobs missing amount fields
-    const Invoice = require('../models/invoice');
-    for (const wo of workOrders) {
-      if (wo.billed && wo.invoiceId && !wo.billedAmount && !wo.invoiceTotal && !wo.currentAmount) {
-        try {
-          const invoice = await Invoice.findById(wo.invoiceId).lean();
-          if (invoice?.principal) {
-            wo.invoicePrincipal = invoice.principal;
-          }
-        } catch (err) {
-          console.warn('Failed to fetch invoice principal for work order', wo._id, err);
-        }
-      }
-    }
-    
-    console.log(`[DEBUG] Found ${workOrders.length} work orders for month ${month}/${year}`);
-    workOrders.forEach((wo, i) => {
-      console.log(`[DEBUG] Work Order ${i + 1}: ${wo.basic?.client} on ${wo.scheduledDate?.toISOString()}`);
-    });
-    
-    res.json(workOrders);
-  } catch (e) {
-    console.error('Failed to fetch monthly work orders:', e);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-
-router.get('/work-orders', requireStaff, async (req, res) => {
-  try {
-       const { date } = req.query;
-    console.log(`[DEBUG] *** WORK ORDERS ROUTE HIT *** date=${date}`);
-    if (!date) return res.status(400).json({ error: 'Date parameter required (YYYY-MM-DD)' });
-    // Basic YYYY-MM-DD guard
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
-    }
-
-    // Normalize to America/New_York day range without libs.
-    // 1) Build a "local" midnight (server-local) same as you do when creating:
-    //    scheduled = new Date(scheduledDate + 'T00:00:00')
-    // 2) End is 23:59:59 local.
-    const startDate = new Date(`${date}T00:00:00`);
-    const endDate   = new Date(`${date}T23:59:59`);
-    // Log in both local and ISO to diagnose TZ if needed
-    console.log(`[DEBUG] Local range: ${startDate} - ${endDate}`);
-    console.log(`[DEBUG] ISO range: ${startDate.toISOString()} - ${endDate.toISOString()}`);
-    
-    const workOrders = await WorkOrder.find({
-      scheduledDate: { $gte: startDate, $lte: endDate }
-    }).sort({ createdAt: -1 });
-    
-    // Populate Invoice.principal for billed jobs missing amount fields
-    const Invoice = require('../models/invoice');
-    const workOrdersWithPrincipal = await Promise.all(workOrders.map(async (wo) => {
-      const woObj = wo.toObject();
-      if (wo.billed && wo.invoiceId && !wo.billedAmount && !wo.invoiceTotal && !wo.currentAmount) {
-        try {
-          const invoice = await Invoice.findById(wo.invoiceId).lean();
-          if (invoice?.principal) {
-            woObj.invoicePrincipal = invoice.principal;
-          }
-        } catch (err) {
-          console.warn('Failed to fetch invoice principal for work order', String(wo?._id || ''), err?.message);
-        }
-      }
-      return woObj;
-    }));
-    
-    console.log(`[DEBUG] Found ${workOrdersWithPrincipal.length} work orders for date ${date}`);
-    
-    res.json(workOrdersWithPrincipal);
-  } catch (e) {
-        console.error('Failed to fetch daily work orders:', e?.message, e?.stack);
-   // Return a little more info in dev; keep generic in prod if you prefer.
-    res.status(500).json({ error: 'Internal Server Error', detail: e?.message });
   }
 });
 
