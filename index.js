@@ -64,6 +64,7 @@ app.use('/', require('./routes/adminRoute'));
 app.use(require('./routes/invoiceRoute'));
 app.use(require('./routes/payCard'));  // if using Stripe
  const complaintsRouter = require('./routes/complaints');
+app.use('/', require('./routes/complaints'));
  app.use('/employee-complaint-form', complaintsRouter);
 app.use('/employee', employeeAuth);
 // ✅ Static file routes
