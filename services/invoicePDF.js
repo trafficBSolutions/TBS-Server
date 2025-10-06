@@ -413,11 +413,7 @@ const invoiceNo =
     },
 
     // Services table + notes, using the shared components
-    contentHTML: servicesSectionFromRowsHTML(
-      rows,
-      // pass something sensible so your notes block can still render
-      inv.invoiceData || { sheetRows: originalRows }
-    ),
+    contentHTML: servicesSectionHTML(inv.invoiceData || { sheetRows: rows }),
 
     // Totals shown with "Other" == interest, no tax
     totalsHTML: totalsBlock({
