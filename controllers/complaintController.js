@@ -1,7 +1,7 @@
 // controllers/complaintController.js
 const path = require('path');
 const Complaint = require('../models/complaintuser'); // this should export a model
-const transporter = require('../utils/emailConfig');  // matches your traffic flow import
+const { transporter } = require('../utils/emailConfig');  // matches your traffic flow import
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
