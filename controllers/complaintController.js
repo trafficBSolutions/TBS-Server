@@ -1,7 +1,7 @@
 // controllers/complaintController.js
 const path = require('path');
 const Complaint = require('../models/complaintuser'); // this should export a model
-const { transporter } = require('../utils/emailConfig');  // matches your traffic flow import
+const transporter = require('../utils/emailConfig');  // matches your traffic flow import
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
@@ -9,7 +9,7 @@ const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
 const leah = "trafficandbarriersolutions.ap@gmail.com";
-const APP_URL = process.env.APP_URL || 'https://www.trafficbarriersolutions.com';
+const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 
 // tiny helper for required checks
 function requireFields(body, fields) {
@@ -29,7 +29,77 @@ function field(label, val) {
       <td style="padding:6px 10px;">${safe}</td>
     </tr>`;
 }
+function dayRangeYYYYMMDD(ymd) {
+  const [y,m,d] = ymd.split('-').map(Number);
+  const start = new Date(Date.UTC(y, m-1, d, 0,0,0));
+  const end = new Date(Date.UTC(y, m-1, d+1, 0,0,0));
+  return { start, end };
+}
 
+// GET /employee-complaints (optionally paginated)
+const listComplaints = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+    const limit = Math.max(parseInt(req.query.limit || '50', 10), 1);
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      Complaint.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Complaint.countDocuments()
+    ]);
+
+    res.json({ page, limit, total, items });
+  } catch (e) {
+    console.error('listComplaints', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// GET /employee-complaints/month?month=10&year=2025
+const listComplaintsByMonth = async (req, res) => {
+  try {
+    const month = parseInt(req.query.month, 10); // 1..12
+    const year = parseInt(req.query.year, 10);
+    if (!month || !year) return res.status(400).json({ error: 'month and year are required' });
+
+    // use dateOfIncident (YYYY-MM-DD)
+    const monthStr = String(month).padStart(2, '0');
+    const regex = new RegExp(`^${year}-${monthStr}-\\d{2}$`);
+    const items = await Complaint.find({ dateOfIncident: { $regex: regex } })
+      .sort({ dateOfIncident: 1 });
+
+    res.json(items);
+  } catch (e) {
+    console.error('listComplaintsByMonth', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// GET /employee-complaints/day?date=2025-10-06
+const listComplaintsByDate = async (req, res) => {
+  try {
+    const { date } = req.query; // YYYY-MM-DD
+    if (!date) return res.status(400).json({ error: 'date is required' });
+
+    const items = await Complaint.find({ dateOfIncident: date }).sort({ createdAt: -1 });
+    res.json(items);
+  } catch (e) {
+    console.error('listComplaintsByDate', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// GET /employee-complaints/:id
+const getComplaintById = async (req, res) => {
+  try {
+    const doc = await Complaint.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Not found' });
+    res.json(doc);
+  } catch (e) {
+    console.error('getComplaintById', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
 const submitComplaint = async (req, res) => {
   try {
     const {
@@ -215,5 +285,10 @@ const submitComplaint = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
-
-module.exports = { submitComplaint };
+module.exports = {
+  submitComplaint,
+  listComplaints,
+  listComplaintsByMonth,
+  listComplaintsByDate,
+  getComplaintById,
+};
