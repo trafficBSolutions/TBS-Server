@@ -645,20 +645,23 @@ router.get('/work-orders/month', requireStaff, async (req, res) => {
 
 router.get('/work-orders', requireStaff, async (req, res) => {
   try {
-    const { date } = req.query;
+       const { date } = req.query;
     console.log(`[DEBUG] *** WORK ORDERS ROUTE HIT *** date=${date}`);
-    
-    if (!date) return res.status(400).json({ error: 'Date parameter required' });
-    
-    console.log(`[DEBUG] Daily work orders request for date: ${date}`);
-    
-    const startDate = new Date(date + 'T00:00:00Z');
-    const endDate = new Date(date + 'T23:59:59Z');
-    console.log(`[DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-    
-    // First, let's see ALL work orders in the database
-    const allWorkOrders = await WorkOrder.find({}).sort({ createdAt: -1 });
-    console.log(`[DEBUG] Total work orders in database: ${allWorkOrders.length}`);
+    if (!date) return res.status(400).json({ error: 'Date parameter required (YYYY-MM-DD)' });
+    // Basic YYYY-MM-DD guard
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
+    }
+
+    // Normalize to America/New_York day range without libs.
+    // 1) Build a "local" midnight (server-local) same as you do when creating:
+    //    scheduled = new Date(scheduledDate + 'T00:00:00')
+    // 2) End is 23:59:59 local.
+    const startDate = new Date(`${date}T00:00:00`);
+    const endDate   = new Date(`${date}T23:59:59`);
+    // Log in both local and ISO to diagnose TZ if needed
+    console.log(`[DEBUG] Local range: ${startDate} - ${endDate}`);
+    console.log(`[DEBUG] ISO range: ${startDate.toISOString()} - ${endDate.toISOString()}`);
     
     const workOrders = await WorkOrder.find({
       scheduledDate: { $gte: startDate, $lte: endDate }
@@ -675,7 +678,7 @@ router.get('/work-orders', requireStaff, async (req, res) => {
             woObj.invoicePrincipal = invoice.principal;
           }
         } catch (err) {
-          console.warn('Failed to fetch invoice principal for work order', wo._id, err);
+          console.warn('Failed to fetch invoice principal for work order', String(wo?._id || ''), err?.message);
         }
       }
       return woObj;
@@ -685,8 +688,9 @@ router.get('/work-orders', requireStaff, async (req, res) => {
     
     res.json(workOrdersWithPrincipal);
   } catch (e) {
-    console.error('Failed to fetch daily work orders:', e);
-    res.status(500).json({ error: 'Internal Server Error' });
+        console.error('Failed to fetch daily work orders:', e?.message, e?.stack);
+   // Return a little more info in dev; keep generic in prod if you prefer.
+    res.status(500).json({ error: 'Internal Server Error', detail: e?.message });
   }
 });
 
