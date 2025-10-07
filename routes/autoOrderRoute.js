@@ -569,6 +569,7 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
         { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
         { name: 'Salvador Gonzalez', address: 'tbsolutions77@gmail.com' },
         { name: 'Damien Diskey', address: 'tbsolutions14@gmail.com' },
+        { name: 'Debbie Owens', address: 'tbsolutions1995@gmail.com' }
       ],
       subject: `WORK ORDER – ${clientOrCompany} – ${basic.dateOfJob}`,
       html,
