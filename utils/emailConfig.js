@@ -1,119 +1,43 @@
+// mailer.js
 const nodemailer = require('nodemailer');
 
-/*
-Go to the settings for your Google Account in the application or device you are trying to set up. 
-Replace your password with the 16-character password shown above.
-Just like your normal password, this app password grants complete access to your Google Account. 
-You won't need to remember it, so don't write it down or share it with anyone.
-*/
+function assertCreds(labelUser, labelPass) {
+  const user = process.env[labelUser];
+  const pass = process.env[labelPass];
+  if (!user || !pass) {
+    const missing = [!user && labelUser, !pass && labelPass].filter(Boolean).join(', ');
+    throw new Error(`Email credentials missing: ${missing}`);
+  }
+  return { user, pass };
+}
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    secure: true,
+function makeTransport(labelUser, labelPass) {
+  const { user, pass } = assertCreds(labelUser, labelPass);
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,           // 465 + TLS
+    auth: { user, pass },   // pass SHOULD be a Gmail App Password (16 chars)
+    // optional:
     logger: true,
     debug: true,
-    secureConnection: false,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    tls: {
-        rejectUnauthorized: true
-    }
-});
+  });
+}
 
-const transporter2 = nodemailer.createTransport({
-    service: 'gmail',
-    secure: true,
-    logger: true,
-    debug: true,
-    secureConnection: false,
-    auth: {
-        user: process.env.EMAIL_USER_2,
-        pass: process.env.EMAIL_PASS_2
-    },
-    tls: {
-        rejectUnauthorized: true
-    }
-});
+const transporter  = makeTransport('EMAIL_USER',   'EMAIL_PASS');
+const transporter2 = makeTransport('EMAIL_USER_2', 'EMAIL_PASS_2');
+const transporter3 = makeTransport('EMAIL_USER_3', 'EMAIL_PASS_3');
+const transporter4 = makeTransport('EMAIL_USER_4', 'EMAIL_PASS_4');
+const transporter5 = makeTransport('EMAIL_USER_5', 'EMAIL_PASS_5');
+const transporter6 = makeTransport('EMAIL_USER_6', 'EMAIL_PASS_6');
+const transporter7 = makeTransport('EMAIL_USER_7', 'EMAIL_PASS_7'); // trafficandbarriersolutions.ap@gmail.com
 
-const transporter3 = nodemailer.createTransport({
-    service: 'gmail',
-    secure: true,
-    logger: true,
-    debug: true,
-    secureConnection: false,
-    auth: {
-        user: process.env.EMAIL_USER_3,
-        pass: process.env.EMAIL_PASS_3
-    },
-    tls: {
-        rejectUnauthorized: true
-    }
-});
-
-const transporter4 = nodemailer.createTransport({
-    service: 'gmail',
-    secure: true,
-    logger: true,
-    debug: true,
-    secureConnection: false,
-    auth: {
-        user: process.env.EMAIL_USER_4,
-        pass: process.env.EMAIL_PASS_4
-    },
-    tls: {
-        rejectUnauthorized: true
-    }
-});
-const transporter5 = nodemailer.createTransport({
-    service: 'gmail',
-    secure: true,
-    logger: true,
-    debug: true,
-    secureConnection: false,
-    auth: {
-        user: process.env.EMAIL_USER_5,
-        pass: process.env.EMAIL_PASS_5
-    },
-    tls: {
-        rejectUnauthorized: true
-    }
-});
-const transporter6 = nodemailer.createTransport({
-    service: 'gmail',
-    secure: true,
-    logger: true,
-    debug: true,
-    secureConnection: false,
-    auth: {
-        user: process.env.EMAIL_USER_6,
-        pass: process.env.EMAIL_PASS_6
-    },
-    tls: {
-        rejectUnauthorized: true
-    }
-});
-const transporter7 = nodemailer.createTransport({
-    service: 'gmail',
-    secure: true,
-    logger: true,
-    debug: true,
-    secureConnection: false,
-    auth: {
-        user: process.env.EMAIL_USER_7,
-        pass: process.env.EMAIL_PASS_7
-    },
-    tls: {
-        rejectUnauthorized: true
-    }
-});
 module.exports = {
-  transporter,   // uses EMAIL_USER
-  transporter2,  // uses EMAIL_USER_2
+  transporter,
+  transporter2,
   transporter3,
   transporter4,
   transporter5,
   transporter6,
-  transporter7,  // uses EMAIL_USER_7  ← should be trafficandbarriersolutions.ap@gmail.com
+  transporter7,
 };
