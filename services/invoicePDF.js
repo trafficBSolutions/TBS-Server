@@ -175,12 +175,25 @@ function servicesSectionFromRowsHTML(rows, invoiceData) {
 }
 
 /* Whole Services section (navy heading + 3-col + one-col notes) */
- function servicesSectionHTML(invoiceData) {
-  const rows = invoiceData?.sheetRows || [];
-   return `  
-    ${serviceLineItemsHTML(rows)}                    
-    ${serviceNotesOneColHTML(invoiceData)}            
-   `;
+function servicesSectionHTML(invoiceData = {}) {
+  const rows = Array.isArray(invoiceData.sheetRows) ? [...invoiceData.sheetRows] : [];
+  const crews = Number(invoiceData.crewsCount) || 0;
+  const hrs   = Number(invoiceData.otHours) || 0;
+  const rate  = Number(invoiceData.otRate) || 0;
+  const otTot = Number(invoiceData.otLaborTotal) || 0;
+
+  if (otTot > 0) {
+    rows.push({
+      service: `Overtime labor — ${crews} crew × ${hrs} hr × $${rate.toFixed(2)}/hr`,
+      taxed: false,
+      amount: otTot
+    });
+  }
+
+  return `
+    ${serviceLineItemsHTML(rows)}
+    ${serviceNotesOneColHTML(invoiceData)}
+  `;
 }
 
 
