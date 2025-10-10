@@ -292,7 +292,6 @@ async function generateWorkOrderPdf(wo) {
 }
 
 router.use(cors({ credentials: true, origin: [
-  'http://localhost:5173',
   'https://www.trafficbarriersolutions.com'
 ]}));
 
@@ -569,7 +568,8 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
         { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
         { name: 'Salvador Gonzalez', address: 'tbsolutions77@gmail.com' },
         { name: 'Damien Diskey', address: 'tbsolutions14@gmail.com' },
-        { name: 'Debbie Owens', address: 'tbsolutions1995@gmail.com' }
+        { name: 'Debbie Owens', address: 'tbsolutions1995@gmail.com' },
+        { name: 'Debbie Owens', address: 'tbsolutions.work.orders@gmail.com' }
       ],
       subject: `WORK ORDER – ${clientOrCompany} – ${basic.dateOfJob}`,
       html,
@@ -704,3 +704,4 @@ router.get('/auth/debug', (req, res) => {
   });
 });
 module.exports = router;
+
