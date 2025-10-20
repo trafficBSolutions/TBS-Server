@@ -14,6 +14,46 @@ const fs = require('fs');
 const path = require('path');
 const WorkOrder = require('../models/workorder');
 const { runInterestReminderCycle } = require('../services/interestBot');
+async function getPreviousTotal(workOrderId) {
+  const WorkOrder = require('../models/workorder');
+  const Invoice = require('../models/invoice');
+
+  if (!mongoose.isValidObjectId(workOrderId)) return 0;
+
+  const workOrder = await WorkOrder.findById(workOrderId)
+    .select('billedAmount currentAmount invoiceTotal invoiceData invoiceId')
+    .lean()
+    .catch(() => null);
+
+  if (!workOrder) return 0;
+
+  // Try to find linked invoice
+  let invoice = null;
+  if (workOrder.invoiceId) {
+    invoice = await Invoice.findById(workOrder.invoiceId)
+      .select('principal computedTotalDue accruedInterest')
+      .lean()
+      .catch(() => null);
+  }
+  if (!invoice) {
+    invoice = await Invoice.findOne({ job: workOrder._id })
+      .select('principal computedTotalDue accruedInterest')
+      .lean()
+      .catch(() => null);
+  }
+
+  // Compute a best-guess previous total
+  const previousTotal =
+    Number(invoice?.computedTotalDue) ||
+    (Number(invoice?.principal || 0) + Number(invoice?.accruedInterest || 0)) ||
+    Number(workOrder.invoiceData?.sheetTotal || 0) ||
+    Number(workOrder.invoiceTotal || 0) ||
+    Number(workOrder.billedAmount || 0) ||
+    Number(workOrder.currentAmount || 0);
+
+  return previousTotal;
+}
+
 // Set the due date to a past date
 router.post('/test/backdate-due', async (req, res) => {
   try {
@@ -721,7 +761,8 @@ router.post('/update-invoice', upload.array('attachments', 10), async (req, res)
     const workOrder = await WorkOrder.findById(workOrderId);
     if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
     if (!workOrder.billed) return res.status(400).json({ message: 'Work order not yet billed' });
-
+const previousTotal = await getPreviousTotal(workOrder._id);
+console.log(`[update-invoice] previousTotal=${previousTotal}`);
     const finalInvoiceTotal = invoiceData.sheetTotal || manualAmount;
     
     // Update existing Invoice record
@@ -779,7 +820,8 @@ router.post('/update-invoice', upload.array('attachments', 10), async (req, res)
               <h1 style="text-align: center; background-color: #17365D; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">UPDATED Invoice - ${workOrder.basic?.client}</h1>
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                <p style="margin: 5px 0; font-size: 16px;"><strong>Updated Invoice Amount:</strong> $${Number(finalInvoiceTotal).toFixed(2)}</p>
+                <p><strong>Previous Total:</strong> $${previousTotal.toFixed(2)}</p>
+<p><strong>Updated Total:</strong> $${finalInvoiceTotal.toFixed(2)}</p>
                 <p style="margin: 5px 0;"><strong>Work Order Date:</strong> ${workOrder.basic?.dateOfJob}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
                 <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'Same as original'}</p>
