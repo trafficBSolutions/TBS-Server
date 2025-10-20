@@ -333,32 +333,18 @@ function lateTotalsBlock({principal, interest, total}) {
   </div>`;
 }
 
-async function generateInvoicePdfFromInvoice(inv, due, job = {}) {
+async function generateInvoicePdfFromInvoice(inv, job = {}) {
   const { logo, cone } = loadStdAssets();
 
   // 1) Original, non-zero service rows from the saved invoice data
- const originalRows = (
+ const rows = (
    inv.invoiceData?.sheetRows ||
    (inv.lineItems || []).map(li => ({
      service: li.description,
-     taxed: false,                 // no tax column stored; keep false
+     taxed: false,
      amount: Number(li.total ?? li.unitPrice ?? 0)
    }))
  ).filter(r => Number(r?.amount) > 0);
-  // 2) Append an Interest line if applicable (non-taxed)
-  const rows = [...originalRows];
-  const interestAmt = Number(due.interest || 0);
-  if (interestAmt > 0) {
-    rows.push({
-      service: `Interest (2.5% simple × ${Number(due.steps || 0)} steps)`,
-      taxed: false,
-      amount: interestAmt
-    });
-  }
-
-  // 3) Compute totals the same way your main invoice block renders
-  const principal = Number(due.principal || 0);
-  const total     = Number(due.total || (principal + interestAmt));
 const invoiceNo =
   inv.invoiceNumber ||
   inv.invoiceData?.invoiceNumber ||
@@ -427,14 +413,12 @@ const invoiceNo =
 
     // Services table + notes, using the shared components
     contentHTML: servicesSectionHTML(inv.invoiceData || { sheetRows: rows }),
-
-    // Totals shown with "Other" == interest, no tax
     totalsHTML: totalsBlock({
-      subtotal: principal,      // original services total (principal)
-      taxRate:  0,
-      taxDue:   0,
-      other:    interestAmt,    // interest shown as its own row
-      total:    total           // principal + interest
+      subtotal: inv.invoiceData?.sheetSubtotal ?? inv.principal ?? 0,
+      taxRate:  inv.invoiceData?.sheetTaxRate  ?? 0,
+      taxDue:   inv.invoiceData?.sheetTaxDue   ?? 0,
+      other:    inv.invoiceData?.sheetOther    ?? 0,
+      total:    inv.invoiceData?.sheetTotal    ?? inv.principal ?? 0
     }),
 
     // Footer—kept minimal like your reminder
