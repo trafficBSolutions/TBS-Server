@@ -704,9 +704,18 @@ router.post('/process-late-fees', async (req, res) => {
 });
 
 // Update existing invoice
-router.post('/update-invoice', async (req, res) => {
+router.post('/update-invoice', upload.array('attachments', 10), async (req, res) => {
   try {
-    const { workOrderId, manualAmount, emailOverride, invoiceData } = req.body;
+    let { workOrderId, manualAmount, emailOverride, invoiceData } = req.body;
+    
+    // Handle FormData payload
+    if (typeof req.body.payload === 'string') {
+      const parsed = JSON.parse(req.body.payload);
+      workOrderId = parsed.workOrderId;
+      manualAmount = parsed.manualAmount;
+      emailOverride = parsed.emailOverride;
+      invoiceData = parsed.invoiceData;
+    }
     const WorkOrder = require('../models/workorder');
 
     const workOrder = await WorkOrder.findById(workOrderId);
@@ -841,11 +850,20 @@ try {
   }
 });
 
-router.post('/bill-workorder', async (req, res) => {
+router.post('/bill-workorder', upload.array('attachments', 10), async (req, res) => {
   console.log('*** BILLING ROUTER - BILL WORKORDER HIT ***');
   console.log('Request body:', JSON.stringify(req.body, null, 2));
   try {
-    const { workOrderId, manualAmount, emailOverride, invoiceData } = req.body;
+    let { workOrderId, manualAmount, emailOverride, invoiceData } = req.body;
+    
+    // Handle FormData payload
+    if (typeof req.body.payload === 'string') {
+      const parsed = JSON.parse(req.body.payload);
+      workOrderId = parsed.workOrderId;
+      manualAmount = parsed.manualAmount;
+      emailOverride = parsed.emailOverride;
+      invoiceData = parsed.invoiceData;
+    }
     const WorkOrder = require('../models/workorder');
 
     const workOrder = await WorkOrder.findById(workOrderId);
@@ -1103,4 +1121,5 @@ router.post('/create-payment-intent', async (req, res) => {
     res.status(500).json({ message: 'Failed to create PaymentIntent' });
   }
 });
+
 module.exports = router;
