@@ -53,6 +53,53 @@ router.post('/test/run-interest-once', async (req, res) => {
 });
 
 const os = require('os');
+// === Email threading + PDF helpers ===
+async function findInvoiceForWorkOrder(wo) {
+  if (!wo) return null;
+  let inv = null;
+  if (wo.invoiceId) {
+    inv = await Invoice.findById(wo.invoiceId).lean().catch(() => null);
+  }
+  if (!inv) {
+    inv = await Invoice.findOne({ job: wo._id }).lean().catch(() => null);
+  }
+  return inv;
+}
+
+// Create "In-Reply-To" / "References" headers if we have an origin Message-ID
+function threadHeaders(invoiceDoc) {
+  const headers = {};
+  if (invoiceDoc?.emailMessageId) {
+    headers['In-Reply-To'] = invoiceDoc.emailMessageId;
+    headers['References']  = invoiceDoc.emailMessageId;
+  }
+  return headers;
+}
+
+// Fallback minimalist invoice PDF if your main generator fails
+async function fallbackInvoicePdf(workOrder, total, data) {
+  const { logo } = loadStdAssets?.() || {};
+  const safe = n => Number(n || 0).toFixed(2);
+  const html = `
+  <html><head><meta charset="utf-8"></head>
+  <body style="font-family:Arial;padding:24px">
+    <div style="display:flex;align-items:center;gap:12px">
+      ${logo ? `<img src="${logo}" style="height:50px" />` : ''}
+      <h1 style="margin:0">Invoice</h1>
+    </div>
+    <p><strong>Client:</strong> ${workOrder.basic?.client || ''}</p>
+    <p><strong>Project:</strong> ${workOrder.basic?.project || ''}</p>
+    <p><strong>Date of Job:</strong> ${workOrder.basic?.dateOfJob || ''}</p>
+    <hr/>
+    <p><strong>Amount Due:</strong> $${safe(total)}</p>
+    ${data?.dueDate ? `<p><strong>Due:</strong> ${new Date(data.dueDate).toLocaleDateString()}</p>` : ''}
+  </body></html>`;
+  try {
+    return await printHtmlToPdfBuffer(html);
+  } catch {
+    return null;
+  }
+}
 
 async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, totalOwedAmount = null) {
   const { logo } = loadStdAssets();
@@ -464,35 +511,36 @@ if (paymentMethod === 'card') {
           </body>
         </html>
       `;
+const invoiceDocForReceipt = await findInvoiceForWorkOrder(workOrder);
+const headers = threadHeaders(invoiceDocForReceipt);
+const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
 
-      const mailOptions = {
-        from: 'trafficandbarriersolutions.ap@gmail.com',
-        to: emailOverride,
-         subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – Paid $${actualPaid.toFixed(2)} (Owed $${totalOwedFinal.toFixed(2)})`,
-        html: receiptHtml
-      };
+const mailOptions = {
+  from: 'trafficandbarriersolutions.ap@gmail.com',
+  to: emailOverride,
+  subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – Paid $${actualPaid.toFixed(2)} (Owed $${totalOwedFinal.toFixed(2)})`,
+  html: receiptHtml,
+  headers,
+  attachments: [],
+  messageId: `invoice-${String(invoiceDocForReceipt?._id || workOrder._id)}-receipt-${Date.now()}@trafficbarriersolutions.com`
+};
 
-      try {
-const receiptPdfBuffer = await generateReceiptPdf(
-          workOrder,
-          paymentDetails,
-          actualPaid,
-          totalOwedFinal
-        );
-        
-        if (receiptPdfBuffer) {
-          mailOptions.attachments = [{
-            filename: `receipt-${(workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
-            content: receiptPdfBuffer,
-            contentType: 'application/pdf'
-          }];
-        }
-        
-        await transporter7.sendMail(mailOptions);
+// always try to attach receipt PDF; if your generator fails we still send email
+let receiptPdfBuffer = null;
+try {
+  receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, actualPaid, totalOwedFinal);
+} catch {}
+if (receiptPdfBuffer && receiptPdfBuffer.length) {
+  mailOptions.attachments.push({
+    filename: `receipt-${safeClient}.pdf`,
+    content: receiptPdfBuffer,
+    contentType: 'application/pdf',
+    contentDisposition: 'attachment'
+  });
+}
+
+await transporter7.sendMail(mailOptions);
         console.log('[receipt] email sent to:', emailOverride);
-      } catch (emailError) {
-        console.error('Receipt email failed:', emailError);
-      }
     }
 
     res.json({ message: 'Payment recorded successfully', workOrderId: workOrder._id });
@@ -739,30 +787,50 @@ router.post('/update-invoice', async (req, res) => {
           </body>
         </html>
       `;
+// Load the related invoice (for threading)
+const invoiceDoc = await findInvoiceForWorkOrder(workOrder);
 
-      const mailOptions = {
-        from: 'trafficandbarriersolutions.ap@gmail.com',
-        to: emailOverride,
-        subject: `UPDATED INVOICE – ${workOrder.basic?.client} – $${Number(finalInvoiceTotal).toFixed(2)}`,
-        html: emailHtml,
-        attachments: []
-      };
+// Threading headers
+const headers = threadHeaders(invoiceDoc);
 
-      if (pdfBuffer && pdfBuffer.length > 0) {
-        const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
-        mailOptions.attachments.push({
-          filename: `updated-invoice-${safeClient}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf'
-        });
-      }
+const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
 
-      try {
-        await transporter7.sendMail(mailOptions);
-        console.log('[update-invoice] email sent to:', emailOverride);
-      } catch (emailError) {
-        console.error('Updated invoice email failed:', emailError);
-      }
+const mailOptions = {
+  from: 'trafficandbarriersolutions.ap@gmail.com',
+  to: emailOverride,
+  subject: `UPDATED INVOICE – ${workOrder.basic?.client} – $${Number(finalInvoiceTotal).toFixed(2)}`,
+  html: emailHtml,
+  attachments: [],
+  headers, // <- In-Reply-To + References (if available)
+  // use a unique but related message id
+  messageId: `invoice-${String(invoiceDoc?._id || workOrder._id)}-update-${Date.now()}@trafficbarriersolutions.com`
+};
+
+// Guarantee a PDF is attached (fallback if primary fails)
+try {
+  pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
+  if (!pdfBuffer || !pdfBuffer.length) {
+    pdfBuffer = await fallbackInvoicePdf(workOrder, finalInvoiceTotal, invoiceData);
+  }
+} catch {
+  pdfBuffer = await fallbackInvoicePdf(workOrder, finalInvoiceTotal, invoiceData);
+}
+if (pdfBuffer && pdfBuffer.length) {
+  mailOptions.attachments.push({
+    filename: `updated-invoice-${safeClient}.pdf`,
+    content: pdfBuffer,
+    contentType: 'application/pdf',
+    contentDisposition: 'attachment'
+  });
+}
+
+try {
+  const info = await transporter7.sendMail(mailOptions);
+  console.log('[update-invoice] email sent to:', emailOverride, 'threaded:', !!headers['In-Reply-To']);
+} catch (emailError) {
+  console.error('Updated invoice email failed:', emailError);
+}
+
     }
 
     const updated = await WorkOrder.findById(workOrder._id).lean();
@@ -836,7 +904,6 @@ router.post('/bill-workorder', async (req, res) => {
       console.log('Attempting to send email to:', emailOverride);
       
       // Generate invoice PDF
-      let pdfBuffer = null;
       try {
   console.log('[invoice] starting PDF generation…');
   pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
@@ -869,36 +936,56 @@ router.post('/bill-workorder', async (req, res) => {
           </body>
         </html>
       `;
+// BEFORE sending:
+const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
+
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailOverride,
   subject: `INVOICE – ${workOrder.basic?.client} – $${Number(finalInvoiceTotal).toFixed(2)}`,
   html: emailHtml,
-  attachments: []
+  attachments: [],
+  // Deterministic message-id starts the thread
+  messageId: `invoice-${String(invoice._id)}@trafficbarriersolutions.com`
 };
-if (pdfBuffer && pdfBuffer.length > 0) {
-  const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
+
+// Make sure a PDF is attached (fallback if needed)
+let pdfBuffer = null;
+try {
+  pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
+  if (!pdfBuffer || !pdfBuffer.length) {
+    pdfBuffer = await fallbackInvoicePdf(workOrder, finalInvoiceTotal, invoiceData);
+  }
+} catch {
+  pdfBuffer = await fallbackInvoicePdf(workOrder, finalInvoiceTotal, invoiceData);
+}
+if (pdfBuffer && pdfBuffer.length) {
   mailOptions.attachments.push({
     filename: `invoice-${safeClient}.pdf`,
     content: pdfBuffer,
-    contentType: 'application/pdf'
+    contentType: 'application/pdf',
+    contentDisposition: 'attachment'
   });
-} else {
-  // Fallback so “attached: true” is still true with a readable artifact
-  console.error('[invoice] PDF generation failed - no attachment will be sent');
 }
-      try {
-        const info = await transporter7.sendMail(mailOptions);
-console.log('[invoice] email sent', {
-  to: emailOverride,
-  messageId: info.messageId,
-  attached: !!mailOptions.attachments.length,
-  attachmentTypes: mailOptions.attachments.map(a => a.contentType)
-});
-      
-      } catch (emailError) {
-        console.error('Email sending failed:', emailError);
-      }
+
+try {
+  const info = await transporter7.sendMail(mailOptions);
+
+  // ⬅️ Save origin message-id so later emails can thread to it
+  await Invoice.updateOne(
+    { _id: invoice._id },
+    { $set: { emailMessageId: mailOptions.messageId || info.messageId } }
+  );
+
+  console.log('[invoice] email sent', {
+    to: emailOverride,
+    messageId: info.messageId,
+    attached: !!mailOptions.attachments.length
+  });
+} catch (emailError) {
+  console.error('Email sending failed:', emailError);
+}
+
     } else {
       console.log('No email override provided, skipping email');
     }
