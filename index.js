@@ -50,7 +50,7 @@ mongoose.connect(process.env.MONGO_URL)
     // Optional: call a post-connection function here (e.g., cleanup)
   })
   .catch((err) => console.error('❌ Database Not Connected', err));
-
+app.use('/api/billing', billingRouter);
 // ✅ Routes
 app.use('/', require('./routes/autoBollardRoute'))
 app.use('/', require('./routes/autoPPERoute'))
@@ -77,7 +77,7 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 require('./utils/cleanJob');
 
 
-app.use('/api/billing', billingRouter);
+
 app.use('/', workOrdersRouter);
 const PORT = process.env.PORT || 8000;
 
