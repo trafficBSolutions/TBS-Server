@@ -1,6 +1,6 @@
 // services/interestBot.js
 const Invoice = require('../models/invoice');
-async function buildAttachment(inv, due, isPreDue = false) {
+async function buildAttachment(inv) {
   const WorkOrder = require('../models/workorder');
   const { generateInvoicePdfFromInvoice } = require('../services/invoicePDF');
 
@@ -13,13 +13,7 @@ async function buildAttachment(inv, due, isPreDue = false) {
    job = await WorkOrder.findOne({ invoiceId: inv._id }).lean().catch(() => null);
  }
   let pdfBuffer;
-  if (isPreDue && job) {
-    const { generateInvoicePdfFromWorkOrder } = require('../services/invoicePDF');
-    pdfBuffer = await generateInvoicePdfFromWorkOrder(job, inv.principal, inv.invoiceData || {});
-  } else {
-    pdfBuffer = await generateInvoicePdfFromInvoice(inv, due, job || {});
-  }
-  if (!pdfBuffer) return null;
+  pdfBuffer = await generateInvoicePdfFromInvoice(inv, job || {});
 
   return {
     filename: `invoice_${inv._id}.pdf`,
@@ -28,7 +22,7 @@ async function buildAttachment(inv, due, isPreDue = false) {
   };
 }
 
-async function sendInterestEmail(inv, due) {
+async function sendInterestEmail(inv) {
   const { transporter7 } = require('../utils/emailConfig');
   const WorkOrder = require('../models/workorder');
 
@@ -50,8 +44,14 @@ async function sendInterestEmail(inv, due) {
   // final fallback: try the job’s saved invoice snapshot
   (inv.jobInvoiceNumber /* set below if you like */) ||
   String(inv._id).slice(-6);
- const reminderType = due.isPreDue ? 'PAYMENT REMINDER' : 'OVERDUE NOTICE';
- const subject = `${reminderType} – ${inv.company} – INV ${invNo} – $${Number(due.total || inv.computedTotalDue || 0).toFixed(2)}`;
+  const isOverdue = !!inv.dueDate && (new Date() > new Date(inv.dueDate));
+  const reminderType = isOverdue ? 'OVERDUE NOTICE' : 'PAYMENT REMINDER';
+  const amount = Number(
+    inv.invoiceData?.sheetTotal ??
+    inv.principal ??
+    0
+  );
+  const subject = `${reminderType} – ${inv.company} – INV ${invNo} – $${amount.toFixed(2)}`;
 
   // Styled body similar to your billing.js email, but with the three numbers + Leah message
   const html = `
@@ -63,9 +63,7 @@ async function sendInterestEmail(inv, due) {
         </h1>
 
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-          <p style="margin: 6px 0; font-size: 16px;"><strong>Principal:</strong> $${Number(due.principal||0).toFixed(2)}</p>
-          <p style="margin: 6px 0; font-size: 16px;"><strong>Interest (2.5% simple × ${Number(due.steps||0)}):</strong> $${Number(due.interest||0).toFixed(2)}</p>
-          <p style="margin: 6px 0; font-size: 16px;"><strong>Current Total:</strong> $${Number(due.total||0).toFixed(2)}</p>
+          <p style="margin: 6px 0; font-size: 16px;"><strong>Amount Due:</strong> $${amount.toFixed(2)}</p>
         </div>
 
         <p style="text-align:center; font-size:16px; margin: 24px 0;">
@@ -83,13 +81,11 @@ async function sendInterestEmail(inv, due) {
 
   const text =
 `Invoice Reminder – ${inv.company}
-Principal: $${Number(due.principal||0).toFixed(2)}
-Interest (2.5% simple × ${Number(due.steps||0)}): $${Number(due.interest||0).toFixed(2)}
-Current Total: $${Number(due.total||0).toFixed(2)}
+Amount Due: $${amount.toFixed(2)}
 
 Please call Leah Davis for payment: (706) 913-3317`;
 
-  const attachment = await buildAttachment(inv, due, due.isPreDue).catch(err => {
+  const attachment = await buildAttachment(inv).catch(err => {
     console.error(`[sendInterestEmail] buildAttachment failed for ${inv._id}:`, err);
     return null;
   });
@@ -163,29 +159,16 @@ async function runInterestReminderCycle(now = new Date(), opts = {}) {
       reminderStep = stepsByDue;
     }
 
-    // 5) Central math
-    const principal = Number(inv.principal || 0);
-    const rate = Number(inv.interestRate || 0.025);
-    const due = {
-      steps: isPreDue ? 0 : stepsByDue,
-      interest: isPreDue ? 0 : principal * rate * stepsByDue,
-      total: isPreDue ? principal : principal + (principal * rate * stepsByDue),
-      principal: principal,
-      isPreDue: isPreDue,
-      reminderStep: reminderStep
-    };
-    // after computing `daysPast` and `stepsByDue`
-console.log(
-  `[interestBot] inv=${inv._id} company=${inv.company} baseDate=${baseDate?.toISOString?.() || 'n/a'} daysPast=${daysPast} steps=${stepsByDue} prev=${inv.interestStepsEmailed||0}`
-);
-
-    // 6) Don’t re-email prior steps
-    const prev = Number(inv.interestStepsEmailed || 0);
-    const cur  = Number(due.steps || 0);
+    // 5) Pure reminder cadence (no interest math)
+    const principal = Number(
+      inv.principal ??
+      inv.invoiceData?.sheetTotal ??
+      0
+    );
     const prevReminders = inv.remindersSent || [];
-    const shouldSend = isPreDue 
-      ? !prevReminders.includes(reminderStep) && reminderStep !== 0
-      : reminderStep > (inv.interestStepsEmailed || 0) && reminderStep > 0;
+    const shouldSend = isPreDue
+      ? (reminderStep !== 0 && !prevReminders.includes(reminderStep))
+      : (reminderStep > 0 && !prevReminders.includes(reminderStep));
     
     if (!force && !shouldSend) {
       console.log(`[interestBot] skip (no reminder) inv=${inv._id} step=${reminderStep}`);
@@ -201,37 +184,18 @@ console.log(
     }
     if (!toEmail) { skippedNoEmail++; continue; }
 
-    // 8) Persist computed totals
+
+        // 8) Send + record (no interest)
+    await sendInterestEmail(inv);
+    emailed++;
     await Invoice.updateOne(
       { _id: inv._id },
-      { $set: {
-          accruedInterest: Number(due.interest.toFixed(2)),
-          computedTotalDue: Number(due.total.toFixed(2)),
-          lastComputedAt: now
-        }}
+      {
+        $addToSet: { remindersSent: reminderStep },
+        $set: { lastReminderAt: now },
+        $push: { history: { at: now, action: (isPreDue ? `PRE_DUE_REMINDER_${Math.abs(reminderStep)}` : `POST_DUE_REMINDER_${reminderStep}`), by: 'bot' } }
+      }
     );
-
-    // 9) Send + record
-    await sendInterestEmail(inv, due);
-    emailed++;
-    if (isPreDue) {
-      await Invoice.updateOne(
-        { _id: inv._id },
-        {
-          $addToSet: { remindersSent: reminderStep },
-          $set: { lastReminderAt: now },
-          $push: { history: { at: now, action: `PRE_DUE_REMINDER_${Math.abs(reminderStep)}`, by: 'bot' } }
-        }
-      );
-    } else {
-      await Invoice.updateOne(
-        { _id: inv._id },
-        {
-          $set: { interestStepsEmailed: reminderStep, lastReminderAt: now },
-          $push: { history: { at: now, action: `INTEREST_EMAIL_STEP_${reminderStep}`, by: 'bot' } }
-        }
-      );
-    }
   }
 
   console.log(`[interestBot] checked=${checked} emailed=${emailed} noStep=${skippedNoStep} noEmail=${skippedNoEmail}`);
