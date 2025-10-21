@@ -96,14 +96,18 @@ const os = require('os');
 // === Email threading + PDF helpers ===
 async function findInvoiceForWorkOrder(wo) {
   if (!wo) return null;
-  let inv = null;
+  // 1) If the WO points at an invoice, use it
   if (wo.invoiceId) {
-    inv = await Invoice.findById(wo.invoiceId).lean().catch(() => null);
+    const inv = await Invoice.findById(wo.invoiceId).lean().catch(() => null);
+    if (inv) return inv;
   }
-  if (!inv) {
-    inv = await Invoice.findOne({ job: wo._id }).lean().catch(() => null);
-  }
-  return inv;
+  // 2) Otherwise pick the *latest* invoice for this job
+  const [latest] = await Invoice.find({ job: wo._id })
+    .sort({ sentAt: -1, updatedAt: -1, createdAt: -1 })
+   .limit(1)
+    .lean()
+    .catch(() => [null]);
+  return latest || null;
 }
 
 // Create "In-Reply-To" / "References" headers if we have an origin Message-ID
@@ -785,12 +789,20 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
     };
 
     // Update by invoiceId first, fallback to job field
-    let invoiceUpdateResult;
-    if (workOrder.invoiceId) {
-      invoiceUpdateResult = await Invoice.updateOne({ _id: workOrder.invoiceId }, { $set: updateData });
-    } else {
-      invoiceUpdateResult = await Invoice.updateOne({ job: workOrder._id }, { $set: updateData });
+    // Resolve the specific invoice to update: prefer WO.invoiceId, else latest for job
+    let targetInvoiceId = workOrder.invoiceId;
+    if (!targetInvoiceId) {
+      const latest = await Invoice.find({ job: workOrder._id })
+        .sort({ sentAt: -1, updatedAt: -1, createdAt: -1 })
+        .limit(1)
+        .lean();
+      targetInvoiceId = latest?.[0]?._id;
     }
+    if (!targetInvoiceId) {
+      return res.status(404).json({ message: 'No prior invoice found to update for this work order' });
+    }
+
+    const invoiceUpdateResult = await Invoice.updateOne({ _id: targetInvoiceId }, { $set: updateData });
 
     // Update work order with new invoice data
     await WorkOrder.updateOne(
@@ -839,7 +851,7 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
         </html>
       `;
 // Load the related invoice (for threading)
-const invoiceDoc = await findInvoiceForWorkOrder(workOrder);
+const invoiceDoc = await Invoice.findById(targetInvoiceId).lean().catch(() => null);
 
 // Threading headers
 const headers = threadHeaders(invoiceDoc);
@@ -1066,24 +1078,44 @@ router.get('/invoice-status', async (req, res) => {
 
     const ids = idsParam.split(',').map(s => s.trim()).filter(Boolean);
     const objectIds = ids.map(id => new mongoose.Types.ObjectId(id));
+    const latestPerJob = await Invoice.aggregate([
+      { $match: { job: { $in: objectIds } } },
+      // order newest first (sentAt, then updatedAt, then createdAt)
+      { $sort: { sentAt: -1, updatedAt: -1, createdAt: -1 } },
+      // keep only the first doc per job
+      { $group: {
+          _id: '$job',
+          doc: { $first: '$$ROOT' }
+      }},
+      { $project: {
+          _id: 0,
+          job: '$_id',
+          invoiceId: '$doc._id',
+          status: '$doc.status',
+          principal: '$doc.principal',
+          accruedInterest: '$doc.accruedInterest',
+          computedTotalDue: '$doc.computedTotalDue',
+          interestStepsEmailed: '$doc.interestStepsEmailed',
+          sentAt: '$doc.sentAt',
+          paidAt: '$doc.paidAt',
+          publicKey: '$doc.publicKey',
+          emailMessageId: '$doc.emailMessageId'
+      }}
+    ]);
 
-    const invoices = await Invoice.find({ job: { $in: objectIds } })
-      .select('_id job principal status paidAt sentAt publicKey accruedInterest computedTotalDue interestStepsEmailed')
-      .lean();
-
-    // Normalize into a dictionary by workOrderId
     const byWorkOrder = {};
-    for (const inv of invoices) {
+    for (const inv of latestPerJob) {
       byWorkOrder[String(inv.job)] = {
-        invoiceId: String(inv._id),
-        status: inv.status,                // DRAFT | SENT | PARTIALLY_PAID | PAID | VOID
+        invoiceId: String(inv.invoiceId),
+        status: inv.status,
         principal: Number(inv.principal) || 0,
-         accruedInterest: Number(inv.accruedInterest) || 0,
- computedTotalDue: Number(inv.computedTotalDue) || 0,
- interestStepsEmailed: Number(inv.interestStepsEmailed) || 0,
+        accruedInterest: Number(inv.accruedInterest) || 0,
+        computedTotalDue: Number(inv.computedTotalDue) || 0,
+        interestStepsEmailed: Number(inv.interestStepsEmailed) || 0,
         sentAt: inv.sentAt || null,
         paidAt: inv.paidAt || null,
-        publicKey: inv.publicKey || null
+        publicKey: inv.publicKey || null,
+        emailMessageId: inv.emailMessageId || null
       };
     }
     res.json({ byWorkOrder });
