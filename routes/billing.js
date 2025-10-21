@@ -843,6 +843,17 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
                 <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'Same as original'}</p>
               </div>
               
+              <div style="background-color: #f0f8ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #007bff;">
+                <h3 style="margin: 0 0 10px 0; color: #007bff;">Work Order Details</h3>
+                <p style="margin: 3px 0;"><strong>Coordinator:</strong> ${workOrder.basic?.coordinator || 'N/A'}</p>
+                <p style="margin: 3px 0;"><strong>Foreman:</strong> ${workOrder.basic?.foremanName || 'N/A'}</p>
+                <p style="margin: 3px 0;"><strong>Time:</strong> ${workOrder.basic?.startTime || ''} - ${workOrder.basic?.endTime || ''}</p>
+                <p style="margin: 3px 0;"><strong>Flaggers:</strong> ${[workOrder.tbs?.flagger1, workOrder.tbs?.flagger2, workOrder.tbs?.flagger3, workOrder.tbs?.flagger4, workOrder.tbs?.flagger5].filter(Boolean).join(', ') || 'N/A'}</p>
+                ${workOrder.tbs?.trucks?.length ? `<p style="margin: 3px 0;"><strong>Trucks:</strong> ${workOrder.tbs.trucks.join(', ')}</p>` : ''}
+                ${workOrder.basic?.notes ? `<p style="margin: 3px 0;"><strong>Notes:</strong> ${workOrder.basic.notes}</p>` : ''}
+                <p style="margin: 3px 0;"><strong>Completed:</strong> ${new Date(workOrder.createdAt).toLocaleDateString()} at ${new Date(workOrder.createdAt).toLocaleTimeString()}</p>
+              </div>
+              
               <p style="text-align: center; font-size: 16px; margin: 30px 0;">This is an updated version of your invoice. Please find the revised invoice PDF attached.</p>
               
               <div style="text-align: center; border-top: 2px solid #17365D; padding-top: 15px; margin-top: 30px;">
@@ -990,6 +1001,17 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
                 <p style="margin: 5px 0;"><strong>Work Order Date:</strong> ${workOrder.basic?.dateOfJob}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
                 <p style="margin: 5px 0;"><strong>Address:</strong> ${workOrder.basic?.address}, ${workOrder.basic?.city}, ${workOrder.basic?.state} ${workOrder.basic?.zip}</p>
+              </div>
+              
+              <div style="background-color: #f0f8ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #007bff;">
+                <h3 style="margin: 0 0 10px 0; color: #007bff;">Work Order Details</h3>
+                <p style="margin: 3px 0;"><strong>Coordinator:</strong> ${workOrder.basic?.coordinator || 'N/A'}</p>
+                <p style="margin: 3px 0;"><strong>Foreman:</strong> ${workOrder.basic?.foremanName || 'N/A'}</p>
+                <p style="margin: 3px 0;"><strong>Time:</strong> ${workOrder.basic?.startTime || ''} - ${workOrder.basic?.endTime || ''}</p>
+                <p style="margin: 3px 0;"><strong>Flaggers:</strong> ${[workOrder.tbs?.flagger1, workOrder.tbs?.flagger2, workOrder.tbs?.flagger3, workOrder.tbs?.flagger4, workOrder.tbs?.flagger5].filter(Boolean).join(', ') || 'N/A'}</p>
+                ${workOrder.tbs?.trucks?.length ? `<p style="margin: 3px 0;"><strong>Trucks:</strong> ${workOrder.tbs.trucks.join(', ')}</p>` : ''}
+                ${workOrder.basic?.notes ? `<p style="margin: 3px 0;"><strong>Notes:</strong> ${workOrder.basic.notes}</p>` : ''}
+                <p style="margin: 3px 0;"><strong>Completed:</strong> ${new Date(workOrder.createdAt).toLocaleDateString()} at ${new Date(workOrder.createdAt).toLocaleTimeString()}</p>
               </div>
               
               <p style="text-align: center; font-size: 16px; margin: 30px 0;">Please find the attached invoice PDF. Thank you for your business!</p>
