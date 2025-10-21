@@ -110,6 +110,95 @@ async function findInvoiceForWorkOrder(wo) {
   return latest || null;
 }
 
+// Convert 24-hour time to 12-hour format
+function formatTime12Hour(time24) {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${hour12}:${minutes}${ampm}`;
+}
+
+// Generate comprehensive work order details HTML
+function generateWorkOrderDetailsHtml(workOrder) {
+  const startTime = formatTime12Hour(workOrder.basic?.startTime);
+  const endTime = formatTime12Hour(workOrder.basic?.endTime);
+  const completedDate = new Date(workOrder.createdAt);
+  
+  // Equipment summary from workOrder.equipment
+  const equipment = workOrder.equipment || {};
+  const equipmentRows = [
+    { item: 'Hard Hats', started: equipment.hardHatsStarted || 0, ended: equipment.hardHatsEnded || 0 },
+    { item: 'Vests', started: equipment.vestsStarted || 0, ended: equipment.vestsEnded || 0 },
+    { item: 'Walkie Talkies', started: equipment.walkieTalkiesStarted || 0, ended: equipment.walkieTalkiesEnded || 0 },
+    { item: 'Arrow Boards', started: equipment.arrowBoardsStarted || 0, ended: equipment.arrowBoardsEnded || 0 },
+    { item: 'Cones', started: equipment.conesStarted || 0, ended: equipment.conesEnded || 0 },
+    { item: 'Barrels', started: equipment.barrelsStarted || 0, ended: equipment.barrelsEnded || 0 },
+    { item: 'Sign Stands', started: equipment.signStandsStarted || 0, ended: equipment.signStandsEnded || 0 },
+    { item: 'Signs', started: equipment.signsStarted || 0, ended: equipment.signsEnded || 0 }
+  ];
+
+  const equipmentHtml = equipmentRows.map(row => 
+    `<tr><td style="padding: 4px 8px; border: 1px solid #ddd;">${row.item}</td><td style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">${row.started}</td><td style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">${row.ended}</td></tr>`
+  ).join('');
+
+  // Jobsite checklist from workOrder.checklist
+  const checklist = workOrder.checklist || {};
+  const checklistItems = [
+    { label: 'Visibility', value: checklist.visibility ? 'Yes' : 'No' },
+    { label: 'Communication', value: checklist.communication ? 'Yes' : 'No' },
+    { label: 'Site Foreman', value: checklist.siteForeman ? 'Yes' : 'No' },
+    { label: 'Signs/Stands', value: checklist.signsStands ? 'Yes' : 'No' },
+    { label: 'Cones/Taper', value: checklist.conesTaper ? 'Yes' : 'No' },
+    { label: 'Equipment Left', value: checklist.equipmentLeft ? 'Yes' : 'No' }
+  ];
+
+  const checklistHtml = checklistItems.map(item => 
+    `<p style="margin: 2px 0;">✓ <strong>${item.label}:</strong> ${item.value}</p>`
+  ).join('');
+
+  return `
+    <div style="background-color: #f0f8ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #007bff;">
+      <h3 style="margin: 0 0 10px 0; color: #007bff;">✅ Completed on ${completedDate.toLocaleDateString()} at ${completedDate.toLocaleTimeString()}</h3>
+      <p style="margin: 3px 0;"><strong>Coordinator:</strong> ${workOrder.basic?.coordinator || 'N/A'}</p>
+      <p style="margin: 3px 0;"><strong>Project:</strong> ${workOrder.basic?.project || 'N/A'}</p>
+      <p style="margin: 3px 0;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
+      <p style="margin: 3px 0;"><strong>Address:</strong> ${workOrder.basic?.address || ''}, ${workOrder.basic?.city || ''}, ${workOrder.basic?.state || ''} ${workOrder.basic?.zip || ''}</p>
+      <p style="margin: 3px 0;"><strong>Rating:</strong> ${workOrder.basic?.rating || 'N/A'}</p>
+      <p style="margin: 3px 0;"><strong>24hr Notice:</strong> ${workOrder.basic?.notice24hr ? 'Yes' : 'No'}</p>
+      <p style="margin: 3px 0;"><strong>Call Back:</strong> ${workOrder.basic?.callBack ? 'Yes' : 'No'}</p>
+      <p style="margin: 3px 0;"><strong>Foreman:</strong> ${workOrder.basic?.foremanName || 'N/A'}</p>
+      <p style="margin: 3px 0;"><strong>Flaggers:</strong> ${[workOrder.tbs?.flagger1, workOrder.tbs?.flagger2, workOrder.tbs?.flagger3, workOrder.tbs?.flagger4, workOrder.tbs?.flagger5].filter(Boolean).join(', ') || 'N/A'}</p>
+      ${workOrder.tbs?.trucks?.length ? `<p style="margin: 3px 0;"><strong>Trucks:</strong> ${workOrder.tbs.trucks.join(', ')}</p>` : ''}
+      
+      <div style="margin: 15px 0;">
+        <h4 style="margin: 0 0 8px 0; color: #007bff;">Equipment Summary:</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+          <thead>
+            <tr style="background: #f0f0f0;">
+              <th style="padding: 4px 8px; border: 1px solid #ddd; text-align: left;">Item</th>
+              <th style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">Started</th>
+              <th style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">Ended</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${equipmentHtml}
+          </tbody>
+        </table>
+      </div>
+      
+      <div style="margin: 15px 0;">
+        <h4 style="margin: 0 0 8px 0; color: #007bff;">Jobsite Checklist:</h4>
+        ${checklistHtml}
+      </div>
+      
+      ${workOrder.basic?.notes ? `<p style="margin: 10px 0 3px 0;"><strong>Notes:</strong> ${workOrder.basic.notes}</p>` : ''}
+      ${workOrder.signature ? '<p style="margin: 3px 0;"><strong>Foreman Signature:</strong> ✓ Signed</p>' : ''}
+    </div>
+  `;
+}
+
 // Create "In-Reply-To" / "References" headers if we have an origin Message-ID
 function threadHeaders(invoiceDoc) {
   const headers = {};
@@ -843,16 +932,7 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
                 <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'Same as original'}</p>
               </div>
               
-              <div style="background-color: #f0f8ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #007bff;">
-                <h3 style="margin: 0 0 10px 0; color: #007bff;">Work Order Details</h3>
-                <p style="margin: 3px 0;"><strong>Coordinator:</strong> ${workOrder.basic?.coordinator || 'N/A'}</p>
-                <p style="margin: 3px 0;"><strong>Foreman:</strong> ${workOrder.basic?.foremanName || 'N/A'}</p>
-                <p style="margin: 3px 0;"><strong>Time:</strong> ${workOrder.basic?.startTime || ''} - ${workOrder.basic?.endTime || ''}</p>
-                <p style="margin: 3px 0;"><strong>Flaggers:</strong> ${[workOrder.tbs?.flagger1, workOrder.tbs?.flagger2, workOrder.tbs?.flagger3, workOrder.tbs?.flagger4, workOrder.tbs?.flagger5].filter(Boolean).join(', ') || 'N/A'}</p>
-                ${workOrder.tbs?.trucks?.length ? `<p style="margin: 3px 0;"><strong>Trucks:</strong> ${workOrder.tbs.trucks.join(', ')}</p>` : ''}
-                ${workOrder.basic?.notes ? `<p style="margin: 3px 0;"><strong>Notes:</strong> ${workOrder.basic.notes}</p>` : ''}
-                <p style="margin: 3px 0;"><strong>Completed:</strong> ${new Date(workOrder.createdAt).toLocaleDateString()} at ${new Date(workOrder.createdAt).toLocaleTimeString()}</p>
-              </div>
+              ${generateWorkOrderDetailsHtml(workOrder)}
               
               <p style="text-align: center; font-size: 16px; margin: 30px 0;">This is an updated version of your invoice. Please find the revised invoice PDF attached.</p>
               
@@ -1003,16 +1083,7 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
                 <p style="margin: 5px 0;"><strong>Address:</strong> ${workOrder.basic?.address}, ${workOrder.basic?.city}, ${workOrder.basic?.state} ${workOrder.basic?.zip}</p>
               </div>
               
-              <div style="background-color: #f0f8ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #007bff;">
-                <h3 style="margin: 0 0 10px 0; color: #007bff;">Work Order Details</h3>
-                <p style="margin: 3px 0;"><strong>Coordinator:</strong> ${workOrder.basic?.coordinator || 'N/A'}</p>
-                <p style="margin: 3px 0;"><strong>Foreman:</strong> ${workOrder.basic?.foremanName || 'N/A'}</p>
-                <p style="margin: 3px 0;"><strong>Time:</strong> ${workOrder.basic?.startTime || ''} - ${workOrder.basic?.endTime || ''}</p>
-                <p style="margin: 3px 0;"><strong>Flaggers:</strong> ${[workOrder.tbs?.flagger1, workOrder.tbs?.flagger2, workOrder.tbs?.flagger3, workOrder.tbs?.flagger4, workOrder.tbs?.flagger5].filter(Boolean).join(', ') || 'N/A'}</p>
-                ${workOrder.tbs?.trucks?.length ? `<p style="margin: 3px 0;"><strong>Trucks:</strong> ${workOrder.tbs.trucks.join(', ')}</p>` : ''}
-                ${workOrder.basic?.notes ? `<p style="margin: 3px 0;"><strong>Notes:</strong> ${workOrder.basic.notes}</p>` : ''}
-                <p style="margin: 3px 0;"><strong>Completed:</strong> ${new Date(workOrder.createdAt).toLocaleDateString()} at ${new Date(workOrder.createdAt).toLocaleTimeString()}</p>
-              </div>
+              ${generateWorkOrderDetailsHtml(workOrder)}
               
               <p style="text-align: center; font-size: 16px; margin: 30px 0;">Please find the attached invoice PDF. Thank you for your business!</p>
               
