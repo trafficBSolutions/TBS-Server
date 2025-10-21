@@ -126,32 +126,32 @@ function generateWorkOrderDetailsHtml(workOrder) {
   const endTime = formatTime12Hour(workOrder.basic?.endTime);
   const completedDate = new Date(workOrder.createdAt);
   
-  // Equipment summary from workOrder.equipment
-  const equipment = workOrder.equipment || {};
+  // Equipment summary from workOrder.tbs.morning
+  const morning = workOrder.tbs?.morning || {};
   const equipmentRows = [
-    { item: 'Hard Hats', started: equipment.hardHatsStarted || 0, ended: equipment.hardHatsEnded || 0 },
-    { item: 'Vests', started: equipment.vestsStarted || 0, ended: equipment.vestsEnded || 0 },
-    { item: 'Walkie Talkies', started: equipment.walkieTalkiesStarted || 0, ended: equipment.walkieTalkiesEnded || 0 },
-    { item: 'Arrow Boards', started: equipment.arrowBoardsStarted || 0, ended: equipment.arrowBoardsEnded || 0 },
-    { item: 'Cones', started: equipment.conesStarted || 0, ended: equipment.conesEnded || 0 },
-    { item: 'Barrels', started: equipment.barrelsStarted || 0, ended: equipment.barrelsEnded || 0 },
-    { item: 'Sign Stands', started: equipment.signStandsStarted || 0, ended: equipment.signStandsEnded || 0 },
-    { item: 'Signs', started: equipment.signsStarted || 0, ended: equipment.signsEnded || 0 }
+    { item: 'Hard Hats', started: morning.hardHats?.start || 0, ended: morning.hardHats?.end || 0 },
+    { item: 'Vests', started: morning.vests?.start || 0, ended: morning.vests?.end || 0 },
+    { item: 'Walkie Talkies', started: morning.walkies?.start || 0, ended: morning.walkies?.end || 0 },
+    { item: 'Arrow Boards', started: morning.arrowBoards?.start || 0, ended: morning.arrowBoards?.end || 0 },
+    { item: 'Cones', started: morning.cones?.start || 0, ended: morning.cones?.end || 0 },
+    { item: 'Barrels', started: morning.barrels?.start || 0, ended: morning.barrels?.end || 0 },
+    { item: 'Sign Stands', started: morning.signStands?.start || 0, ended: morning.signStands?.end || 0 },
+    { item: 'Signs', started: morning.signs?.start || 0, ended: morning.signs?.end || 0 }
   ];
 
   const equipmentHtml = equipmentRows.map(row => 
     `<tr><td style="padding: 4px 8px; border: 1px solid #ddd;">${row.item}</td><td style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">${row.started}</td><td style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">${row.ended}</td></tr>`
   ).join('');
 
-  // Jobsite checklist from workOrder.checklist
-  const checklist = workOrder.checklist || {};
+  // Jobsite checklist from workOrder.tbs.jobsite
+  const jobsite = workOrder.tbs?.jobsite || {};
   const checklistItems = [
-    { label: 'Visibility', value: checklist.visibility ? 'Yes' : 'No' },
-    { label: 'Communication', value: checklist.communication ? 'Yes' : 'No' },
-    { label: 'Site Foreman', value: checklist.siteForeman ? 'Yes' : 'No' },
-    { label: 'Signs/Stands', value: checklist.signsStands ? 'Yes' : 'No' },
-    { label: 'Cones/Taper', value: checklist.conesTaper ? 'Yes' : 'No' },
-    { label: 'Equipment Left', value: checklist.equipmentLeft ? 'Yes' : 'No' }
+    { label: 'Visibility', value: jobsite.visibility ? 'Yes' : 'No' },
+    { label: 'Communication', value: jobsite.communication ? 'Yes' : 'No' },
+    { label: 'Site Foreman', value: jobsite.siteForeman ? 'Yes' : 'No' },
+    { label: 'Signs/Stands', value: jobsite.signsAndStands ? 'Yes' : 'No' },
+    { label: 'Cones/Taper', value: jobsite.conesAndTaper ? 'Yes' : 'No' },
+    { label: 'Equipment Left', value: jobsite.equipmentLeft ? 'Yes' : 'No' }
   ];
 
   const checklistHtml = checklistItems.map(item => 
@@ -166,8 +166,8 @@ function generateWorkOrderDetailsHtml(workOrder) {
       <p style="margin: 3px 0;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
       <p style="margin: 3px 0;"><strong>Address:</strong> ${workOrder.basic?.address || ''}, ${workOrder.basic?.city || ''}, ${workOrder.basic?.state || ''} ${workOrder.basic?.zip || ''}</p>
       <p style="margin: 3px 0;"><strong>Rating:</strong> ${workOrder.basic?.rating || 'N/A'}</p>
-      <p style="margin: 3px 0;"><strong>24hr Notice:</strong> ${workOrder.basic?.notice24hr ? 'Yes' : 'No'}</p>
-      <p style="margin: 3px 0;"><strong>Call Back:</strong> ${workOrder.basic?.callBack ? 'Yes' : 'No'}</p>
+      <p style="margin: 3px 0;"><strong>24hr Notice:</strong> ${workOrder.basic?.notice24 === 'Yes' ? 'Yes' : 'No'}</p>
+      <p style="margin: 3px 0;"><strong>Call Back:</strong> ${workOrder.basic?.callBack === 'Yes' ? 'Yes' : 'No'}</p>
       <p style="margin: 3px 0;"><strong>Foreman:</strong> ${workOrder.basic?.foremanName || 'N/A'}</p>
       <p style="margin: 3px 0;"><strong>Flaggers:</strong> ${[workOrder.tbs?.flagger1, workOrder.tbs?.flagger2, workOrder.tbs?.flagger3, workOrder.tbs?.flagger4, workOrder.tbs?.flagger5].filter(Boolean).join(', ') || 'N/A'}</p>
       ${workOrder.tbs?.trucks?.length ? `<p style="margin: 3px 0;"><strong>Trucks:</strong> ${workOrder.tbs.trucks.join(', ')}</p>` : ''}
@@ -194,7 +194,7 @@ function generateWorkOrderDetailsHtml(workOrder) {
       </div>
       
       ${workOrder.basic?.notes ? `<p style="margin: 10px 0 3px 0;"><strong>Notes:</strong> ${workOrder.basic.notes}</p>` : ''}
-      ${workOrder.signature ? '<p style="margin: 3px 0;"><strong>Foreman Signature:</strong> ✓ Signed</p>' : ''}
+      ${workOrder.foremanSignature ? '<p style="margin: 3px 0;"><strong>Foreman Signature:</strong> ✓ Signed</p>' : ''}
     </div>
   `;
 }
