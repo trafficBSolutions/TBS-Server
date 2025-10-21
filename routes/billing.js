@@ -1070,6 +1070,21 @@ try {
     res.status(500).json({ message: 'Failed to bill work order', error: e.message });
   }
 });
+// Get single invoice by ID
+router.get('/invoice/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const invoice = await Invoice.findById(id).lean();
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    res.json(invoice);
+  } catch (e) {
+    console.error('[GET /billing/invoice/:id] error:', e);
+    res.status(500).json({ message: 'Failed to fetch invoice' });
+  }
+});
+
 // Get invoice status for one or more work orders
 router.get('/invoice-status', async (req, res) => {
   try {
