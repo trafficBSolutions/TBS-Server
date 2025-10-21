@@ -827,12 +827,7 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
 
     // Send updated invoice email
     if (emailOverride) {
-      let pdfBuffer = null;
-      try {
-        pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
-      } catch (e) {
-        console.error('[update-invoice] PDF generation failed:', e);
-      }
+      console.log('[update-invoice] Using uploaded PDFs, count:', req.files?.length || 0);
 
       const emailHtml = `
         <html>
@@ -878,22 +873,19 @@ const mailOptions = {
   messageId: `invoice-${String(invoiceDoc?._id || workOrder._id)}-update-${Date.now()}@trafficbarriersolutions.com`
 };
 
-// Guarantee a PDF is attached (fallback if primary fails)
-try {
-  pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
-  if (!pdfBuffer || !pdfBuffer.length) {
-    pdfBuffer = await fallbackInvoicePdf(workOrder, finalInvoiceTotal, invoiceData);
-  }
-} catch {
-  pdfBuffer = await fallbackInvoicePdf(workOrder, finalInvoiceTotal, invoiceData);
-}
-if (pdfBuffer && pdfBuffer.length) {
-  mailOptions.attachments.push({
-    filename: `updated-invoice-${safeClient}.pdf`,
-    content: pdfBuffer,
-    contentType: 'application/pdf',
-    contentDisposition: 'attachment'
+// Attach uploaded PDFs instead of generating new ones
+if (req.files && req.files.length > 0) {
+  req.files.forEach((file, index) => {
+    mailOptions.attachments.push({
+      filename: file.originalname || `updated-invoice-${safeClient}-${index + 1}.pdf`,
+      content: file.buffer,
+      contentType: 'application/pdf',
+      contentDisposition: 'attachment'
+    });
   });
+  console.log('[update-invoice] Attached', req.files.length, 'uploaded PDF(s)');
+} else {
+  console.log('[update-invoice] No uploaded PDFs found, email will be sent without attachments');
 }
 
 try {
@@ -979,19 +971,13 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
       { runValidators: false }
     );
 
-    // Generate PDF and send invoice email
+    // Send invoice email with uploaded PDFs
     console.log('Email override value:', emailOverride);
     if (emailOverride) {
       console.log('Attempting to send email to:', emailOverride);
       
-      // Generate invoice PDF
-      try {
-  console.log('[invoice] starting PDF generation…');
-  pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
-  console.log('[invoice] PDF buffer size:', pdfBuffer?.length || 0);
-} catch (e) {
-  console.error('[invoice] PDF generation failed:', e?.stack || e);
-}
+      // Use uploaded PDFs instead of generating new ones
+      console.log('[invoice] Using uploaded PDFs, count:', req.files?.length || 0);
 
       const emailHtml = `
         <html>
@@ -1030,23 +1016,19 @@ const mailOptions = {
   messageId: `invoice-${String(invoice._id)}@trafficbarriersolutions.com`
 };
 
-// Make sure a PDF is attached (fallback if needed)
-let pdfBuffer = null;
-try {
-  pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, finalInvoiceTotal, invoiceData);
-  if (!pdfBuffer || !pdfBuffer.length) {
-    pdfBuffer = await fallbackInvoicePdf(workOrder, finalInvoiceTotal, invoiceData);
-  }
-} catch {
-  pdfBuffer = await fallbackInvoicePdf(workOrder, finalInvoiceTotal, invoiceData);
-}
-if (pdfBuffer && pdfBuffer.length) {
-  mailOptions.attachments.push({
-    filename: `invoice-${safeClient}.pdf`,
-    content: pdfBuffer,
-    contentType: 'application/pdf',
-    contentDisposition: 'attachment'
+// Attach uploaded PDFs instead of generating new ones
+if (req.files && req.files.length > 0) {
+  req.files.forEach((file, index) => {
+    mailOptions.attachments.push({
+      filename: file.originalname || `invoice-${safeClient}-${index + 1}.pdf`,
+      content: file.buffer,
+      contentType: 'application/pdf',
+      contentDisposition: 'attachment'
+    });
   });
+  console.log('[invoice] Attached', req.files.length, 'uploaded PDF(s)');
+} else {
+  console.log('[invoice] No uploaded PDFs found, email will be sent without attachments');
 }
 
 try {
