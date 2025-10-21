@@ -764,7 +764,16 @@ router.post('/update-invoice', upload.array('attachments', 10), async (req, res)
 
     const workOrder = await WorkOrder.findById(workOrderId);
     if (!workOrder) return res.status(404).json({ message: 'Work order not found' });
-    if (!workOrder.billed) return res.status(400).json({ message: 'Work order not yet billed' });
+    
+    // Check if work order has been billed OR has an associated invoice
+    const hasInvoice = workOrder.invoiceId || workOrder.billed;
+    if (!hasInvoice) {
+      // Try to find an invoice by job field as fallback
+      const existingInvoice = await Invoice.findOne({ job: workOrder._id }).lean();
+      if (!existingInvoice) {
+        return res.status(400).json({ message: 'Work order not yet billed' });
+      }
+    }
 const previousTotal = await getPreviousTotal(workOrder._id);
 console.log(`[update-invoice] previousTotal=${previousTotal}`);
     const finalInvoiceTotal = invoiceData.sheetTotal || manualAmount;
