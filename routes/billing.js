@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const WorkOrder = require('../models/workorder');
 const { runInterestReminderCycle } = require('../services/interestBot');
+const PlanUser = require('../models/planuser');
 async function getPreviousTotal(workOrderId) {
   const WorkOrder = require('../models/workorder');
   const Invoice = require('../models/invoice');
@@ -1269,5 +1270,204 @@ router.post('/create-payment-intent', async (req, res) => {
     res.status(500).json({ message: 'Failed to create PaymentIntent' });
   }
 });
+router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
+  try {
+    let { planId, manualAmount, emailOverride, invoiceData } = req.body;
+    if (typeof req.body.payload === 'string') {
+      ({ planId, manualAmount, emailOverride, invoiceData } = JSON.parse(req.body.payload));
+    }
+    if (!planId) return res.status(400).json({ message: 'planId required' });
+
+    const plan = await PlanUser.findById(planId).lean();
+    if (!plan) return res.status(404).json({ message: 'Plan not found' });
+
+    const principal = Number(manualAmount || 0);
+    if (!(principal > 0)) return res.status(400).json({ message: 'Amount must be > 0' });
+
+    // create invoice row (plan-specific)
+    const invoice = await Invoice.create({
+      plan: plan._id,
+      company: plan.company,
+      companyEmail: emailOverride,
+      principal,
+      status: 'SENT',
+      sentAt: new Date(),
+      dueDate: invoiceData?.dueDate ? new Date(invoiceData.dueDate) : undefined,
+      invoiceData, // snapshot: phases, rate, totals, etc.
+      invoiceNumber: invoiceData?.invoiceNumber || String(plan._id).slice(-6),
+      lineItems: [
+        {
+          description: `Traffic Control Plan — ${invoiceData?.planPhases || 1} phase(s) @ $${Number(invoiceData?.planRate||0).toFixed(2)}`,
+          qty: Number(invoiceData?.planPhases || 1),
+          unitPrice: Number(invoiceData?.planRate || 0),
+          total: principal
+        }
+      ],
+      billedTo: {
+        name: plan.company,
+        email: emailOverride
+      }
+    });
+
+    // email
+    const safeCo = (plan.company || 'company').replace(/[^a-z0-9]+/gi, '-');
+    const html = `
+      <html><body>
+        <h2>Traffic Control Plan — Invoice</h2>
+        <p><b>Company:</b> ${plan.company}</p>
+        <p><b>Project:</b> ${plan.project || ''}</p>
+        <p><b>Total:</b> $${principal.toFixed(2)}</p>
+      </body></html>`;
+
+    const mailOptions = {
+      from: 'trafficandbarriersolutions.ap@gmail.com',
+      to: emailOverride,
+      subject: `TCP INVOICE – ${plan.company} – $${principal.toFixed(2)}`,
+      html,
+      attachments: [],
+      messageId: `plan-invoice-${String(invoice._id)}@trafficbarriersolutions.com`
+    };
+
+    if (req.files?.length) {
+      req.files.forEach((f, i) => {
+        mailOptions.attachments.push({
+          filename: f.originalname || `tcp-invoice-${safeCo}-${i+1}.pdf`,
+          content: f.buffer,
+          contentType: 'application/pdf',
+          contentDisposition: 'attachment'
+        });
+      });
+    }
+
+    const info = await transporter7.sendMail(mailOptions);
+    await Invoice.updateOne(
+      { _id: invoice._id },
+      { $set: { emailMessageId: mailOptions.messageId || info.messageId } }
+    );
+
+    return res.json({ ok: true, invoiceId: invoice._id });
+  } catch (e) {
+    console.error('[bill-plan] error:', e);
+    res.status(500).json({ message: 'Failed to bill plan', error: e.message });
+  }
+});
+router.post('/update-plan', upload.array('attachments', 10), async (req, res) => {
+  try {
+    let { planId, manualAmount, emailOverride, invoiceData } = req.body;
+    if (typeof req.body.payload === 'string') {
+      ({ planId, manualAmount, emailOverride, invoiceData } = JSON.parse(req.body.payload));
+    }
+    if (!planId) return res.status(400).json({ message: 'planId required' });
+
+    const plan = await PlanUser.findById(planId).lean();
+    if (!plan) return res.status(404).json({ message: 'Plan not found' });
+
+    const target = await findInvoiceForPlan(planId);
+    if (!target) return res.status(404).json({ message: 'No prior plan invoice to update' });
+
+    const principal = Number(manualAmount || 0);
+    if (!(principal > 0)) return res.status(400).json({ message: 'Amount must be > 0' });
+
+    await Invoice.updateOne(
+      { _id: target._id },
+      {
+        $set: {
+          principal,
+          invoiceData,
+          invoiceNumber: invoiceData?.invoiceNumber || target.invoiceNumber,
+          dueDate: invoiceData?.dueDate ? new Date(invoiceData.dueDate) : target.dueDate,
+          status: 'SENT', // keep it "sent" (or PARTIALLY_PAID/PAID stays if you prefer)
+          lineItems: [
+            {
+              description: `Traffic Control Plan — ${invoiceData?.planPhases || 1} phase(s) @ $${Number(invoiceData?.planRate||0).toFixed(2)}`,
+              qty: Number(invoiceData?.planPhases || 1),
+              unitPrice: Number(invoiceData?.planRate || 0),
+              total: principal
+            }
+          ],
+          updatedAt: new Date()
+        }
+      }
+    );
+
+    // Threaded email
+    const headers = threadHeaders(target);
+    const safeCo = (plan.company || 'company').replace(/[^a-z0-9]+/gi, '-');
+    const html = `
+      <html><body>
+        <h2>UPDATED Traffic Control Plan — Invoice</h2>
+        <p><b>Company:</b> ${plan.company}</p>
+        <p><b>Project:</b> ${plan.project || ''}</p>
+        <p><b>Updated Total:</b> $${principal.toFixed(2)}</p>
+      </body></html>`;
+
+    const mailOptions = {
+      from: 'trafficandbarriersolutions.ap@gmail.com',
+      to: emailOverride,
+      subject: `UPDATED TCP INVOICE – ${plan.company} – $${principal.toFixed(2)}`,
+      html,
+      headers,
+      attachments: [],
+      messageId: `plan-invoice-${String(target._id)}-update-${Date.now()}@trafficbarriersolutions.com`
+    };
+
+    if (req.files?.length) {
+      req.files.forEach((f, i) => {
+        mailOptions.attachments.push({
+          filename: f.originalname || `tcp-invoice-${safeCo}-${i+1}.pdf`,
+          content: f.buffer,
+          contentType: 'application/pdf',
+          contentDisposition: 'attachment'
+        });
+      });
+    }
+
+    await transporter7.sendMail(mailOptions);
+    return res.json({ ok: true, invoiceId: target._id });
+  } catch (e) {
+    console.error('[update-plan] error:', e);
+    res.status(500).json({ message: 'Failed to update plan invoice', error: e.message });
+  }
+});
+// similar to /invoice-status but for plans
+router.get('/plan-invoice-status', async (req, res) => {
+  try {
+    const ids = String(req.query.planIds || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (!ids.length) return res.json({ byPlan: {} });
+
+    const oids = ids.map(id => new mongoose.Types.ObjectId(id));
+
+    const latest = await Invoice.aggregate([
+      { $match: { plan: { $in: oids } } },
+      { $sort: { sentAt: -1, updatedAt: -1, createdAt: -1 } },
+      { $group: { _id: '$plan', doc: { $first: '$$ROOT' } } },
+      { $project: {
+          _id: 0,
+          plan: '$_id',
+          invoiceId: '$doc._id',
+          status: '$doc.status',
+          principal: '$doc.principal',
+          computedTotalDue: '$doc.computedTotalDue',
+          invoiceData: '$doc.invoiceData',
+          emailMessageId: '$doc.emailMessageId',
+          sentAt: '$doc.sentAt',
+          paidAt: '$doc.paidAt'
+      }}
+    ]);
+
+    const byPlan = {};
+    latest.forEach(r => { byPlan[String(r.plan)] = r; });
+    res.json({ byPlan });
+  } catch (e) {
+    console.error('[GET /plan-invoice-status]', e);
+    res.status(500).json({ message: 'Failed to load plan invoice status' });
+  }
+});
+
+module.exports = router;
 
 module.exports = router;
