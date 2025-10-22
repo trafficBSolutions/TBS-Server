@@ -2,6 +2,7 @@
 const path = require('path');
 const Complaint = require('../models/complaintuser'); // this should export a model
 const { transporter } = require('../utils/emailConfig');  // matches your traffic flow import
+const { generateComplaintPdf } = require('../services/complaintPDF');
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
@@ -175,6 +176,7 @@ const submitComplaint = async (req, res) => {
     const adminViewLink = `${APP_URL}/admin/complaints/${doc._id}`;
     const adminListLink = `${APP_URL}/admin/complaints`;
     const printLink     = `${APP_URL}/admin/complaints/${doc._id}/print`;
+    const pdfLink       = `${process.env.API_URL || 'https://tbs-server.onrender.com'}/employee-complaints/${doc._id}/pdf`;
 
     // HTML email
     const html = `
@@ -225,6 +227,7 @@ const submitComplaint = async (req, res) => {
           <ul>
             <li><a href="${adminViewLink}">Open this Complaint</a></li>
             <li><a href="${adminListLink}">All Complaints</a></li>
+            <li><a href="${pdfLink}">Download PDF</a></li>
             <li><a href="${printLink}">Print (if available)</a></li>
           </ul>
 
@@ -290,10 +293,35 @@ const submitComplaint = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+// GET /employee-complaints/:id/pdf - Generate PDF
+const generateComplaintPDF = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res.status(400).json({ error: 'Invalid complaint ID format' });
+    }
+    
+    const complaint = await Complaint.findById(id);
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    const pdfBuffer = await generateComplaintPdf(complaint);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="complaint_${complaint.name.replace(/\s+/g, '_')}_${complaint.dateOfIncident}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating complaint PDF:', error);
+    res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+};
+
 module.exports = {
   submitComplaint,
   listComplaints,
   listComplaintsByMonth,
   listComplaintsByDate,
   getComplaintById,
+  generateComplaintPDF,
 };
