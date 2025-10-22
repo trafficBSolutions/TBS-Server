@@ -747,53 +747,32 @@ router.post('/process-late-fees', async (req, res) => {
       const daysPastDue = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));
       
       if (daysPastDue > 0) {
-        // Calculate late fees (every 14 days past due)
-        const lateFeeIntervals = Math.floor(daysPastDue / 14);
-        const lateFeeAmount = lateFeeIntervals * 25; // $25 per 14-day period
+        // Skip automatic late fee calculation - fees must be added manually
+        // const lateFeeIntervals = Math.floor(daysPastDue / 14);
+        // const lateFeeAmount = lateFeeIntervals * 25; // $25 per 14-day period
         
-        if (lateFeeAmount > (workOrder.lateFees || 0)) {
-          const newLateFees = lateFeeAmount;
-          const newTotal = (workOrder.billedAmount || 0) + newLateFees;
+        // Only send notification emails, no automatic fee processing
+        processed++;
           
-          await WorkOrder.updateOne(
-            { _id: workOrder._id },
-            { 
-              $set: { 
-                lateFees: newLateFees,
-                currentAmount: newTotal,
-                lastLateFeeUpdate: now
-              }
-            }
-          );
-          processed++;
-          
-          // Send late fee notification email with updated PDF
+          // Send overdue reminder email (no automatic fees)
           const clientEmail = workOrder.invoiceData?.selectedEmail || workOrder.basic?.email;
           if (clientEmail) {
             try {
-              // Generate updated PDF with late fees
-              const updatedInvoiceData = {
-                ...workOrder.invoiceData,
-                sheetOther: newLateFees,
-                sheetTotal: newTotal
-              };
-              
-              const pdfBuffer = await generateInvoicePdfFromWorkOrder(workOrder, newTotal, updatedInvoiceData);
+              const originalTotal = workOrder.billedAmount || workOrder.invoiceData?.sheetTotal || 0;
               
               const emailHtml = `
                 <html>
                   <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
                     <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-                      <h1 style="text-align: center; background-color: #dc3545; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">LATE FEE NOTICE - ${workOrder.basic?.client}</h1>
+                      <h1 style="text-align: center; background-color: #dc3545; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">OVERDUE NOTICE - ${workOrder.basic?.client}</h1>
                       
                       <div style="background-color: #f8d7da; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
-                        <p style="margin: 5px 0; font-size: 16px;"><strong>Late Fee Applied:</strong> $${newLateFees.toFixed(2)}</p>
+                        <p style="margin: 5px 0; font-size: 16px;"><strong>Amount Due:</strong> $${originalTotal.toFixed(2)}</p>
                         <p style="margin: 5px 0;"><strong>Days Past Due:</strong> ${daysPastDue}</p>
-                        <p style="margin: 5px 0;"><strong>New Total Amount:</strong> $${newTotal.toFixed(2)}</p>
                         <p style="margin: 5px 0;"><strong>Original Due Date:</strong> ${new Date(workOrder.invoiceData.dueDate).toLocaleDateString()}</p>
                       </div>
                       
-                      <p style="text-align: center; font-size: 16px; margin: 30px 0;">Your invoice is past due. A late fee of $25.00 per 14-day period has been applied. Please remit payment immediately to avoid additional fees.</p>
+                      <p style="text-align: center; font-size: 16px; margin: 30px 0;">Your invoice is past due. Please remit payment immediately.</p>
                       
                       <div style="text-align: center; border-top: 2px solid #dc3545; padding-top: 15px; margin-top: 30px;">
                         <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
@@ -807,23 +786,17 @@ router.post('/process-late-fees', async (req, res) => {
               const mailOptions = {
                 from: 'trafficandbarriersolutions.ap@gmail.com',
                 to: clientEmail,
-                subject: `LATE FEE NOTICE – ${workOrder.basic?.client} – $${newTotal.toFixed(2)}`,
-                html: emailHtml,
-                attachments: pdfBuffer ? [{
-                  filename: `late-fee-invoice-${(workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
-                  content: pdfBuffer,
-                  contentType: 'application/pdf'
-                }] : []
+                subject: `OVERDUE NOTICE – ${workOrder.basic?.client} – $${originalTotal.toFixed(2)}`,
+                html: emailHtml
               };
               
               await transporter7.sendMail(mailOptions);
               emailsSent++;
-              console.log(`[late-fee] Email sent to ${clientEmail} for work order ${workOrder._id}`);
+              console.log(`[overdue-notice] Email sent to ${clientEmail} for work order ${workOrder._id}`);
             } catch (emailError) {
-              console.error(`[late-fee] Failed to send email for work order ${workOrder._id}:`, emailError);
+              console.error(`[overdue-notice] Failed to send email for work order ${workOrder._id}:`, emailError);
             }
           }
-        }
       }
     }
 
