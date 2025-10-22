@@ -194,7 +194,7 @@ function generateWorkOrderDetailsHtml(workOrder) {
       </div>
       
       ${workOrder.basic?.notes ? `<p style="margin: 10px 0 3px 0;"><strong>Notes:</strong> ${workOrder.basic.notes}</p>` : ''}
-      ${workOrder.foremanSignature ? '<p style="margin: 3px 0;"><strong>Foreman Signature:</strong> ✓ Signed</p>' : ''}
+      ${workOrder.foremanSignature ? `<div style="margin: 10px 0;"><strong>Foreman Signature:</strong><br/><img src="${workOrder.foremanSignature}" alt="Foreman Signature" style="max-width: 200px; max-height: 80px; border: 1px solid #ddd; margin-top: 5px;"/></div>` : ''}
     </div>
   `;
 }
