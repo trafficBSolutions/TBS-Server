@@ -193,6 +193,8 @@ function generateWorkOrderDetailsHtml(workOrder) {
         ${checklistHtml}
       </div>
       
+      ${jobsite.equipmentLeft ? `<div style="margin: 15px 0; padding: 10px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;"><h4 style="margin: 0 0 8px 0; color: #856404;">⚠️ Equipment Left Behind:</h4><p style="margin: 0; color: #856404;">${jobsite.equipmentLeftReason || 'Equipment was left at the jobsite as requested by client.'}</p></div>` : ''}
+      
       ${workOrder.basic?.notes ? `<p style="margin: 10px 0 3px 0;"><strong>Notes:</strong> ${workOrder.basic.notes}</p>` : ''}
       ${workOrder.foremanSignature ? `<div style="margin: 10px 0;"><strong>Foreman Signature:</strong><br/><img src="${workOrder.foremanSignature}" alt="Foreman Signature" style="max-width: 200px; max-height: 80px; border: 1px solid #ddd; margin-top: 5px;"/></div>` : ''}
     </div>
