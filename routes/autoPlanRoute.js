@@ -5,7 +5,7 @@ const multer = require('multer');
 const bodyParser = require('body-parser');
 const { submitPlan } = require('../controllers/autoPlanControl');
 const fs = require('fs'); // Import the 'fs' module for file system operations
-
+const verifyRecaptcha = require('../utils/recap');
 // Middleware
 router.use(
     cors({
@@ -50,7 +50,7 @@ router.use(bodyParser.urlencoded({ extended: true }));
 router.use(bodyParser.json());
 
 // Define routes under /apply path
-router.post('/trafficplanning', upload, submitPlan);
+router.post('/trafficplanning', upload, verifyRecaptcha, submitPlan);
 const Plan = require('../models/planuser');
 
 router.get('/plan/all', async (req, res) => {
@@ -58,7 +58,7 @@ router.get('/plan/all', async (req, res) => {
     const plan = await Plan.find().sort({ _id: -1 }); // newest first
     res.json(plan);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to retrieve plans.' });
+    res.status(500).json({ error: 'Failed to retrieve applicants.' });
   }
 });
 module.exports = router;
