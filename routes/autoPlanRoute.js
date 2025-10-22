@@ -53,7 +53,7 @@ router.use(bodyParser.json());
 router.post('/trafficplanning', upload, submitPlan);
 const Plan = require('../models/planuser');
 
-router.get('/all', async (req, res) => {
+router.get('/plan/all', async (req, res) => {
   try {
     const plan = await Plan.find().sort({ _id: -1 }); // newest first
     res.json(plan);
