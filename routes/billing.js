@@ -1471,6 +1471,77 @@ async function findInvoiceForPlan(planId) {
   return latest || null;
 }
 
+// Mark plan invoice as paid
+router.post('/mark-plan-paid', async (req, res) => {
+  try {
+    const { invoiceId, paymentMethod, paymentAmount, emailOverride } = req.body;
+    
+    if (!invoiceId) return res.status(400).json({ message: 'invoiceId required' });
+    
+    const invoice = await Invoice.findById(invoiceId);
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+    
+    const amount = Number(paymentAmount) || invoice.principal || 0;
+    
+    // Update invoice status
+    await Invoice.updateOne(
+      { _id: invoiceId },
+      { 
+        $set: { 
+          status: 'PAID',
+          paidAt: new Date(),
+          paymentMethod: paymentMethod === 'card' ? 'CARD' : 'CHECK'
+        }
+      }
+    );
+    
+    // Send receipt email if provided
+    if (emailOverride) {
+      const plan = await PlanUser.findById(invoice.plan).lean();
+      const receiptHtml = `
+        <html>
+          <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+            <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+              <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">PAYMENT RECEIPT – ${plan?.company || 'Traffic Control Plan'}</h1>
+              
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Amount Paid:</strong> $${amount.toFixed(2)}</p>
+                <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentMethod === 'card' ? 'Card' : 'Check'}</p>
+                <p style="margin: 5px 0;"><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</p>
+                <p style="margin: 5px 0;"><strong>Company:</strong> ${plan?.company || 'N/A'}</p>
+                <p style="margin: 5px 0;"><strong>Project:</strong> ${plan?.project || 'N/A'}</p>
+              </div>
+              
+              <p style="text-align: center; font-size: 16px; margin: 30px 0;">Thank you for your payment!</p>
+              
+              <div style="text-align: center; border-top: 2px solid #28a745; padding-top: 15px; margin-top: 30px;">
+                <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
+                <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+      
+      const mailOptions = {
+        from: 'trafficandbarriersolutions.ap@gmail.com',
+        to: emailOverride,
+        subject: `PAYMENT RECEIPT – ${plan?.company || 'TCP'} – $${amount.toFixed(2)}`,
+        html: receiptHtml,
+        messageId: `plan-receipt-${invoiceId}-${Date.now()}@trafficbarriersolutions.com`
+      };
+      
+      await transporter7.sendMail(mailOptions);
+    }
+    
+    res.json({ message: 'Plan payment recorded successfully', invoiceId });
+  } catch (e) {
+    console.error('Mark plan paid error:', e);
+    res.status(500).json({ message: 'Failed to record plan payment', error: e.message });
+  }
+});
+
 // similar to /invoice-status but for plans
 router.get('/plan-invoice-status', async (req, res) => {
   try {
@@ -1478,6 +1549,52 @@ router.get('/plan-invoice-status', async (req, res) => {
       .split(',')
       .map(s => s.trim())
       .filter(Boolean);
+    
+    if (!ids.length) {
+      return res.json({});
+    }
+    
+    const invoices = await Invoice.find({ plan: { $in: ids } })
+      .select('plan status principal computedTotalDue accruedInterest paidAt invoiceData')
+      .lean();
+    
+    const result = {};
+    
+    for (const id of ids) {
+      const invoice = invoices.find(inv => String(inv.plan) === id);
+      if (invoice) {
+        result[id] = {
+          billed: true,
+          paid: invoice.status === 'PAID',
+          invoiceId: invoice._id,
+          principal: invoice.principal || 0,
+          computedTotalDue: invoice.computedTotalDue || invoice.principal || 0,
+          accruedInterest: invoice.accruedInterest || 0,
+          paidAt: invoice.paidAt,
+          invoiceData: invoice.invoiceData
+        };
+      } else {
+        result[id] = {
+          billed: false,
+          paid: false,
+          invoiceId: null,
+          principal: 0,
+          computedTotalDue: 0,
+          accruedInterest: 0,
+          paidAt: null,
+          invoiceData: null
+        };
+      }
+    }
+    
+    res.json(result);
+  } catch (e) {
+    console.error('Plan invoice status error:', e);
+    res.status(500).json({ message: 'Failed to get plan invoice status', error: e.message });
+  }
+});
+try{
+    const ids = String(req.query.planIds || '').split(',').map(s => s.trim()).filter(Boolean);
 
     if (!ids.length) return res.json({ byPlan: {} });
 
@@ -1507,7 +1624,6 @@ router.get('/plan-invoice-status', async (req, res) => {
   } catch (e) {
     console.error('[GET /plan-invoice-status]', e);
     res.status(500).json({ message: 'Failed to load plan invoice status' });
-  }
-});
+  };
 
 module.exports = router;
