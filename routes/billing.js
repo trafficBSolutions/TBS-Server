@@ -1593,37 +1593,6 @@ router.get('/plan-invoice-status', async (req, res) => {
     res.status(500).json({ message: 'Failed to get plan invoice status', error: e.message });
   }
 });
-try{
-    const ids = String(req.query.planIds || '').split(',').map(s => s.trim()).filter(Boolean);
 
-    if (!ids.length) return res.json({ byPlan: {} });
-
-    const oids = ids.map(id => new mongoose.Types.ObjectId(id));
-
-    const latest = await Invoice.aggregate([
-      { $match: { plan: { $in: oids } } },
-      { $sort: { sentAt: -1, updatedAt: -1, createdAt: -1 } },
-      { $group: { _id: '$plan', doc: { $first: '$$ROOT' } } },
-      { $project: {
-          _id: 0,
-          plan: '$_id',
-          invoiceId: '$doc._id',
-          status: '$doc.status',
-          principal: '$doc.principal',
-          computedTotalDue: '$doc.computedTotalDue',
-          invoiceData: '$doc.invoiceData',
-          emailMessageId: '$doc.emailMessageId',
-          sentAt: '$doc.sentAt',
-          paidAt: '$doc.paidAt'
-      }}
-    ]);
-
-    const byPlan = {};
-    latest.forEach(r => { byPlan[String(r.plan)] = r; });
-    res.json({ byPlan });
-  } catch (e) {
-    console.error('[GET /plan-invoice-status]', e);
-    res.status(500).json({ message: 'Failed to load plan invoice status' });
-  };
 
 module.exports = router;
