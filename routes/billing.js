@@ -1429,6 +1429,17 @@ router.post('/update-plan', upload.array('attachments', 10), async (req, res) =>
     res.status(500).json({ message: 'Failed to update plan invoice', error: e.message });
   }
 });
+// Helper function to find invoice for plan
+async function findInvoiceForPlan(planId) {
+  if (!planId) return null;
+  const [latest] = await Invoice.find({ plan: planId })
+    .sort({ sentAt: -1, updatedAt: -1, createdAt: -1 })
+    .limit(1)
+    .lean()
+    .catch(() => [null]);
+  return latest || null;
+}
+
 // similar to /invoice-status but for plans
 router.get('/plan-invoice-status', async (req, res) => {
   try {
@@ -1467,7 +1478,5 @@ router.get('/plan-invoice-status', async (req, res) => {
     res.status(500).json({ message: 'Failed to load plan invoice status' });
   }
 });
-
-module.exports = router;
 
 module.exports = router;
