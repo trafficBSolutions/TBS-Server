@@ -121,11 +121,18 @@ function formatTime12Hour(time24) {
   return `${hour12}:${minutes}${ampm}`;
 }
 
-// Generate comprehensive work order details HTML
+// Generate comprehensive work order details HTML with enhanced CSS styling
 function generateWorkOrderDetailsHtml(workOrder) {
   const startTime = formatTime12Hour(workOrder.basic?.startTime);
   const endTime = formatTime12Hour(workOrder.basic?.endTime);
   const completedDate = new Date(workOrder.createdAt);
+  
+  // Full address formatting
+  const fullAddress = [workOrder.basic?.address, workOrder.basic?.city, workOrder.basic?.state, workOrder.basic?.zip]
+    .filter(Boolean).join(', ');
+  
+  // Task/Work Order number
+  const taskNumber = workOrder.basic?.taskNumber || workOrder._id?.toString().slice(-8) || 'N/A';
   
   // Equipment summary from workOrder.tbs.morning
   const morning = workOrder.tbs?.morning || {};
@@ -141,7 +148,7 @@ function generateWorkOrderDetailsHtml(workOrder) {
   ];
 
   const equipmentHtml = equipmentRows.map(row => 
-    `<tr><td style="padding: 4px 8px; border: 1px solid #ddd;">${row.item}</td><td style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">${row.started}</td><td style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">${row.ended}</td></tr>`
+    `<tr><td style="padding: 8px 12px; border: 1px solid #e0e0e0; background: #fafafa; font-weight: 500;">${row.item}</td><td style="padding: 8px 12px; border: 1px solid #e0e0e0; text-align: center; background: #f0f8ff;">${row.started}</td><td style="padding: 8px 12px; border: 1px solid #e0e0e0; text-align: center; background: #f0f8ff;">${row.ended}</td></tr>`
   ).join('');
 
   // Jobsite checklist from workOrder.tbs.jobsite
@@ -156,48 +163,72 @@ function generateWorkOrderDetailsHtml(workOrder) {
   ];
 
   const checklistHtml = checklistItems.map(item => 
-    `<p style="margin: 2px 0;">✓ <strong>${item.label}:</strong> ${item.value}</p>`
+    `<div style="display: flex; align-items: center; margin: 6px 0; padding: 4px 8px; background: ${item.value === 'Yes' ? '#e8f5e8' : '#fff3cd'}; border-radius: 4px; border-left: 3px solid ${item.value === 'Yes' ? '#28a745' : '#ffc107'};"><span style="color: ${item.value === 'Yes' ? '#28a745' : '#856404'}; font-weight: bold; margin-right: 8px;">${item.value === 'Yes' ? '✓' : '⚠'}</span><strong style="margin-right: 8px;">${item.label}:</strong><span style="color: ${item.value === 'Yes' ? '#28a745' : '#856404'}; font-weight: 600;">${item.value}</span></div>`
   ).join('');
 
   return `
-    <div style="background-color: #f0f8ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #007bff;">
-      <h3 style="margin: 0 0 10px 0; color: #007bff;">✅ Completed on ${completedDate.toLocaleDateString()} at ${completedDate.toLocaleTimeString()}</h3>
-      <p style="margin: 3px 0;"><strong>Coordinator:</strong> ${workOrder.basic?.coordinator || 'N/A'}</p>
-      <p style="margin: 3px 0;"><strong>Project:</strong> ${workOrder.basic?.project || 'N/A'}</p>
-      <p style="margin: 3px 0;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
-      <p style="margin: 3px 0;"><strong>Address:</strong> ${workOrder.basic?.address || ''}, ${workOrder.basic?.city || ''}, ${workOrder.basic?.state || ''} ${workOrder.basic?.zip || ''}</p>
-      <p style="margin: 3px 0;"><strong>Rating:</strong> ${workOrder.basic?.rating || 'N/A'}</p>
-      <p style="margin: 3px 0;"><strong>24hr Notice:</strong> ${workOrder.basic?.notice24 === 'Yes' ? 'Yes' : 'No'}</p>
-      <p style="margin: 3px 0;"><strong>Call Back:</strong> ${workOrder.basic?.callBack === 'Yes' ? 'Yes' : 'No'}</p>
-      <p style="margin: 3px 0;"><strong>Foreman:</strong> ${workOrder.basic?.foremanName || 'N/A'}</p>
-      <p style="margin: 3px 0;"><strong>Flaggers:</strong> ${[workOrder.tbs?.flagger1, workOrder.tbs?.flagger2, workOrder.tbs?.flagger3, workOrder.tbs?.flagger4, workOrder.tbs?.flagger5].filter(Boolean).join(', ') || 'N/A'}</p>
-      ${workOrder.tbs?.trucks?.length ? `<p style="margin: 3px 0;"><strong>Trucks:</strong> ${workOrder.tbs.trucks.join(', ')}</p>` : ''}
-      
-      <div style="margin: 15px 0;">
-        <h4 style="margin: 0 0 8px 0; color: #007bff;">Equipment Summary:</h4>
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-          <thead>
-            <tr style="background: #f0f0f0;">
-              <th style="padding: 4px 8px; border: 1px solid #ddd; text-align: left;">Item</th>
-              <th style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">Started</th>
-              <th style="padding: 4px 8px; border: 1px solid #ddd; text-align: center;">Ended</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${equipmentHtml}
-          </tbody>
-        </table>
+    <div style="background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%); padding: 20px; border-radius: 12px; margin: 20px 0; border: 2px solid #007bff; box-shadow: 0 4px 12px rgba(0,123,255,0.15); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+      <div style="background: #007bff; color: white; padding: 12px 16px; border-radius: 8px; margin: -20px -20px 20px -20px; box-shadow: 0 2px 8px rgba(0,123,255,0.3);">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600; display: flex; align-items: center;">✅ Work Order Completed</h2>
+        <p style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9;">Completed on ${completedDate.toLocaleDateString()} at ${completedDate.toLocaleTimeString()}</p>
       </div>
       
-      <div style="margin: 15px 0;">
-        <h4 style="margin: 0 0 8px 0; color: #007bff;">Jobsite Checklist:</h4>
-        ${checklistHtml}
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+        <div style="background: white; padding: 16px; border-radius: 8px; border-left: 4px solid #17a2b8; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin: 0 0 12px 0; color: #17a2b8; font-size: 16px; border-bottom: 2px solid #17a2b8; padding-bottom: 4px;">📋 Job Details</h4>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Task #:</strong> <span style="color: #007bff; font-weight: 600;">${taskNumber}</span></p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Coordinator:</strong> ${workOrder.basic?.coordinator || 'N/A'}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Project:</strong> ${workOrder.basic?.project || 'N/A'}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Rating:</strong> <span style="color: #28a745; font-weight: 600;">${workOrder.basic?.rating || 'N/A'}</span></p>
+        </div>
+        
+        <div style="background: white; padding: 16px; border-radius: 8px; border-left: 4px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin: 0 0 12px 0; color: #28a745; font-size: 16px; border-bottom: 2px solid #28a745; padding-bottom: 4px;">📍 Location & Team</h4>
+          <p style="margin: 4px 0; font-size: 14px; line-height: 1.4;"><strong>Address:</strong><br/><span style="color: #495057; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 2px;">${fullAddress || 'N/A'}</span></p>
+          <p style="margin: 8px 0 4px 0; font-size: 14px;"><strong>Foreman:</strong> ${workOrder.basic?.foremanName || 'N/A'}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Flaggers:</strong> ${[workOrder.tbs?.flagger1, workOrder.tbs?.flagger2, workOrder.tbs?.flagger3, workOrder.tbs?.flagger4, workOrder.tbs?.flagger5].filter(Boolean).join(', ') || 'N/A'}</p>
+          ${workOrder.tbs?.trucks?.length ? `<p style="margin: 4px 0; font-size: 14px;"><strong>Trucks:</strong> ${workOrder.tbs.trucks.join(', ')}</p>` : ''}
+        </div>
       </div>
       
-      ${jobsite.equipmentLeft ? `<div style="margin: 15px 0; padding: 10px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;"><h4 style="margin: 0 0 8px 0; color: #856404;">⚠️ Equipment Left Behind:</h4><p style="margin: 0; color: #856404;">${jobsite.equipmentLeftReason || 'Equipment was left at the jobsite as requested by client.'}</p></div>` : ''}
+      <div style="background: white; padding: 16px; border-radius: 8px; margin: 16px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h4 style="margin: 0 0 12px 0; color: #6f42c1; font-size: 16px; border-bottom: 2px solid #6f42c1; padding-bottom: 4px;">🛠️ Equipment Summary</h4>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <thead>
+              <tr style="background: linear-gradient(135deg, #6f42c1, #8e44ad); color: white;">
+                <th style="padding: 12px 16px; text-align: left; font-weight: 600;">Equipment Item</th>
+                <th style="padding: 12px 16px; text-align: center; font-weight: 600;">Started With</th>
+                <th style="padding: 12px 16px; text-align: center; font-weight: 600;">Ended With</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${equipmentHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
       
-      ${workOrder.basic?.notes ? `<p style="margin: 10px 0 3px 0;"><strong>Notes:</strong> ${workOrder.basic.notes}</p>` : ''}
-      ${workOrder.foremanSignature ? `<div style="margin: 10px 0;"><strong>Foreman Signature:</strong><br/><img src="${workOrder.foremanSignature}" alt="Foreman Signature" style="max-width: 200px; max-height: 80px; border: 1px solid #ddd; margin-top: 5px;"/></div>` : ''}
+      <div style="background: white; padding: 16px; border-radius: 8px; margin: 16px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h4 style="margin: 0 0 12px 0; color: #fd7e14; font-size: 16px; border-bottom: 2px solid #fd7e14; padding-bottom: 4px;">✅ Jobsite Checklist</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
+          ${checklistHtml}
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+        <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #20c997;">
+          <p style="margin: 4px 0; font-size: 14px;"><strong>24hr Notice:</strong> <span style="color: ${workOrder.basic?.notice24 === 'Yes' ? '#28a745' : '#dc3545'}; font-weight: 600;">${workOrder.basic?.notice24 === 'Yes' ? '✓ Yes' : '✗ No'}</span></p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Call Back:</strong> <span style="color: ${workOrder.basic?.callBack === 'Yes' ? '#28a745' : '#dc3545'}; font-weight: 600;">${workOrder.basic?.callBack === 'Yes' ? '✓ Yes' : '✗ No'}</span></p>
+        </div>
+        
+        ${workOrder.foremanSignature ? `<div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #007bff;"><strong style="font-size: 14px;">Foreman Signature:</strong><br/><img src="${workOrder.foremanSignature}" alt="Foreman Signature" style="max-width: 180px; max-height: 70px; border: 2px solid #007bff; border-radius: 4px; margin-top: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"/></div>` : '<div></div>'}
+      </div>
+      
+      ${jobsite.equipmentLeft ? `<div style="margin: 16px 0; padding: 16px; background: linear-gradient(135deg, #fff3cd, #ffeaa7); border: 2px solid #ffc107; border-radius: 8px; box-shadow: 0 2px 8px rgba(255,193,7,0.2);"><h4 style="margin: 0 0 8px 0; color: #856404; display: flex; align-items: center;">⚠️ Equipment Left Behind</h4><p style="margin: 0; color: #856404; font-weight: 500; line-height: 1.4;">${jobsite.equipmentLeftReason || 'Equipment was left at the jobsite as requested by client.'}</p></div>` : ''}
+      
+      ${workOrder.basic?.notes ? `<div style="margin: 16px 0; padding: 16px; background: #f8f9fa; border-left: 4px solid #6c757d; border-radius: 0 8px 8px 0;"><strong style="color: #495057; font-size: 14px;">📝 Additional Notes:</strong><p style="margin: 8px 0 0 0; color: #495057; line-height: 1.4; font-style: italic;">${workOrder.basic.notes}</p></div>` : ''}
     </div>
   `;
 }
@@ -1322,7 +1353,7 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
       to: emailOverride,
-      subject: `TCP INVOICE – ${plan.company} – $${principal.toFixed(2)}`,
+      subject: `Traffic Control Plan – INVOICE – ${plan.company} – $${principal.toFixed(2)}`,
       html,
       attachments: [],
       messageId: `plan-invoice-${String(invoice._id)}@trafficbarriersolutions.com`
