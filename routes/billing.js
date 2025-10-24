@@ -121,6 +121,46 @@ function formatTime12Hour(time24) {
   return `${hour12}:${minutes}${ampm}`;
 }
 
+// Generate comprehensive plan details HTML with enhanced CSS styling
+function generatePlanDetailsHtml(plan, invoiceData = {}) {
+  const completedDate = new Date(plan.createdAt || Date.now());
+  
+  // Full address formatting
+  const fullAddress = [plan.address, plan.city, plan.state, plan.zip]
+    .filter(Boolean).join(', ');
+  
+  // Due date formatting
+  const dueDate = invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'N/A';
+  
+  return `
+    <div style="background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%); padding: 20px; border-radius: 12px; margin: 20px 0; border: 2px solid #007bff; box-shadow: 0 4px 12px rgba(0,123,255,0.15); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+      <div style="background: #007bff; color: white; padding: 12px 16px; border-radius: 8px; margin: -20px -20px 20px -20px; box-shadow: 0 2px 8px rgba(0,123,255,0.3);">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600; display: flex; align-items: center;">📋 Traffic Control Plan Invoice</h2>
+        <p style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9;">Invoice Date: ${completedDate.toLocaleDateString()}</p>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+        <div style="background: white; padding: 16px; border-radius: 8px; border-left: 4px solid #17a2b8; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin: 0 0 12px 0; color: #17a2b8; font-size: 16px; border-bottom: 2px solid #17a2b8; padding-bottom: 4px;">📋 Plan Details</h4>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Project:</strong> <span style="color: #007bff; font-weight: 600;">${plan.project || 'N/A'}</span></p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Coordinator:</strong> ${plan.name || 'N/A'}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Company:</strong> ${plan.company || 'N/A'}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Email:</strong> ${plan.email || 'N/A'}</p>
+          ${plan.phone ? `<p style="margin: 4px 0; font-size: 14px;"><strong>Phone:</strong> ${plan.phone}</p>` : ''}
+        </div>
+        
+        <div style="background: white; padding: 16px; border-radius: 8px; border-left: 4px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin: 0 0 12px 0; color: #28a745; font-size: 16px; border-bottom: 2px solid #28a745; padding-bottom: 4px;">📍 Job Site Location</h4>
+          <p style="margin: 4px 0; font-size: 14px; line-height: 1.4;"><strong>Address:</strong><br/><span style="color: #495057; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 2px;">${fullAddress || 'N/A'}</span></p>
+          <p style="margin: 8px 0 4px 0; font-size: 14px;"><strong>Due Date:</strong> <span style="color: #dc3545; font-weight: 600;">${dueDate}</span></p>
+        </div>
+      </div>
+      
+      ${plan.message ? `<div style="margin: 16px 0; padding: 16px; background: #f8f9fa; border-left: 4px solid #6c757d; border-radius: 0 8px 8px 0;"><strong style="color: #495057; font-size: 14px;">📝 Additional Notes:</strong><p style="margin: 8px 0 0 0; color: #495057; line-height: 1.4; font-style: italic;">${plan.message}</p></div>` : ''}
+    </div>
+  `;
+}
+
 // Generate comprehensive work order details HTML with enhanced CSS styling
 function generateWorkOrderDetailsHtml(workOrder) {
   const startTime = formatTime12Hour(workOrder.basic?.startTime);
@@ -1340,15 +1380,33 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
       }
     });
 
-    // email
+    // email with enhanced styling
     const safeCo = (plan.company || 'company').replace(/[^a-z0-9]+/gi, '-');
     const html = `
-      <html><body>
-        <h2>Traffic Control Plan — Invoice</h2>
-        <p><b>Company:</b> ${plan.company}</p>
-        <p><b>Project:</b> ${plan.project || ''}</p>
-        <p><b>Total:</b> $${principal.toFixed(2)}</p>
-      </body></html>`;
+      <html>
+        <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+          <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+            <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Traffic Control Plan Invoice - ${plan.company}</h1>
+            
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+              <p style="margin: 5px 0; font-size: 16px;"><strong>Invoice Amount:</strong> $${principal.toFixed(2)}</p>
+              <p style="margin: 5px 0;"><strong>Company:</strong> ${plan.company}</p>
+              <p style="margin: 5px 0;"><strong>Project:</strong> ${plan.project || 'N/A'}</p>
+              <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'N/A'}</p>
+            </div>
+            
+            ${generatePlanDetailsHtml(plan, invoiceData)}
+            
+            <p style="text-align: center; font-size: 16px; margin: 30px 0;">Please find the attached invoice PDF. Thank you for your business!</p>
+            
+            <div style="text-align: center; border-top: 2px solid #efad76; padding-top: 15px; margin-top: 30px;">
+              <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
+              <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+              <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
+            </div>
+          </div>
+        </body>
+      </html>`;
 
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
@@ -1421,16 +1479,34 @@ router.post('/update-plan', upload.array('attachments', 10), async (req, res) =>
       }
     );
 
-    // Threaded email
+    // Threaded email with enhanced styling
     const headers = threadHeaders(target);
     const safeCo = (plan.company || 'company').replace(/[^a-z0-9]+/gi, '-');
     const html = `
-      <html><body>
-        <h2>UPDATED Traffic Control Plan — Invoice</h2>
-        <p><b>Company:</b> ${plan.company}</p>
-        <p><b>Project:</b> ${plan.project || ''}</p>
-        <p><b>Updated Total:</b> $${principal.toFixed(2)}</p>
-      </body></html>`;
+      <html>
+        <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+          <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+            <h1 style="text-align: center; background-color: #17365D; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">UPDATED Traffic Control Plan Invoice - ${plan.company}</h1>
+            
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+              <p style="margin: 5px 0; font-size: 16px;"><strong>Updated Total:</strong> $${principal.toFixed(2)}</p>
+              <p style="margin: 5px 0;"><strong>Company:</strong> ${plan.company}</p>
+              <p style="margin: 5px 0;"><strong>Project:</strong> ${plan.project || 'N/A'}</p>
+              <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'Same as original'}</p>
+            </div>
+            
+            ${generatePlanDetailsHtml(plan, invoiceData)}
+            
+            <p style="text-align: center; font-size: 16px; margin: 30px 0;">This is an updated version of your invoice. Please find the revised invoice PDF attached.</p>
+            
+            <div style="text-align: center; border-top: 2px solid #17365D; padding-top: 15px; margin-top: 30px;">
+              <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
+              <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+              <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
+            </div>
+          </div>
+        </body>
+      </html>`;
 
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
