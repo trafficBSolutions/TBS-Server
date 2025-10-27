@@ -447,13 +447,20 @@ if (stripePaymentIntentId) {
   }
 }
 
-// later, when you build `paymentDetails`:
+// Build paymentDetails based on payment method and available data
+let paymentDetails = '';
 if (paymentMethod === 'card') {
   if (stripeResult) {
     paymentDetails = `${(stripeResult.cardBrand || '').toUpperCase()} ****${stripeResult.cardLast4 || ''}`;
   } else if (cardLast4 && cardType) {
     paymentDetails = `${cardType} ****${cardLast4}`;
+  } else {
+    paymentDetails = 'Credit/Debit Card';
   }
+} else if (paymentMethod === 'check') {
+  paymentDetails = checkNumber ? `Check #${checkNumber}` : 'Check';
+} else {
+  paymentDetails = paymentMethod || 'Unknown';
 }
 
     
@@ -558,7 +565,7 @@ const mailOptions = {
   messageId: `invoice-${String(invoiceDocForReceipt?._id || workOrder._id)}-receipt-${Date.now()}@trafficbarriersolutions.com`
 };
 
-// always try to attach receipt PDF; if your generator fails we still send email
+// Generate and attach receipt PDF
 let receiptPdfBuffer = null;
 try {
   const paymentData = {
@@ -568,25 +575,44 @@ try {
     totalOwed: totalOwedFinal,
     paymentMethod: paymentMethod,
     paymentDate: new Date(),
-    cardType: cardType,
-    cardLast4: cardLast4,
+    cardType: stripeResult?.cardBrand || cardType,
+    cardLast4: stripeResult?.cardLast4 || cardLast4,
     checkNumber: checkNumber,
     stripePaymentIntentId: stripePaymentIntentId,
     receiptNumber: `RCP-${workOrder._id.toString().slice(-8).toUpperCase()}`
   };
-  receiptPdfBuffer = await generateReceiptPdf(paymentData);
-} catch {}
-if (receiptPdfBuffer && receiptPdfBuffer.length) {
-  mailOptions.attachments.push({
-    filename: `receipt-${safeClient}.pdf`,
-    content: receiptPdfBuffer,
-    contentType: 'application/pdf',
-    contentDisposition: 'attachment'
+  
+  console.log('[receipt] Generating PDF with payment data:', {
+    paymentAmount: paymentData.paymentAmount,
+    paymentMethod: paymentData.paymentMethod,
+    cardType: paymentData.cardType,
+    cardLast4: paymentData.cardLast4
   });
+  
+  receiptPdfBuffer = await generateReceiptPdf(paymentData);
+  
+  if (receiptPdfBuffer && receiptPdfBuffer.length > 0) {
+    console.log('[receipt] PDF generated successfully, size:', receiptPdfBuffer.length, 'bytes');
+    mailOptions.attachments.push({
+      filename: `receipt-${safeClient}.pdf`,
+      content: receiptPdfBuffer,
+      contentType: 'application/pdf',
+      contentDisposition: 'attachment'
+    });
+  } else {
+    console.warn('[receipt] PDF generation returned empty buffer');
+  }
+} catch (pdfError) {
+  console.error('[receipt] PDF generation failed:', pdfError);
+  // Continue without PDF attachment - email will still be sent
 }
 
-await transporter7.sendMail(mailOptions);
-        console.log('[receipt] email sent to:', emailOverride);
+const emailResult = await transporter7.sendMail(mailOptions);
+        console.log('[receipt] email sent successfully to:', emailOverride, {
+          messageId: emailResult.messageId,
+          attachmentCount: mailOptions.attachments.length,
+          pdfAttached: !!receiptPdfBuffer
+        });
     }
 
     res.json({ message: 'Payment recorded successfully', workOrderId: workOrder._id });
