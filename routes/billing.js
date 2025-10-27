@@ -10,6 +10,7 @@ const requireInvoiceAdmin = require('../middleware/requireInvoiceAdmin');
  const { generateInvoicePdfFromWorkOrder } = require('../services/invoicePDF');
 const { loadStdAssets } = require('../services/v42Base'); // add this
 const { printHtmlToPdfBuffer } = require('../services/invoicePDF'); // optional: reuse the shared printer
+const { generateReceiptPdf } = require('../services/receiptPDF');
 const fs = require('fs');
 const path = require('path');
 const WorkOrder = require('../models/workorder');
@@ -1670,5 +1671,51 @@ router.get('/plan-invoice-status', async (req, res) => {
   }
 });
 
+
+// Generate PDF receipt for a payment
+router.get('/receipt/:workOrderId/pdf', async (req, res) => {
+  try {
+    const { workOrderId } = req.params;
+    const WorkOrder = require('../models/workorder');
+    
+    const workOrder = await WorkOrder.findById(workOrderId).lean();
+    if (!workOrder) {
+      return res.status(404).json({ error: 'Work order not found' });
+    }
+    
+    if (!workOrder.paid && !workOrder.lastPaymentAmount) {
+      return res.status(400).json({ error: 'No payment found for this work order' });
+    }
+    
+    // Build payment data for receipt
+    const paymentData = {
+      _id: workOrder._id,
+      workOrder: workOrder,
+      paymentAmount: workOrder.lastPaymentAmount || workOrder.billedAmount,
+      totalOwed: workOrder.billedAmount || workOrder.invoiceTotal,
+      paymentMethod: workOrder.paymentMethod || 'Unknown',
+      paymentDate: workOrder.lastPaymentAt || workOrder.paidAt || new Date(),
+      cardLast4: workOrder.cardLast4,
+      checkNumber: workOrder.checkNumber,
+      receiptNumber: `RCP-${workOrder._id.toString().slice(-8).toUpperCase()}`
+    };
+    
+    const pdfBuffer = await generateReceiptPdf(paymentData);
+    
+    if (!pdfBuffer) {
+      return res.status(500).json({ error: 'Failed to generate receipt PDF' });
+    }
+    
+    const safeClient = (workOrder.basic?.client || 'client').replace(/\s+/g, '_');
+    const filename = `receipt_${safeClient}_${workOrder.basic?.project || 'project'}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating receipt PDF:', error);
+    res.status(500).json({ error: 'Failed to generate receipt PDF' });
+  }
+});
 
 module.exports = router;
