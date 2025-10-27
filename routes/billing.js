@@ -121,6 +121,22 @@ function formatTime12Hour(time24) {
   const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
   return `${hour12}:${minutes}${ampm}`;
 }
+// Keep this somewhere shared
+function ensureBrackets(id) {
+  if (!id) return null;
+  const trimmed = String(id).trim();
+  return trimmed.startsWith('<') ? trimmed : `<${trimmed}>`;
+}
+
+function threadHeaders(invoiceDoc) {
+  const headers = {};
+  const rootId = ensureBrackets(invoiceDoc?.emailMessageId);
+  if (rootId) {
+    headers['In-Reply-To'] = rootId;
+    headers['References']  = rootId;
+  }
+  return headers;
+}
 
 // Generate comprehensive plan details HTML with enhanced CSS styling
 function generatePlanDetailsHtml(plan, invoiceData = {}) {
@@ -1041,9 +1057,9 @@ try {
 
   // ⬅️ Save origin message-id so later emails can thread to it
   await Invoice.updateOne(
-    { _id: invoice._id },
-    { $set: { emailMessageId: mailOptions.messageId || info.messageId } }
-  );
+  { _id: invoice._id },
+  { $set: { emailMessageId: info.messageId || mailOptions.messageId } }
+);
 
   console.log('[invoice] email sent', {
     to: emailOverride,
@@ -1467,16 +1483,21 @@ router.post('/mark-plan-paid', async (req, res) => {
           </body>
         </html>
       `;
-      
-      const mailOptions = {
-        from: 'trafficandbarriersolutions.ap@gmail.com',
-        to: emailOverride,
-        subject: `PAYMENT RECEIPT – ${plan?.company || 'TCP'} – $${amount.toFixed(2)}`,
-        html: receiptHtml,
-        messageId: `plan-receipt-${invoiceId}-${Date.now()}@trafficbarriersolutions.com`
-      };
-      
-      await transporter7.sendMail(mailOptions);
+// routes/billing.js  — inside /mark-plan-paid after you load invoice
+const headers = threadHeaders(invoice); // uses invoice.emailMessageId if present
+
+const mailOptions = {
+  from: 'trafficandbarriersolutions.ap@gmail.com',
+  to: emailOverride,
+  subject: `PAYMENT RECEIPT – ${plan?.company || 'TCP'} – $${amount.toFixed(2)}`,
+  html: receiptHtml,
+  headers, // 👈 add this
+  // give the reply its own (bracketed) id
+  messageId: `<plan-receipt-${invoiceId}-${Date.now()}@trafficbarriersolutions.com>`
+};
+
+await transporter7.sendMail(mailOptions);
+
     }
     
     res.json({ message: 'Plan payment recorded successfully', invoiceId });
