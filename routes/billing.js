@@ -121,19 +121,12 @@ function formatTime12Hour(time24) {
   const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
   return `${hour12}:${minutes}${ampm}`;
 }
-// Keep this somewhere shared
-function ensureBrackets(id) {
-  if (!id) return null;
-  const trimmed = String(id).trim();
-  return trimmed.startsWith('<') ? trimmed : `<${trimmed}>`;
-}
-
 function threadHeaders(invoiceDoc) {
   const headers = {};
-  const rootId = ensureBrackets(invoiceDoc?.emailMessageId);
-  if (rootId) {
-    headers['In-Reply-To'] = rootId;
-    headers['References']  = rootId;
+  if (invoiceDoc?.emailMessageId) {
+    const messageId = invoiceDoc.emailMessageId.startsWith('<') ? invoiceDoc.emailMessageId : `<${invoiceDoc.emailMessageId}>`;
+    headers['In-Reply-To'] = messageId;
+    headers['References'] = messageId;
   }
   return headers;
 }
@@ -574,11 +567,10 @@ const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi,
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailOverride,
-  subject: `PAYMENT RECEIPT – ${workOrder.basic?.client} – Paid $${actualPaid.toFixed(2)} (Owed $${totalOwedFinal.toFixed(2)})`,
+  subject: `Re: INVOICE – ${workOrder.basic?.client} – PAYMENT RECEIPT $${actualPaid.toFixed(2)}`,
   html: receiptHtml,
   headers,
-  attachments: [],
-  messageId: `invoice-${String(invoiceDocForReceipt?._id || workOrder._id)}-receipt-${Date.now()}@trafficbarriersolutions.com`
+  attachments: []
 };
 
 // Generate and attach receipt PDF
@@ -1459,7 +1451,7 @@ router.post('/mark-plan-paid', async (req, res) => {
         <html>
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">PAYMENT RECEIPT – ${plan?.company || 'Traffic Control Plan'}</h1>
+              <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Payment Receipt - ${plan?.company || 'Traffic Control Plan'}</h1>
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
                 <p style="margin: 5px 0; font-size: 16px;"><strong>Amount Paid:</strong> $${amount.toFixed(2)}</p>
@@ -1483,18 +1475,46 @@ router.post('/mark-plan-paid', async (req, res) => {
           </body>
         </html>
       `;
-// routes/billing.js  — inside /mark-plan-paid after you load invoice
-const headers = threadHeaders(invoice); // uses invoice.emailMessageId if present
+const headers = threadHeaders(invoice);
 
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailOverride,
-  subject: `PAYMENT RECEIPT – ${plan?.company || 'TCP'} – $${amount.toFixed(2)}`,
+  subject: `Re: Traffic Control Plan – PAYMENT RECEIPT $${amount.toFixed(2)}`,
   html: receiptHtml,
-  headers, // 👈 add this
-  // give the reply its own (bracketed) id
-  messageId: `<plan-receipt-${invoiceId}-${Date.now()}@trafficbarriersolutions.com>`
+  headers,
+  attachments: []
 };
+
+// Generate and attach plan receipt PDF
+try {
+  const planPaymentData = {
+    _id: invoiceId,
+    workOrder: { basic: { client: plan?.company, project: plan?.project, address: plan?.address, city: plan?.city, state: plan?.state, zip: plan?.zip } },
+    paymentAmount: amount,
+    totalOwed: amount,
+    paymentMethod: paymentMethod,
+    paymentDate: new Date(),
+    cardType: cardType,
+    cardLast4: cardLast4,
+    checkNumber: checkNumber,
+    receiptNumber: `TCP-${invoiceId.toString().slice(-8).toUpperCase()}`
+  };
+  
+  const receiptPdfBuffer = await generateReceiptPdf(planPaymentData);
+  
+  if (receiptPdfBuffer && receiptPdfBuffer.length > 0) {
+    const safeCompany = (plan?.company || 'plan').replace(/[^a-z0-9]+/gi, '-');
+    mailOptions.attachments.push({
+      filename: `plan-receipt-${safeCompany}.pdf`,
+      content: receiptPdfBuffer,
+      contentType: 'application/pdf',
+      contentDisposition: 'attachment'
+    });
+  }
+} catch (pdfError) {
+  console.error('[plan-receipt] PDF generation failed:', pdfError);
+}
 
 await transporter7.sendMail(mailOptions);
 
