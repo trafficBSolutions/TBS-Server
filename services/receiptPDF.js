@@ -266,6 +266,12 @@ function generateReceiptHTML(paymentData) {
       <div class="field-label">Payment Method:</div>
       <div class="field-value">${paymentData.paymentMethod === 'card' ? 'Credit/Debit Card' : 'Check'}</div>
     </div>
+    ${paymentData.paymentMethod === 'card' && paymentData.cardType ? `
+    <div class="field-row">
+      <div class="field-label">Card Type:</div>
+      <div class="field-value">${paymentData.cardType}</div>
+    </div>
+    ` : ''}
     ${paymentData.paymentMethod === 'card' && paymentData.cardLast4 ? `
     <div class="field-row">
       <div class="field-label">Card Ending:</div>
