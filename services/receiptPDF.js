@@ -328,8 +328,30 @@ function generateReceiptHTML(paymentData) {
 }
 
 async function generateReceiptPdf(paymentData) {
+  console.log('[receiptPDF] Generating receipt with data:', {
+    paymentAmount: paymentData.paymentAmount,
+    paymentMethod: paymentData.paymentMethod,
+    workOrderId: paymentData._id,
+    hasWorkOrder: !!paymentData.workOrder
+  });
+  
+  if (!paymentData || !paymentData.paymentAmount) {
+    throw new Error('Invalid payment data: missing payment amount');
+  }
+  
   const html = generateReceiptHTML(paymentData);
-  return await printHtmlToPdfBuffer(html);
+  
+  if (!html || html.length < 100) {
+    throw new Error('Generated HTML is too short or empty');
+  }
+  
+  console.log('[receiptPDF] HTML generated, length:', html.length);
+  
+  const pdfBuffer = await printHtmlToPdfBuffer(html);
+  
+  console.log('[receiptPDF] PDF generated successfully, size:', pdfBuffer?.length || 0, 'bytes');
+  
+  return pdfBuffer;
 }
 
 module.exports = {
