@@ -566,8 +566,9 @@ try {
     workOrder: workOrder,
     paymentAmount: actualPaid,
     totalOwed: totalOwedFinal,
-    paymentMethod: paymentDetails,
+    paymentMethod: paymentMethod,
     paymentDate: new Date(),
+    cardType: cardType,
     cardLast4: cardLast4,
     checkNumber: checkNumber,
     stripePaymentIntentId: stripePaymentIntentId,
@@ -1388,7 +1389,7 @@ async function findInvoiceForPlan(planId) {
 // Mark plan invoice as paid
 router.post('/mark-plan-paid', async (req, res) => {
   try {
-    const { invoiceId, paymentMethod, paymentAmount, emailOverride } = req.body;
+    const { invoiceId, paymentMethod, paymentAmount, emailOverride, cardType, cardLast4, checkNumber } = req.body;
     
     if (!invoiceId) return res.status(400).json({ message: 'invoiceId required' });
     
@@ -1420,7 +1421,10 @@ router.post('/mark-plan-paid', async (req, res) => {
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
                 <p style="margin: 5px 0; font-size: 16px;"><strong>Amount Paid:</strong> $${amount.toFixed(2)}</p>
-                <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentMethod === 'card' ? 'Card' : 'Check'}</p>
+                <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentMethod === 'card' ? 'Credit/Debit Card' : 'Check'}</p>
+                ${paymentMethod === 'card' && cardType ? `<p style="margin: 5px 0;"><strong>Card Type:</strong> ${cardType}</p>` : ''}
+                ${paymentMethod === 'card' && cardLast4 ? `<p style="margin: 5px 0;"><strong>Card Ending:</strong> ****${cardLast4}</p>` : ''}
+                ${paymentMethod === 'check' && checkNumber ? `<p style="margin: 5px 0;"><strong>Check Number:</strong> ${checkNumber}</p>` : ''}
                 <p style="margin: 5px 0;"><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</p>
                 <p style="margin: 5px 0;"><strong>Company:</strong> ${plan?.company || 'N/A'}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${plan?.project || 'N/A'}</p>
