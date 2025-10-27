@@ -309,182 +309,7 @@ async function fallbackInvoicePdf(workOrder, total, data) {
   }
 }
 
-async function generateReceiptPdf(workOrder, paymentDetails, paymentAmount, totalOwedAmount = null) {
-  const { logo } = loadStdAssets();
-  const formatCurrency = (amount) => `$${Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-  
-  const paidAmount = Number(paymentAmount) || 0;
-  // Use manually entered totalOwed if provided, otherwise fall back to stored values
-  const totalOwed = totalOwedAmount || workOrder.invoiceData?.sheetTotal || workOrder.invoiceTotal || workOrder.invoicePrincipal || workOrder.currentAmount || workOrder.billedAmount || 0;
-  // Clamp payment to not exceed what's owed, and remaining balance to never go negative
-  const actualPaid = Math.min(paidAmount, totalOwed);
-  const remainingBalance = Math.max(0, totalOwed - actualPaid);
-  
-  // Get invoice data for detailed receipt
-  const invoiceData = workOrder.invoiceData || {};
-  const sheetRows = invoiceData.sheetRows || [];
-  const billableRows = sheetRows.filter(r => Number(r?.amount) > 0);
-  const lateFees = Number(workOrder.lateFees || 0);
-  const accruedInterest = Number(workOrder._invoice?.accruedInterest || 0);
-  const interestAmount = Math.max(lateFees, accruedInterest);
-  
-  // Services section HTML
-  const servicesHtml = billableRows.length > 0 ? `
-    <div style="margin: 20px 0;">
-      <h3 style="color: var(--tbs-navy); border-bottom: 2px solid var(--tbs-navy); padding-bottom: 5px;">SERVICES PROVIDED</h3>
-      <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
-        <thead>
-          <tr style="background: #f0f0f0;">
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Service</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${billableRows.map(row => `
-            <tr>
-              <td style="border: 1px solid #ddd; padding: 8px;">${row.service}</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${formatCurrency(row.amount)}</td>
-            </tr>
-          `).join('')}
-          ${interestAmount > 0 ? `
-            <tr>
-              <td style="border: 1px solid #ddd; padding: 8px; color: #d32f2f;"><strong>Late Payment Interest</strong></td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: right; color: #d32f2f;"><strong>${formatCurrency(interestAmount)}</strong></td>
-            </tr>
-          ` : ''}
-        </tbody>
-      </table>
-    </div>
-  ` : '';
-  
-  // Bill To section HTML
-  const billToCompany = invoiceData.billToCompany || workOrder.basic?.client;
-  const billToAddress = invoiceData.billToAddress;
-  const billToHtml = billToCompany ? `
-    <div style="margin: 20px 0;">
-      <h3 style="color: var(--tbs-navy); border-bottom: 2px solid var(--tbs-navy); padding-bottom: 5px;">BILLED TO</h3>
-      <div style="background: #f9f9f9; padding: 15px; border-radius: 6px;">
-        <div><strong>${billToCompany}</strong></div>
-        ${billToAddress ? `<div>${billToAddress}</div>` : ''}
-      </div>
-    </div>
-  ` : '';
-  
-  // Job Details section HTML
-  const jobDetailsHtml = `
-    <div style="margin: 20px 0;">
-      <h3 style="color: var(--tbs-navy); border-bottom: 2px solid var(--tbs-navy); padding-bottom: 5px;">JOB DETAILS</h3>
-      <div style="background: #f9f9f9; padding: 15px; border-radius: 6px;">
-        <div><strong>Work Type:</strong> ${invoiceData.workType || 'Traffic Control'}</div>
-        <div><strong>Foreman:</strong> ${invoiceData.foreman || workOrder.basic?.foremanName || ''}</div>
-        <div><strong>Location:</strong> ${invoiceData.location || [workOrder.basic?.address, workOrder.basic?.city, workOrder.basic?.state, workOrder.basic?.zip].filter(Boolean).join(', ')}</div>
-        <div><strong>Date of Service:</strong> ${workOrder.basic?.dateOfJob || new Date(workOrder.createdAt).toLocaleDateString()}</div>
-        ${invoiceData.invoiceNumber ? `<div><strong>Invoice #:</strong> ${invoiceData.invoiceNumber}</div>` : ''}
-        ${invoiceData.dueDate ? `<div><strong>Due Date:</strong> ${new Date(invoiceData.dueDate).toLocaleDateString()}</div>` : ''}
-      </div>
-    </div>
-  `;
-  
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    :root { --tbs-navy: #17365D; --tbs-blue: #2F5597; }
-    * { box-sizing: border-box; }
-    html, body { margin:0; padding:0; }
-    body { font-family: Arial, Helvetica, sans-serif; color:#111; padding: 20px; }
-    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 20px; }
-    .header .brand { display:flex; gap:12px; align-items:center; }
-    .header .brand img { height:60px; }
-    .header .brand .company { font-weight:700; font-size:12px; line-height:1.1; }
-    .title { text-align:center; letter-spacing:1px; font-weight:700; font-size:26px; color:var(--tbs-blue); margin-bottom: 20px; }
-    .receipt-box { border: 2px solid var(--tbs-navy); padding: 20px; border-radius: 8px; background: #f9f9f9; }
-    .receipt-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #ddd; }
-    .receipt-row.total { font-weight:700; border-top:2px solid var(--tbs-navy); border-bottom:none; font-size:18px; }
-    .footer { margin-top:30px; text-align:center; font-size:12px; color:#666; }
-    @page { size: A4; margin: 18mm; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="brand">
-      <img src="${logo}" alt="TBS Logo" />
-      <div class="company">
-        <div style="font-size:14px; font-weight:bold;">TBS</div>
-        <div>Traffic and Barrier Solutions, LLC</div>
-        <div>1999 Dews Pond Rd SE</div>
-        <div>Calhoun, GA 30701</div>
-        <div>Cell: 706-263-0175</div>
-        <div>Email: tbsolutions3@gmail.com</div>
-      </div>
-    </div>
-  </div>
-  
-  <h1 class="title">PAYMENT RECEIPT</h1>
-  
-  ${billToHtml}
-  ${jobDetailsHtml}
-  ${servicesHtml}
-  
-  <div class="receipt-box">
-    <div class="receipt-row">
-      <span>Client:</span>
-      <span><strong>${workOrder.basic?.client}</strong></span>
-    </div>
-    <div class="receipt-row">
-      <span>Project:</span>
-      <span>${workOrder.basic?.project}</span>
-    </div>
-    <div class="receipt-row">
-      <span>Payment Date:</span>
-      <span>${new Date().toLocaleDateString()}</span>
-    </div>
-    <div class="receipt-row">
-      <span>Payment Method:</span>
-      <span>${paymentDetails}</span>
-    </div>
-    <div class="receipt-row">
-      <span>Original Invoice Total:</span>
-      <span>${formatCurrency(totalOwed - interestAmount)}</span>
-    </div>
-    ${interestAmount > 0 ? `
-    <div class="receipt-row" style="color: #d32f2f;">
-      <span>Late Payment Interest:</span>
-      <span>${formatCurrency(interestAmount)}</span>
-    </div>
-    ` : ''}
-    <div class="receipt-row">
-      <span>Total Amount Due:</span>
-      <span>${formatCurrency(totalOwed)}</span>
-    </div>
-    <div class="receipt-row total">
-      <span>AMOUNT PAID:</span>
-      <span>${formatCurrency(actualPaid)}</span>
-    </div>
-    <div class="receipt-row">
-      <span>Remaining Balance:</span>
-      <span>${formatCurrency(remainingBalance)}</span>
-    </div>
-  </div>
-  
-  <div class="footer">
-    <p><strong>Thank you for your payment!</strong></p>
-    <p>This receipt confirms payment has been received.</p>
-    ${remainingBalance === 0 ? '<p><strong>Account Paid in Full</strong></p>' : `<p>Remaining balance of ${formatCurrency(remainingBalance)} is still due.</p>`}
-  </div>
-</body>
-</html>`;
-
-  try {
-    const pdfBuffer = await printHtmlToPdfBuffer(html);
-    console.log('[receipt] PDF generated, size:', pdfBuffer.length, 'bytes');
-    return pdfBuffer;
-  } catch (e) {
-    console.error('[receipt] PDF generation failed:', e);
-    return null;
-    }
-}
+// Use the imported generateReceiptPdf from receiptPDF.js service
  const { exportInvoicesXlsx } = require('../services/invoiceExcel');
  const { currentTotal } = require('../utils/invoiceMath');
  const { transporter7 } = require('../utils/emailConfig');
@@ -736,7 +561,19 @@ const mailOptions = {
 // always try to attach receipt PDF; if your generator fails we still send email
 let receiptPdfBuffer = null;
 try {
-  receiptPdfBuffer = await generateReceiptPdf(workOrder, paymentDetails, actualPaid, totalOwedFinal);
+  const paymentData = {
+    _id: workOrder._id,
+    workOrder: workOrder,
+    paymentAmount: actualPaid,
+    totalOwed: totalOwedFinal,
+    paymentMethod: paymentDetails,
+    paymentDate: new Date(),
+    cardLast4: cardLast4,
+    checkNumber: checkNumber,
+    stripePaymentIntentId: stripePaymentIntentId,
+    receiptNumber: `RCP-${workOrder._id.toString().slice(-8).toUpperCase()}`
+  };
+  receiptPdfBuffer = await generateReceiptPdf(paymentData);
 } catch {}
 if (receiptPdfBuffer && receiptPdfBuffer.length) {
   mailOptions.attachments.push({
