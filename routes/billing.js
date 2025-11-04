@@ -365,6 +365,7 @@ router.post('/mark-paid', async (req, res) => {
       workOrderId, 
       paymentMethod, 
       emailOverride, 
+      tbsInvoiceNumber,
       cardLast4, 
       cardType, 
       checkNumber, 
@@ -564,10 +565,11 @@ const invoiceDocForReceipt = await findInvoiceForWorkOrder(workOrder);
 const headers = threadHeaders(invoiceDocForReceipt);
 const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
 
+const tbsInvoiceText = tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : '';
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailOverride,
-  subject: `Re: INVOICE – ${workOrder.basic?.client} – PAYMENT RECEIPT $${actualPaid.toFixed(2)}`,
+  subject: `Re: INVOICE – ${workOrder.basic?.client}${tbsInvoiceText} – PAYMENT RECEIPT $${actualPaid.toFixed(2)}`,
   html: receiptHtml,
   headers,
   attachments: []
@@ -759,7 +761,7 @@ router.post('/process-late-fees', async (req, res) => {
 // Update existing invoice
 router.post('/update-invoice', upload.array('attachments', 10), async (req, res) => {
   try {
-    let { workOrderId, manualAmount, emailOverride, invoiceData } = req.body;
+    let { workOrderId, manualAmount, emailOverride, invoiceData, tbsInvoiceNumber } = req.body;
     
     // Handle FormData payload
     if (typeof req.body.payload === 'string') {
@@ -768,6 +770,7 @@ router.post('/update-invoice', upload.array('attachments', 10), async (req, res)
       manualAmount = parsed.manualAmount;
       emailOverride = parsed.emailOverride;
       invoiceData = parsed.invoiceData;
+      tbsInvoiceNumber = parsed.tbsInvoiceNumber;
     }
     const WorkOrder = require('../models/workorder');
 
@@ -876,7 +879,7 @@ const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi,
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailOverride,
-  subject: `UPDATED INVOICE – ${workOrder.basic?.client} – $${Number(finalInvoiceTotal).toFixed(2)}`,
+  subject: `UPDATED INVOICE – ${workOrder.basic?.client}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${Number(finalInvoiceTotal).toFixed(2)}`,
   html: emailHtml,
   attachments: [],
   headers, // <- In-Reply-To + References (if available)
@@ -920,7 +923,7 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
   console.log('*** BILLING ROUTER - BILL WORKORDER HIT ***');
   console.log('Request body:', JSON.stringify(req.body, null, 2));
   try {
-    let { workOrderId, manualAmount, emailOverride, invoiceData } = req.body;
+    let { workOrderId, manualAmount, emailOverride, invoiceData, tbsInvoiceNumber } = req.body;
     
     // Handle FormData payload
     if (typeof req.body.payload === 'string') {
@@ -929,6 +932,7 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
       manualAmount = parsed.manualAmount;
       emailOverride = parsed.emailOverride;
       invoiceData = parsed.invoiceData;
+      tbsInvoiceNumber = parsed.tbsInvoiceNumber;
     }
     const WorkOrder = require('../models/workorder');
 
@@ -1022,7 +1026,7 @@ const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi,
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailOverride,
-  subject: `INVOICE – ${workOrder.basic?.client} – $${Number(finalInvoiceTotal).toFixed(2)}`,
+  subject: `INVOICE – ${workOrder.basic?.client}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${Number(finalInvoiceTotal).toFixed(2)}`,
   html: emailHtml,
   attachments: [],
   // Deterministic message-id starts the thread
@@ -1216,9 +1220,9 @@ router.post('/create-payment-intent', async (req, res) => {
 });
 router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
   try {
-    let { planId, manualAmount, emailOverride, invoiceData } = req.body;
+    let { planId, manualAmount, emailOverride, invoiceData, tbsInvoiceNumber } = req.body;
     if (typeof req.body.payload === 'string') {
-      ({ planId, manualAmount, emailOverride, invoiceData } = JSON.parse(req.body.payload));
+      ({ planId, manualAmount, emailOverride, invoiceData, tbsInvoiceNumber } = JSON.parse(req.body.payload));
     }
     if (!planId) return res.status(400).json({ message: 'planId required' });
 
@@ -1284,7 +1288,7 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
       to: emailOverride,
-      subject: `Traffic Control Plan – INVOICE – ${plan.company} – $${principal.toFixed(2)}`,
+      subject: `Traffic Control Plan – INVOICE – ${plan.company}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${principal.toFixed(2)}`,
       html,
       attachments: [],
       messageId: `plan-invoice-${String(invoice._id)}@trafficbarriersolutions.com`
@@ -1315,9 +1319,9 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
 });
 router.post('/update-plan', upload.array('attachments', 10), async (req, res) => {
   try {
-    let { planId, manualAmount, emailOverride, invoiceData } = req.body;
+    let { planId, manualAmount, emailOverride, invoiceData, tbsInvoiceNumber } = req.body;
     if (typeof req.body.payload === 'string') {
-      ({ planId, manualAmount, emailOverride, invoiceData } = JSON.parse(req.body.payload));
+      ({ planId, manualAmount, emailOverride, invoiceData, tbsInvoiceNumber } = JSON.parse(req.body.payload));
     }
     if (!planId) return res.status(400).json({ message: 'planId required' });
 
@@ -1384,7 +1388,7 @@ router.post('/update-plan', upload.array('attachments', 10), async (req, res) =>
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
       to: emailOverride,
-      subject: `UPDATED TCP INVOICE – ${plan.company} – $${principal.toFixed(2)}`,
+      subject: `UPDATED TCP INVOICE – ${plan.company}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${principal.toFixed(2)}`,
       html,
       headers,
       attachments: [],
@@ -1423,7 +1427,7 @@ async function findInvoiceForPlan(planId) {
 // Mark plan invoice as paid
 router.post('/mark-plan-paid', async (req, res) => {
   try {
-    const { invoiceId, paymentMethod, paymentAmount, emailOverride, cardType, cardLast4, checkNumber } = req.body;
+    const { invoiceId, paymentMethod, paymentAmount, emailOverride, cardType, cardLast4, checkNumber, tbsInvoiceNumber } = req.body;
     
     if (!invoiceId) return res.status(400).json({ message: 'invoiceId required' });
     
@@ -1480,7 +1484,7 @@ const headers = threadHeaders(invoice);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailOverride,
-  subject: `Re: Traffic Control Plan – PAYMENT RECEIPT $${amount.toFixed(2)}`,
+  subject: `Re: Traffic Control Plan${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – PAYMENT RECEIPT $${amount.toFixed(2)}`,
   html: receiptHtml,
   headers,
   attachments: []
