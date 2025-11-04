@@ -841,6 +841,7 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
     // Send updated invoice email
     if (emailOverride) {
       console.log('[update-invoice] Using uploaded PDFs, count:', req.files?.length || 0);
+      const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 
       const emailHtml = `
         <html>
@@ -879,7 +880,7 @@ const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi,
 
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
-  to: emailOverride,
+  to: emailList,
   subject: `UPDATED INVOICE – ${workOrder.basic?.client}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${Number(finalInvoiceTotal).toFixed(2)}`,
   html: emailHtml,
   attachments: [],
@@ -1024,9 +1025,10 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
 // BEFORE sending:
 const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
 
+const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
-  to: emailOverride,
+  to: emailList,
   subject: `INVOICE – ${workOrder.basic?.client}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${Number(finalInvoiceTotal).toFixed(2)}`,
   html: emailHtml,
   attachments: [],
@@ -1286,9 +1288,10 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
         </body>
       </html>`;
 
+    const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
-      to: emailOverride,
+      to: emailList,
       subject: `Traffic Control Plan – INVOICE – ${plan.company}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${principal.toFixed(2)}`,
       html,
       attachments: [],
@@ -1386,9 +1389,10 @@ router.post('/update-plan', upload.array('attachments', 10), async (req, res) =>
         </body>
       </html>`;
 
+    const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
-      to: emailOverride,
+      to: emailList,
       subject: `UPDATED TCP INVOICE – ${plan.company}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${principal.toFixed(2)}`,
       html,
       headers,
@@ -1482,9 +1486,10 @@ router.post('/mark-plan-paid', async (req, res) => {
       `;
 const headers = threadHeaders(invoice);
 
+const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
-  to: emailOverride,
+  to: emailList,
   subject: `Re: Traffic Control Plan${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – PAYMENT RECEIPT $${amount.toFixed(2)}`,
   html: receiptHtml,
   headers,
