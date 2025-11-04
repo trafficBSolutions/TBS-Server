@@ -566,9 +566,10 @@ const headers = threadHeaders(invoiceDocForReceipt);
 const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi, '-');
 
 const tbsInvoiceText = tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : '';
+const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
-  to: emailOverride,
+  to: emailList,
   subject: `Re: INVOICE – ${workOrder.basic?.client}${tbsInvoiceText} – PAYMENT RECEIPT $${actualPaid.toFixed(2)}`,
   html: receiptHtml,
   headers,
