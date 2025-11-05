@@ -176,8 +176,9 @@ function generatePlanDetailsHtml(plan, invoiceData = {}) {
 
 
 
+
 // Generate comprehensive work order details HTML with enhanced CSS styling
-function generateWorkOrderDetailsHtml(workOrder, foremanSignatureCid = 'foremanSignature') {
+function generateWorkOrderDetailsHtml(workOrder) {
   const startTime = formatTime12Hour(workOrder.basic?.startTime);
   const endTime = formatTime12Hour(workOrder.basic?.endTime);
   const completedDate = new Date(workOrder.createdAt);
