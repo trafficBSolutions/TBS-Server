@@ -124,12 +124,15 @@ function formatTime12Hour(time24) {
 function threadHeaders(invoiceDoc) {
   const headers = {};
   if (invoiceDoc?.emailMessageId) {
-    const messageId = invoiceDoc.emailMessageId.startsWith('<') ? invoiceDoc.emailMessageId : `<${invoiceDoc.emailMessageId}>`;
+    const messageId = invoiceDoc.emailMessageId.startsWith('<')
+      ? invoiceDoc.emailMessageId
+      : `<${invoiceDoc.emailMessageId}>`;
     headers['In-Reply-To'] = messageId;
     headers['References'] = messageId;
   }
   return headers;
 }
+
 
 // Generate comprehensive plan details HTML with enhanced CSS styling
 function generatePlanDetailsHtml(plan, invoiceData = {}) {
@@ -172,23 +175,22 @@ function generatePlanDetailsHtml(plan, invoiceData = {}) {
 }
 function attachInlineSignatureFromDataUrl(mailOptions, dataUrl, cid) {
   if (!dataUrl || !cid) return false;
-  console.log('Attaching foreman signature image:', cid);
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/i);
   if (!m) return false;
   const mimeType = m[1].toLowerCase();
-  if (!/^image\/(png|jpe?g)$/.test(mimeType)) return false; // only png/jpg
+  if (!/^image\/(png|jpe?g)$/.test(mimeType)) return false;
   const base64 = m[2].replace(/\s/g, '');
   const buf = Buffer.from(base64, 'base64');
-  // Push as a normal attachment with a CID; do NOT set contentDisposition
   mailOptions.attachments = mailOptions.attachments || [];
   mailOptions.attachments.push({
     filename: `foreman-signature.${mimeType.includes('png') ? 'png' : 'jpg'}`,
-    cid,               // must match the cid in your HTML
+    cid,
     content: buf,
     contentType: mimeType
   });
   return true;
 }
+
 
 // Generate comprehensive work order details HTML with enhanced CSS styling
 function generateWorkOrderDetailsHtml(workOrder, foremanSignatureCid = 'foremanSignature') {
@@ -643,6 +645,10 @@ try {
   console.error('[receipt] PDF generation failed:', pdfError);
   // Continue without PDF attachment - email will still be sent
 }
+const cids = (mailOptions.attachments || [])
+  .filter(a => a.cid)
+  .map(a => ({ cid: a.cid, filename: a.filename, size: a.content?.length }));
+console.log('[email] inline attachments', cids);
 
 const emailResult = await transporter7.sendMail(mailOptions);
         console.log('[receipt] email sent successfully to:', emailOverride, {
@@ -932,24 +938,13 @@ if (req.files && req.files.length > 0) {
 }
 
 // Add foreman signature as inline attachment if present
+// Add foreman signature as inline attachment if present
+// Add foreman signature as inline attachment if present (single source of truth)
 if (workOrder.foremanSignature && signatureCid) {
   attachInlineSignatureFromDataUrl(mailOptions, workOrder.foremanSignature, signatureCid);
-  // Parse data URL to extract MIME type and base64 content
-  const dataUrlMatch = workOrder.foremanSignature.match(/^data:([^;]+);base64,(.+)$/);
-  if (dataUrlMatch) {
-    const mimeType = dataUrlMatch[1];
-    const base64Data = dataUrlMatch[2].replace(/\s/g, ''); // Remove any whitespace
-    const extension = mimeType.includes('png') ? 'png' : mimeType.includes('jpeg') ? 'jpg' : 'png';
-    
-    mailOptions.attachments.push({
-      filename: `foreman-signature.${extension}`,
-      cid: signatureCid,
-      content: Buffer.from(base64Data, 'base64'),
-      contentType: mimeType,
-      contentDisposition: 'inline'
-    });
-  }
 }
+
+
 
 try {
   const info = await transporter7.sendMail(mailOptions);
