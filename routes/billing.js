@@ -273,7 +273,7 @@ function generateWorkOrderDetailsHtml(workOrder) {
           <p style="margin: 4px 0; font-size: 14px;"><strong>Call Back:</strong> <span style="color: ${workOrder.basic?.callBack === 'Yes' ? '#28a745' : '#dc3545'}; font-weight: 600;">${workOrder.basic?.callBack === 'Yes' ? '✓ Yes' : '✗ No'}</span></p>
         </div>
         
-        ${workOrder.foremanSignature ? `<div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #007bff;"><strong style="font-size: 14px;">Foreman Signature:</strong><br/><img src="cid:foremanSignature" style="max-width: 180px; max-height: 70px; border: 2px solid #007bff; border-radius: 4px; margin-top: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"/></div>` : '<div></div>'}
+        ${workOrder.foremanSignature ? `<div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #007bff;"><strong style="font-size: 14px;">Foreman Signature:</strong><br/><img alt="Foreman Signature" src="cid:foremanSignature" style="max-width: 180px; max-height: 70px; border: 2px solid #007bff; border-radius: 4px; margin-top: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"/></div>` : '<div></div>'}
       </div>
       
       ${jobsite.equipmentLeft ? `<div style="margin: 16px 0; padding: 16px; background: linear-gradient(135deg, #fff3cd, #ffeaa7); border: 2px solid #ffc107; border-radius: 8px; box-shadow: 0 2px 8px rgba(255,193,7,0.2);"><h4 style="margin: 0 0 8px 0; color: #856404; display: flex; align-items: center;">⚠️ Equipment Left Behind</h4><p style="margin: 0; color: #856404; font-weight: 500; line-height: 1.4;">${jobsite.equipmentLeftReason || 'Equipment was left at the jobsite as requested by client.'}</p></div>` : ''}
@@ -904,6 +904,17 @@ if (req.files && req.files.length > 0) {
   console.log('[update-invoice] No uploaded PDFs found, email will be sent without attachments');
 }
 
+// Add foreman signature as inline attachment if present
+if (workOrder.foremanSignature) {
+  mailOptions.attachments.push({
+    filename: 'foreman-signature.png',
+    cid: 'foremanSignature',
+    content: Buffer.from(workOrder.foremanSignature, 'base64'),
+    contentType: 'image/png',
+    contentDisposition: 'inline'
+  });
+}
+
 try {
   const info = await transporter7.sendMail(mailOptions);
   console.log('[update-invoice] email sent to:', emailOverride, 'threaded:', !!headers['In-Reply-To']);
@@ -1049,6 +1060,17 @@ if (req.files && req.files.length > 0) {
   console.log('[invoice] Attached', req.files.length, 'uploaded PDF(s)');
 } else {
   console.log('[invoice] No uploaded PDFs found, email will be sent without attachments');
+}
+
+// Add foreman signature as inline attachment if present
+if (workOrder.foremanSignature) {
+  mailOptions.attachments.push({
+    filename: 'foreman-signature.png',
+    cid: 'foremanSignature',
+    content: Buffer.from(workOrder.foremanSignature, 'base64'),
+    contentType: 'image/png',
+    contentDisposition: 'inline'
+  });
 }
 
 try {
