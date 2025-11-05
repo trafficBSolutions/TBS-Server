@@ -172,7 +172,7 @@ function generatePlanDetailsHtml(plan, invoiceData = {}) {
 }
 
 // Generate comprehensive work order details HTML with enhanced CSS styling
-function generateWorkOrderDetailsHtml(workOrder) {
+function generateWorkOrderDetailsHtml(workOrder, foremanSignatureCid = 'foremanSignature') {
   const startTime = formatTime12Hour(workOrder.basic?.startTime);
   const endTime = formatTime12Hour(workOrder.basic?.endTime);
   const completedDate = new Date(workOrder.createdAt);
@@ -273,7 +273,14 @@ function generateWorkOrderDetailsHtml(workOrder) {
           <p style="margin: 4px 0; font-size: 14px;"><strong>Call Back:</strong> <span style="color: ${workOrder.basic?.callBack === 'Yes' ? '#28a745' : '#dc3545'}; font-weight: 600;">${workOrder.basic?.callBack === 'Yes' ? '✓ Yes' : '✗ No'}</span></p>
         </div>
         
-        ${workOrder.foremanSignature ? `<div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #007bff;"><strong style="font-size: 14px;">Foreman Signature:</strong><br/><img alt="Foreman Signature" src="cid:foremanSignature" style="max-width: 180px; max-height: 70px; border: 2px solid #007bff; border-radius: 4px; margin-top: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"/></div>` : '<div></div>'}
+        ${
+          (foremanSignatureCid && workOrder.foremanSignature)
+            ? `<div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #007bff;">
+                 <strong style="font-size: 14px;">Foreman Signature:</strong><br/>
+                 <img alt="Foreman Signature" src="cid:${foremanSignatureCid}" style="max-width: 180px; max-height: 70px; border: 2px solid #007bff; border-radius: 4px; margin-top: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />
+               </div>`
+            : '<div></div>'
+        }
       </div>
       
       ${jobsite.equipmentLeft ? `<div style="margin: 16px 0; padding: 16px; background: linear-gradient(135deg, #fff3cd, #ffeaa7); border: 2px solid #ffc107; border-radius: 8px; box-shadow: 0 2px 8px rgba(255,193,7,0.2);"><h4 style="margin: 0 0 8px 0; color: #856404; display: flex; align-items: center;">⚠️ Equipment Left Behind</h4><p style="margin: 0; color: #856404; font-weight: 500; line-height: 1.4;">${jobsite.equipmentLeftReason || 'Equipment was left at the jobsite as requested by client.'}</p></div>` : ''}
@@ -842,6 +849,7 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
     if (emailOverride) {
       console.log('[update-invoice] Using uploaded PDFs, count:', req.files?.length || 0);
       const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
+      const signatureCid = workOrder.foremanSignature ? `sig-${targetInvoiceId}-${Date.now()}` : null;
 
       const emailHtml = `
         <html>
@@ -857,7 +865,7 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
                 <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'Same as original'}</p>
               </div>
               
-              ${generateWorkOrderDetailsHtml(workOrder)}
+              ${generateWorkOrderDetailsHtml(workOrder, signatureCid)}
               
               <p style="text-align: center; font-size: 16px; margin: 30px 0;">This is an updated version of your invoice. Please find the revised invoice PDF attached.</p>
               
@@ -905,7 +913,7 @@ if (req.files && req.files.length > 0) {
 }
 
 // Add foreman signature as inline attachment if present
-if (workOrder.foremanSignature) {
+if (workOrder.foremanSignature && signatureCid) {
   // Parse data URL to extract MIME type and base64 content
   const dataUrlMatch = workOrder.foremanSignature.match(/^data:([^;]+);base64,(.+)$/);
   if (dataUrlMatch) {
@@ -915,7 +923,7 @@ if (workOrder.foremanSignature) {
     
     mailOptions.attachments.push({
       filename: `foreman-signature.${extension}`,
-      cid: 'foremanSignature',
+      cid: signatureCid,
       content: Buffer.from(base64Data, 'base64'),
       contentType: mimeType,
       contentDisposition: 'inline'
@@ -1014,6 +1022,7 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
       
       // Use uploaded PDFs instead of generating new ones
       console.log('[invoice] Using uploaded PDFs, count:', req.files?.length || 0);
+      const signatureCid = workOrder.foremanSignature ? `sig-${invoice._id}-${Date.now()}` : null;
 
       const emailHtml = `
         <html>
@@ -1028,7 +1037,7 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
                 <p style="margin: 5px 0;"><strong>Address:</strong> ${workOrder.basic?.address}, ${workOrder.basic?.city}, ${workOrder.basic?.state} ${workOrder.basic?.zip}</p>
               </div>
               
-              ${generateWorkOrderDetailsHtml(workOrder)}
+              ${generateWorkOrderDetailsHtml(workOrder, signatureCid)}
               
               <p style="text-align: center; font-size: 16px; margin: 30px 0;">Please find the attached invoice PDF. Thank you for your business!</p>
               
@@ -1071,7 +1080,7 @@ if (req.files && req.files.length > 0) {
 }
 
 // Add foreman signature as inline attachment if present
-if (workOrder.foremanSignature) {
+if (workOrder.foremanSignature && signatureCid) {
   // Parse data URL to extract MIME type and base64 content
   const dataUrlMatch = workOrder.foremanSignature.match(/^data:([^;]+);base64,(.+)$/);
   if (dataUrlMatch) {
@@ -1081,7 +1090,7 @@ if (workOrder.foremanSignature) {
     
     mailOptions.attachments.push({
       filename: `foreman-signature.${extension}`,
-      cid: 'foremanSignature',
+      cid: signatureCid,
       content: Buffer.from(base64Data, 'base64'),
       contentType: mimeType,
       contentDisposition: 'inline'
