@@ -906,13 +906,21 @@ if (req.files && req.files.length > 0) {
 
 // Add foreman signature as inline attachment if present
 if (workOrder.foremanSignature) {
-  mailOptions.attachments.push({
-    filename: 'foreman-signature.png',
-    cid: 'foremanSignature',
-    content: Buffer.from(workOrder.foremanSignature, 'base64'),
-    contentType: 'image/png',
-    contentDisposition: 'inline'
-  });
+  // Parse data URL to extract MIME type and base64 content
+  const dataUrlMatch = workOrder.foremanSignature.match(/^data:([^;]+);base64,(.+)$/);
+  if (dataUrlMatch) {
+    const mimeType = dataUrlMatch[1];
+    const base64Data = dataUrlMatch[2].replace(/\s/g, ''); // Remove any whitespace
+    const extension = mimeType.includes('png') ? 'png' : mimeType.includes('jpeg') ? 'jpg' : 'png';
+    
+    mailOptions.attachments.push({
+      filename: `foreman-signature.${extension}`,
+      cid: 'foremanSignature',
+      content: Buffer.from(base64Data, 'base64'),
+      contentType: mimeType,
+      contentDisposition: 'inline'
+    });
+  }
 }
 
 try {
@@ -1064,13 +1072,21 @@ if (req.files && req.files.length > 0) {
 
 // Add foreman signature as inline attachment if present
 if (workOrder.foremanSignature) {
-  mailOptions.attachments.push({
-    filename: 'foreman-signature.png',
-    cid: 'foremanSignature',
-    content: Buffer.from(workOrder.foremanSignature, 'base64'),
-    contentType: 'image/png',
-    contentDisposition: 'inline'
-  });
+  // Parse data URL to extract MIME type and base64 content
+  const dataUrlMatch = workOrder.foremanSignature.match(/^data:([^;]+);base64,(.+)$/);
+  if (dataUrlMatch) {
+    const mimeType = dataUrlMatch[1];
+    const base64Data = dataUrlMatch[2].replace(/\s/g, ''); // Remove any whitespace
+    const extension = mimeType.includes('png') ? 'png' : mimeType.includes('jpeg') ? 'jpg' : 'png';
+    
+    mailOptions.attachments.push({
+      filename: `foreman-signature.${extension}`,
+      cid: 'foremanSignature',
+      content: Buffer.from(base64Data, 'base64'),
+      contentType: mimeType,
+      contentDisposition: 'inline'
+    });
+  }
 }
 
 try {
