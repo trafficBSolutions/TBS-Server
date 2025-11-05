@@ -913,13 +913,27 @@ if (req.files && req.files.length > 0) {
 
 // Add foreman signature as regular attachment if present
 if (workOrder.foremanSignature) {
-  console.log('[update-invoice] Found foreman signature, length:', workOrder.foremanSignature.length);
+  console.log('[update-invoice] Found foreman signature, starts with:', workOrder.foremanSignature.substring(0, 50));
+  
+  let mimeType, base64Data;
   const dataUrlMatch = workOrder.foremanSignature.match(/^data:([^;]+);base64,(.+)$/);
+  
   if (dataUrlMatch) {
-    const mimeType = dataUrlMatch[1];
-    const base64Data = dataUrlMatch[2].replace(/\s/g, '');
+    mimeType = dataUrlMatch[1];
+    base64Data = dataUrlMatch[2].replace(/\s/g, '');
+  } else if (workOrder.foremanSignature.startsWith('iVBOR') || workOrder.foremanSignature.match(/^[A-Za-z0-9+/=]+$/)) {
+    // Raw base64 data, assume PNG
+    mimeType = 'image/png';
+    base64Data = workOrder.foremanSignature.replace(/\s/g, '');
+    console.log('[update-invoice] Treating as raw base64 PNG data');
+  } else {
+    console.log('[update-invoice] Unknown foreman signature format');
+    mimeType = null;
+    base64Data = null;
+  }
+  
+  if (mimeType && base64Data) {
     const extension = mimeType.includes('png') ? 'png' : 'jpg';
-    
     console.log('[update-invoice] Attaching foreman signature:', { mimeType, extension, base64Length: base64Data.length });
     
     mailOptions.attachments.push({
@@ -928,8 +942,6 @@ if (workOrder.foremanSignature) {
       contentType: mimeType,
       contentDisposition: 'attachment'
     });
-  } else {
-    console.log('[update-invoice] Foreman signature does not match data URL pattern');
   }
 } else {
   console.log('[update-invoice] No foreman signature found on work order');
@@ -1086,13 +1098,27 @@ if (req.files && req.files.length > 0) {
 
 // Add foreman signature as regular attachment if present
 if (workOrder.foremanSignature) {
-  console.log('[bill-workorder] Found foreman signature, length:', workOrder.foremanSignature.length);
+  console.log('[bill-workorder] Found foreman signature, starts with:', workOrder.foremanSignature.substring(0, 50));
+  
+  let mimeType, base64Data;
   const dataUrlMatch = workOrder.foremanSignature.match(/^data:([^;]+);base64,(.+)$/);
+  
   if (dataUrlMatch) {
-    const mimeType = dataUrlMatch[1];
-    const base64Data = dataUrlMatch[2].replace(/\s/g, '');
+    mimeType = dataUrlMatch[1];
+    base64Data = dataUrlMatch[2].replace(/\s/g, '');
+  } else if (workOrder.foremanSignature.startsWith('iVBOR') || workOrder.foremanSignature.match(/^[A-Za-z0-9+/=]+$/)) {
+    // Raw base64 data, assume PNG
+    mimeType = 'image/png';
+    base64Data = workOrder.foremanSignature.replace(/\s/g, '');
+    console.log('[bill-workorder] Treating as raw base64 PNG data');
+  } else {
+    console.log('[bill-workorder] Unknown foreman signature format');
+    mimeType = null;
+    base64Data = null;
+  }
+  
+  if (mimeType && base64Data) {
     const extension = mimeType.includes('png') ? 'png' : 'jpg';
-    
     console.log('[bill-workorder] Attaching foreman signature:', { mimeType, extension, base64Length: base64Data.length });
     
     mailOptions.attachments.push({
@@ -1101,8 +1127,6 @@ if (workOrder.foremanSignature) {
       contentType: mimeType,
       contentDisposition: 'attachment'
     });
-  } else {
-    console.log('[bill-workorder] Foreman signature does not match data URL pattern');
   }
 } else {
   console.log('[bill-workorder] No foreman signature found on work order');
