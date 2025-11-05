@@ -170,6 +170,25 @@ function generatePlanDetailsHtml(plan, invoiceData = {}) {
     </div>
   `;
 }
+function attachInlineSignatureFromDataUrl(mailOptions, dataUrl, cid) {
+  if (!dataUrl || !cid) return false;
+  console.log('Attaching foreman signature image:', cid);
+  const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/i);
+  if (!m) return false;
+  const mimeType = m[1].toLowerCase();
+  if (!/^image\/(png|jpe?g)$/.test(mimeType)) return false; // only png/jpg
+  const base64 = m[2].replace(/\s/g, '');
+  const buf = Buffer.from(base64, 'base64');
+  // Push as a normal attachment with a CID; do NOT set contentDisposition
+  mailOptions.attachments = mailOptions.attachments || [];
+  mailOptions.attachments.push({
+    filename: `foreman-signature.${mimeType.includes('png') ? 'png' : 'jpg'}`,
+    cid,               // must match the cid in your HTML
+    content: buf,
+    contentType: mimeType
+  });
+  return true;
+}
 
 // Generate comprehensive work order details HTML with enhanced CSS styling
 function generateWorkOrderDetailsHtml(workOrder, foremanSignatureCid = 'foremanSignature') {
@@ -914,6 +933,7 @@ if (req.files && req.files.length > 0) {
 
 // Add foreman signature as inline attachment if present
 if (workOrder.foremanSignature && signatureCid) {
+  attachInlineSignatureFromDataUrl(mailOptions, workOrder.foremanSignature, signatureCid);
   // Parse data URL to extract MIME type and base64 content
   const dataUrlMatch = workOrder.foremanSignature.match(/^data:([^;]+);base64,(.+)$/);
   if (dataUrlMatch) {
