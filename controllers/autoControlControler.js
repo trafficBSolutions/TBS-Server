@@ -112,6 +112,7 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
           const confirmMailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
+            bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail }],
             subject: 'CONFIRM ADDITIONAL FLAGGER - TRAFFIC CONTROL JOB',
             html: `
             <html>
@@ -355,56 +356,46 @@ const confirmAdditionalFlagger = async (req, res) => {
     }
     
     if (confirm === 'yes') {
-      // User confirmed - create jobs with additional flaggers
-      const createdJobs = [];
-      for (const dateObj of parsedDates) {
-        const newUser = await ControlUser.create({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          company: formData.company,
-          coordinator: formData.coordinator?.trim() || 'Unknown',
-          siteContact: formData.siteContact || '',
-          site: formData.site || '',
-          time: formData.time,
-          project: formData.project,
-          emergency: formData.emergency || false,
-          flagger: formData.flagger,
-          additionalFlaggers: true,
-          additionalFlaggerCount: Number(additionalFlaggerCount),
-          equipment: formData.equipment,
-          terms: formData.terms,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zip: formData.zip,
-          message: formData.message,
-          jobDates: [{
-            date: dateObj,
-            cancelled: false,
-            cancelledAt: null
-          }]
-        });
-        createdJobs.push(newUser);
-      }
+      // User confirmed - create ONE job with multiple dates
+      const newUser = await ControlUser.create({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        company: formData.company,
+        coordinator: formData.coordinator?.trim() || 'Unknown',
+        siteContact: formData.siteContact || '',
+        site: formData.site || '',
+        time: formData.time,
+        project: formData.project,
+        emergency: formData.emergency || false,
+        flagger: formData.flagger,
+        additionalFlaggers: true,
+        additionalFlaggerCount: Number(additionalFlaggerCount),
+        equipment: formData.equipment,
+        terms: formData.terms,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zip: formData.zip,
+        message: formData.message,
+        jobDates: parsedDates.map(dateObj => ({
+          date: dateObj,
+          cancelled: false,
+          cancelledAt: null
+        }))
+      });
       
-      const jobs = createdJobs;
-      
-      const cancelLinks = jobs
-        .map(job => {
-          return job.jobDates.map(jobDateObj => {
-            const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
-            return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
-          }).join('');
-        })
-        .join('');
+      const cancelLinks = newUser.jobDates.map(jobDateObj => {
+        const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
+        const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
+        return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">${dateString} – Cancel this date</a></li>`;
+      }).join('');
       
       const finalMailOptions = {
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
         to: userEmail,
         bcc: [
           { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-          { name: 'Carson Speer', address: userEmail },
           { name: 'Bryson Davis', address: mainEmail },
           { name: 'Jonkell Tolbert', address: foreemail },
           { name: 'Salvador Gonzalez', address: foremanmail },
@@ -415,38 +406,35 @@ const confirmAdditionalFlagger = async (req, res) => {
         <html>
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #efad76;; color: black; padding: 15px; border-radius: 6px;">${jobs[0]?.name} has scheduled a job with additional flaggers</h1>
-              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected YES to approve additional flaggers. </strong></p>
-              <p>Hi <strong>${jobs[0]?.name}, </strong></p>
+              <h1 style="text-align: center; background-color: #efad76; color: black; padding: 15px; border-radius: 6px;">${newUser.name} has scheduled a job with additional flaggers</h1>
+              <p><strong>${newUser.name}, ${newUser.email} has selected YES to approve additional flaggers.</strong></p>
+              <p>Hi <strong>${newUser.name},</strong></p>
               <p>Your traffic control job has been confirmed with <strong>${additionalFlaggerCount} additional flagger(s)</strong>.</p>
               <p>Your job has been scheduled on the following date(s):</p>
               <ul>
-                ${jobs.map(job => job.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')).join('')}
+                ${newUser.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}
               </ul>
               
               <h3>Summary:</h3>
-              <ul>
               <div style="display: flex; flex-wrap: wrap; gap: 10px;">
                     <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Company:</strong> ${jobs[0]?.company}</li>
-                      <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
-                      <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
-                      <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
-                      <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
-                      
+                      <li><strong>Company:</strong> ${newUser.company}</li>
+                      <li><strong>Coordinator:</strong> ${newUser.coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${newUser.phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${newUser.siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${newUser.site}</li>
                     </ul>
                     <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Time:</strong> ${jobs[0]?.time}</li>
-                      <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
-                      <li><strong>Flaggers:</strong> ${jobs[0]?.flagger} + Additional: ${additionalFlaggerCount}</li>
-                      <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
-                      <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+                      <li><strong>Time:</strong> ${newUser.time}</li>
+                      <li><strong>Project/Task:</strong> ${newUser.project}</li>
+                      <li><strong>Flaggers:</strong> ${newUser.flagger} + Additional: ${additionalFlaggerCount}</li>
+                      <li><strong>Equipment:</strong> ${newUser.equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${newUser.address}, ${newUser.city}, ${newUser.state} ${newUser.zip}</li>
                     </ul>
                   </div>
-              </ul>
               <h3>Additional Info:</h3>
-              <p>Terms & Conditions: ${jobs[0]?.terms}</p>
-              <p>${jobs[0]?.message}</p>
+              <p>Terms & Conditions: ${newUser.terms}</p>
+              <p>${newUser.message}</p>
               
               <h3>Cancel Links (if needed):</h3>
               <ul>${cancelLinks}</ul>
@@ -469,56 +457,46 @@ const confirmAdditionalFlagger = async (req, res) => {
       res.redirect('https://www.trafficbarriersolutions.com/confirm-additional-flagger?status=success&message=' + encodeURIComponent('Additional flaggers confirmed. Final confirmation email sent.'));
       
     } else if (confirm === 'no') {
-      // User declined - create jobs without additional flaggers
-      const createdJobs = [];
-      for (const dateObj of parsedDates) {
-        const newUser = await ControlUser.create({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          company: formData.company,
-          coordinator: formData.coordinator?.trim() || 'Unknown',
-          siteContact: formData.siteContact || '',
-          site: formData.site || '',
-          time: formData.time,
-          project: formData.project,
-          emergency: formData.emergency || false,
-          flagger: formData.flagger,
-          additionalFlaggers: false,
-          additionalFlaggerCount: 0,
-          equipment: formData.equipment,
-          terms: formData.terms,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zip: formData.zip,
-          message: formData.message,
-          jobDates: [{
-            date: dateObj,
-            cancelled: false,
-            cancelledAt: null
-          }]
-        });
-        createdJobs.push(newUser);
-      }
+      // User declined - create ONE job without additional flaggers
+      const newUser = await ControlUser.create({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        company: formData.company,
+        coordinator: formData.coordinator?.trim() || 'Unknown',
+        siteContact: formData.siteContact || '',
+        site: formData.site || '',
+        time: formData.time,
+        project: formData.project,
+        emergency: formData.emergency || false,
+        flagger: formData.flagger,
+        additionalFlaggers: false,
+        additionalFlaggerCount: 0,
+        equipment: formData.equipment,
+        terms: formData.terms,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zip: formData.zip,
+        message: formData.message,
+        jobDates: parsedDates.map(dateObj => ({
+          date: dateObj,
+          cancelled: false,
+          cancelledAt: null
+        }))
+      });
       
-      const jobs = createdJobs;
-      
-      const cancelLinks = jobs
-        .map(job => {
-          return job.jobDates.map(jobDateObj => {
-            const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
-            return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
-          }).join('');
-        })
-        .join('');
+      const cancelLinks = newUser.jobDates.map(jobDateObj => {
+        const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
+        const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
+        return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">${dateString} – Cancel this date</a></li>`;
+      }).join('');
       
       const originalMailOptions = {
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
         to: userEmail,
         bcc: [
           { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-          { name: 'Carson Speer', address: userEmail },
           { name: 'Bryson Davis', address: mainEmail },
           { name: 'Jonkell Tolbert', address: foreemail },
           { name: 'Salvador Gonzalez', address: foremanmail },
@@ -530,37 +508,34 @@ const confirmAdditionalFlagger = async (req, res) => {
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
               <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB REQUEST</h1>
-              <p><strong>${jobs[0]?.name}, ${jobs[0]?.email} has selected NO for additional flaggers. But job is still scheduled. </strong>,</p>
-              <p>Hi <strong>${jobs[0]?.name}, </strong>,</p>
+              <p><strong>${newUser.name}, ${newUser.email} has selected NO for additional flaggers. But job is still scheduled.</strong></p>
+              <p>Hi <strong>${newUser.name},</strong></p>
               <p>Your traffic control job has been confirmed without additional flaggers.</p>
               <p>Your job has been scheduled on the following date(s):</p>
               <ul>
-                ${jobs.map(job => job.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')).join('')}
+                ${newUser.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}
               </ul>
               
               <h3>Summary:</h3>
-                            <ul>
               <div style="display: flex; flex-wrap: wrap; gap: 10px;">
                     <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Company:</strong> ${jobs[0]?.company}</li>
-                      <li><strong>Coordinator:</strong> ${jobs[0]?.coordinator}</li>
-                      <li><strong>Coordinator Phone:</strong> ${jobs[0]?.phone}</li>
-                      <li><strong>On-Site Contact:</strong> ${jobs[0]?.siteContact}</li>
-                      <li><strong>On-Site Phone:</strong> ${jobs[0]?.site}</li>
-                      
+                      <li><strong>Company:</strong> ${newUser.company}</li>
+                      <li><strong>Coordinator:</strong> ${newUser.coordinator}</li>
+                      <li><strong>Coordinator Phone:</strong> ${newUser.phone}</li>
+                      <li><strong>On-Site Contact:</strong> ${newUser.siteContact}</li>
+                      <li><strong>On-Site Phone:</strong> ${newUser.site}</li>
                     </ul>
                     <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Time:</strong> ${jobs[0]?.time}</li>
-                      <li><strong>Project/Task:</strong> ${jobs[0]?.project}</li>
-                      <li><strong>Flaggers:</strong> ${jobs[0]?.flagger}</li>
-                      <li><strong>Equipment:</strong> ${jobs[0]?.equipment.join(', ')}</li>
-                      <li><strong>Job Site Address:</strong> ${jobs[0]?.address}, ${jobs[0]?.city}, ${jobs[0]?.state} ${jobs[0]?.zip}</li>
+                      <li><strong>Time:</strong> ${newUser.time}</li>
+                      <li><strong>Project/Task:</strong> ${newUser.project}</li>
+                      <li><strong>Flaggers:</strong> ${newUser.flagger}</li>
+                      <li><strong>Equipment:</strong> ${newUser.equipment.join(', ')}</li>
+                      <li><strong>Job Site Address:</strong> ${newUser.address}, ${newUser.city}, ${newUser.state} ${newUser.zip}</li>
                     </ul>
                   </div>
-              </ul>
               <h3>Additional Info:</h3>
-              <p>Terms & Conditions: ${jobs[0]?.terms}</p>
-              <p>${jobs[0]?.message}</p>
+              <p>Terms & Conditions: ${newUser.terms}</p>
+              <p>${newUser.message}</p>
               <h3>If you need to cancel a date, use the link for that specific day:</h3>
               <ul>${cancelLinks}</ul>
               <p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.
