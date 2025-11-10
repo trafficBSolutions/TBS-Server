@@ -18,7 +18,7 @@ router.use(
     cors({
         credentials: true,
         /* origin: 'http://localhost:5173' // Make sure this matches your frontend*/
-        origin: ['https://www.trafficbarriersolutions.com']
+        origin: ['https://www.trafficbarriersolutions.com', 'http://localhost:5173']
     })
 );
 
@@ -176,16 +176,18 @@ if (!date) {
           { name: 'Damien Diskey', address: damienemail}
         
       ],
-    subject: 'TRAFFIC CONTROL JOB CANCELLED',
+    subject: job.additionalFlaggers ? 'TRAFFIC CONTROL JOB WITH ADDITIONAL FLAGGERS CANCELLED' : 'TRAFFIC CONTROL JOB CANCELLED',
     html: `
-      <h2>Traffic Control Job Cancelled</h2>
+      <h2>Traffic Control Job Cancelled${job.additionalFlaggers ? ' - With Additional Flaggers' : ''}</h2>
       <p>Dear ${job.name},</p>
-      <p>Your traffic control job scheduled for the following date(s) has been cancelled:</p>
+      <p>Your traffic control job${job.additionalFlaggers ? ' with additional flaggers' : ''} scheduled for the following date(s) has been cancelled:</p>
       <ul>${job.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}</ul>
       <p><strong>Project/Task Number:</strong> ${job.project}</p>
       <p><strong>Coordinator:</strong> ${job.coordinator}</p>
       <p><strong>Company:</strong> ${job.company}</p>
+      <p><strong>Flaggers:</strong> ${job.flagger}${job.additionalFlaggers ? ` + Additional: ${job.additionalFlaggerCount}` : ''}</p>
       <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
+      ${job.additionalFlaggers ? '<p><strong>Note:</strong> The additional flagger charges have been cancelled along with this job.</p>' : ''}
       <p>— TBS Admin Team</p>
     `
   };
@@ -239,17 +241,19 @@ const formatted = new Date(job.jobDates[dateIndex].date).toLocaleDateString('en-
           { name: 'Damien Diskey', address: damienemail}
            
       ],
-      subject: 'TRAFFIC CONTROL DATE CANCELLED',
+      subject: job.additionalFlaggers ? 'TRAFFIC CONTROL DATE WITH ADDITIONAL FLAGGERS CANCELLED' : 'TRAFFIC CONTROL DATE CANCELLED',
       html: `
-        <h2>Job Date Cancelled</h2>
+        <h2>Job Date Cancelled${job.additionalFlaggers ? ' - With Additional Flaggers' : ''}</h2>
         <p>Dear ${job.name},</p>
-        <p>The following job date has been cancelled:</p>
+        <p>The following job date${job.additionalFlaggers ? ' with additional flaggers' : ''} has been cancelled:</p>
         <ul><li><strong>${formatted}</strong></li></ul>
 
         <p><strong>Project/Task Number:</strong> ${job.project}</p>
         <p><strong>Company:</strong> ${job.company}</p>
         <p><strong>Coordinator:</strong> ${job.coordinator}</p>
+        <p><strong>Flaggers:</strong> ${job.flagger}${job.additionalFlaggers ? ` + Additional: ${job.additionalFlaggerCount}` : ''}</p>
         <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
+        ${job.additionalFlaggers ? '<p><strong>Note:</strong> The additional flagger charges for this date have been cancelled.</p>' : ''}
 
         <p>If this was a mistake, please <a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">update your job again</a> or call (706) 263-0175.</p>
         <p>— TBS Admin Team</p>
