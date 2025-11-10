@@ -858,7 +858,8 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
                 <p><strong>Previous Total:</strong> $${previousTotal.toFixed(2)}</p>
-<p><strong>Updated Total:</strong> $${finalInvoiceTotal.toFixed(2)}</p>
+                <p><strong>Updated Total:</strong> $${finalInvoiceTotal.toFixed(2)}</p>
+                ${tbsInvoiceNumber ? `<p style="margin: 5px 0; font-size: 14px; color: #666;"><strong>Invoice Number:</strong> ${tbsInvoiceNumber}</p>` : ''}
                 <p style="margin: 5px 0;"><strong>Work Order Date:</strong> ${workOrder.basic?.dateOfJob}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
                 <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'Same as original'}</p>
@@ -1183,7 +1184,7 @@ router.get('/invoice-status', async (req, res) => {
     const idsParam = (req.query.workOrderIds || '').trim();
     if (!idsParam) return res.json({ byWorkOrder: {} });
 
-    const ids = idsParam.split(',').map(s => s.trim()).filter(Boolean);
+    const ids = idsParam.split(',').map(s => s.trim()).filter(Boolean).filter(id => mongoose.Types.ObjectId.isValid(id));
     const objectIds = ids.map(id => new mongoose.Types.ObjectId(id));
     const latestPerJob = await Invoice.aggregate([
       { $match: { job: { $in: objectIds } } },
@@ -1351,6 +1352,7 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
             
             <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
               <p style="margin: 5px 0; font-size: 16px;"><strong>Invoice Amount:</strong> $${principal.toFixed(2)}</p>
+              ${tbsInvoiceNumber ? `<p style="margin: 5px 0; font-size: 14px; color: #666;"><strong>Invoice Number:</strong> ${tbsInvoiceNumber}</p>` : ''}
               <p style="margin: 5px 0;"><strong>Company:</strong> ${plan.company}</p>
               <p style="margin: 5px 0;"><strong>Project:</strong> ${plan.project || 'N/A'}</p>
               <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'N/A'}</p>
@@ -1452,6 +1454,7 @@ router.post('/update-plan', upload.array('attachments', 10), async (req, res) =>
             
             <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
               <p style="margin: 5px 0; font-size: 16px;"><strong>Updated Total:</strong> $${principal.toFixed(2)}</p>
+              ${tbsInvoiceNumber ? `<p style="margin: 5px 0; font-size: 14px; color: #666;"><strong>Invoice Number:</strong> ${tbsInvoiceNumber}</p>` : ''}
               <p style="margin: 5px 0;"><strong>Company:</strong> ${plan.company}</p>
               <p style="margin: 5px 0;"><strong>Project:</strong> ${plan.project || 'N/A'}</p>
               <p style="margin: 5px 0;"><strong>Due Date:</strong> ${invoiceData?.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString() : 'Same as original'}</p>
@@ -1546,12 +1549,12 @@ router.post('/mark-plan-paid', async (req, res) => {
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
                 <p style="margin: 5px 0; font-size: 16px;"><strong>Amount Paid:</strong> $${amount.toFixed(2)}</p>
                 <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentMethod === 'card' ? 'Credit/Debit Card' : 'Check'}</p>
-                ${paymentMethod === 'card' && cardType ? `<p style="margin: 5px 0;"><strong>Card Type:</strong> ${cardType}</p>` : ''}
-                ${paymentMethod === 'card' && cardLast4 ? `<p style="margin: 5px 0;"><strong>Card Ending:</strong> ****${cardLast4}</p>` : ''}
-                ${paymentMethod === 'check' && checkNumber ? `<p style="margin: 5px 0;"><strong>Check Number:</strong> ${checkNumber}</p>` : ''}
+                ${paymentMethod === 'card' && cardType ? `<p style="margin: 5px 0;"><strong>Card Type:</strong> ${String(cardType).replace(/[<>&"']/g, (c) => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]))}</p>` : ''}
+                ${paymentMethod === 'card' && cardLast4 ? `<p style="margin: 5px 0;"><strong>Card Ending:</strong> ****${String(cardLast4).replace(/[<>&"']/g, (c) => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]))}</p>` : ''}
+                ${paymentMethod === 'check' && checkNumber ? `<p style="margin: 5px 0;"><strong>Check Number:</strong> ${String(checkNumber).replace(/[<>&"']/g, (c) => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]))}</p>` : ''}
                 <p style="margin: 5px 0;"><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</p>
-                <p style="margin: 5px 0;"><strong>Company:</strong> ${plan?.company || 'N/A'}</p>
-                <p style="margin: 5px 0;"><strong>Project:</strong> ${plan?.project || 'N/A'}</p>
+                <p style="margin: 5px 0;"><strong>Company:</strong> ${String(plan?.company || 'N/A').replace(/[<>&"']/g, (c) => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]))}</p>
+                <p style="margin: 5px 0;"><strong>Project:</strong> ${String(plan?.project || 'N/A').replace(/[<>&"']/g, (c) => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]))}</p>
               </div>
               
               <p style="text-align: center; font-size: 16px; margin: 30px 0;">Thank you for your payment!</p>
@@ -1624,7 +1627,8 @@ router.get('/plan-invoice-status', async (req, res) => {
     const ids = String(req.query.planIds || '')
       .split(',')
       .map(s => s.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter(id => mongoose.Types.ObjectId.isValid(id));
     
     if (!ids.length) {
       return res.json({});
@@ -1705,8 +1709,9 @@ router.get('/receipt/:workOrderId/pdf', async (req, res) => {
       return res.status(500).json({ error: 'Failed to generate receipt PDF' });
     }
     
-    const safeClient = (workOrder.basic?.client || 'client').replace(/\s+/g, '_');
-    const filename = `receipt_${safeClient}_${workOrder.basic?.project || 'project'}.pdf`;
+    const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-zA-Z0-9]/g, '_');
+    const safeProject = (workOrder.basic?.project || 'project').replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `receipt_${safeClient}_${safeProject}.pdf`;
     
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
