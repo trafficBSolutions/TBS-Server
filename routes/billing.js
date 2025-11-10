@@ -1050,6 +1050,7 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
                 <p style="margin: 5px 0; font-size: 16px;"><strong>Invoice Amount:</strong> $${Number(finalInvoiceTotal).toFixed(2)}</p>
+                ${tbsInvoiceNumber ? `<p style="margin: 5px 0; font-size: 14px; color: #666;"><strong>Invoice Number:</strong> ${tbsInvoiceNumber}</p>` : ''}
                 <p style="margin: 5px 0;"><strong>Work Order Date:</strong> ${workOrder.basic?.dateOfJob}</p>
                 <p style="margin: 5px 0;"><strong>Project:</strong> ${workOrder.basic?.project}</p>
                 <p style="margin: 5px 0;"><strong>Address:</strong> ${workOrder.basic?.address}, ${workOrder.basic?.city}, ${workOrder.basic?.state} ${workOrder.basic?.zip}</p>
