@@ -170,49 +170,40 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
           });
         }
         
-        // Create jobs only if no additional flaggers
-        const createdJobs = [];
-        for (const dateObj of scheduledDates) {
-          const newUser = await ControlUser.create({
-              name,
-              email,
-              phone,
-              company,
-              coordinator,
-              siteContact,
-              site,
-              time,
-              project,
-              emergency: emergency || false,
-              flagger,
-              additionalFlaggers: Boolean(additionalFlaggers),
-              additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
-              equipment,
-              terms,
-              address,
-              city,
-              state,
-              zip,
-              message,
-              jobDates: [
-                {
-                  date: dateObj,
-                  cancelled: false,
-                  cancelledAt: null
-                }
-              ]
-            });
-          createdJobs.push(newUser);
-        }
+        // Create ONE job with multiple dates
+        const newUser = await ControlUser.create({
+            name,
+            email,
+            phone,
+            company,
+            coordinator,
+            siteContact,
+            site,
+            time,
+            project,
+            emergency: emergency || false,
+            flagger,
+            additionalFlaggers: Boolean(additionalFlaggers),
+            additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
+            equipment,
+            terms,
+            address,
+            city,
+            state,
+            zip,
+            message,
+            jobDates: scheduledDates.map(dateObj => ({
+              date: dateObj,
+              cancelled: false,
+              cancelledAt: null
+            }))
+          });
         
-        const cancelLinks = createdJobs
-          .map(job => {
-            return job.jobDates.map(jobDateObj => {
-              const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
-              return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${job._id}">${dateString} – Cancel this job</a></li>`;
-            }).join('');
-          })
-          .join('');
+        const cancelLinks = newUser.jobDates.map(jobDateObj => {
+          const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
+          const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
+          return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">${dateString} – Cancel this date</a></li>`;
+        }).join('');
         
         // Compose regular email options
         const mailOptions = {
@@ -237,7 +228,7 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
                   <p>Hi <strong>${name}</strong>,</p>
                   Your job has been scheduled on the following date(s):<br>
                         <ul>
-                            ${scheduledDates.map(d => `<li>${d.toLocaleDateString('en-US')}</li>`).join('')}
+                            ${newUser.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}
                     </ul>
                   If you have any questions or concerns regarding your job, please call (706) 263-0175.</p>
           
@@ -293,7 +284,7 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
         const response = {
             message: 'Traffic Control Job submitted successfully',
             scheduledDates: scheduledDates.map(d => d.toISOString().split('T')[0]),
-            createdJobs
+            createdJob: newUser
         };
         res.status(201).json(response);
 
