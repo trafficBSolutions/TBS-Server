@@ -144,6 +144,136 @@ transporter.sendMail(mailOptions, (err, info) => {
   }
 });
 
+// 🔄 Reschedule a job date
+router.patch('/reschedule-job/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { oldDate, newDate } = req.body;
+
+    if (!oldDate || !newDate) {
+      return res.status(400).json({ error: 'Both old and new dates are required' });
+    }
+
+    const job = await ControlUser.findById(id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+
+    // Parse dates
+    const oldDateObj = new Date(oldDate);
+    const newDateObj = new Date(newDate);
+
+    // Find the old date in jobDates array
+    const dateIndex = job.jobDates.findIndex(d =>
+      new Date(d.date).toDateString() === oldDateObj.toDateString()
+    );
+
+    if (dateIndex === -1) {
+      return res.status(404).json({ error: 'Original job date not found' });
+    }
+
+    // Check if the new date is already full
+    const [year, month, day] = [newDateObj.getFullYear(), newDateObj.getMonth(), newDateObj.getDate()];
+    const estMidnight = new Date(Date.UTC(year, month, day));
+    const startOfDay = new Date(estMidnight);
+    const endOfDay = new Date(estMidnight);
+    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+    const pipeline = [
+      { $match: { cancelled: { $ne: true } } },
+      { $unwind: "$jobDates" },
+      {
+        $match: {
+          "jobDates.date": { $gte: startOfDay, $lt: endOfDay },
+          "jobDates.cancelled": { $ne: true }
+        }
+      },
+      { $count: "count" }
+    ];
+
+    const result = await ControlUser.aggregate(pipeline);
+    const jobCount = result[0]?.count || 0;
+
+    if (jobCount >= 10) {
+      return res.status(400).json({ error: 'The new date is already fully booked. Please choose another date.' });
+    }
+
+    // Update the date
+    job.jobDates[dateIndex].date = estMidnight;
+    job.jobDates[dateIndex].rescheduled = true;
+    job.jobDates[dateIndex].rescheduledAt = new Date();
+    job.jobDates[dateIndex].originalDate = oldDateObj;
+
+    await job.save();
+
+    const oldFormatted = oldDateObj.toLocaleDateString('en-US');
+    const newFormatted = newDateObj.toLocaleDateString('en-US');
+
+    // Send reschedule confirmation email
+    const rescheduleEmail = {
+      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+      to: job.email,
+      bcc: [
+        { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+        { name: 'Carson Speer', address: userEmail },
+        { name: 'Bryson Davis', address: mainEmail },
+        { name: 'Jonkell Tolbert', address: foreemail },
+        { name: 'Salvador Gonzalez', address: formanmail },
+        { name: 'Damien Diskey', address: damienemail }
+      ],
+      subject: job.additionalFlaggers ? 'TRAFFIC CONTROL JOB WITH ADDITIONAL FLAGGERS RESCHEDULED' : 'TRAFFIC CONTROL JOB RESCHEDULED',
+      html: `
+        <h2>Job Date Rescheduled${job.additionalFlaggers ? ' - With Additional Flaggers' : ''}</h2>
+        <p>Dear ${job.name},</p>
+        <p>Your traffic control job${job.additionalFlaggers ? ' with additional flaggers' : ''} has been successfully rescheduled:</p>
+        <ul>
+          <li><strong>Original Date:</strong> ${oldFormatted}</li>
+          <li><strong>New Date:</strong> ${newFormatted}</li>
+        </ul>
+
+        <h3>Job Details:</h3>
+        <p><strong>Project/Task Number:</strong> ${job.project}</p>
+        <p><strong>Company:</strong> ${job.company}</p>
+        <p><strong>Coordinator:</strong> ${job.coordinator}</p>
+        <p><strong>Phone:</strong> ${job.phone}</p>
+        <p><strong>Time:</strong> ${job.time}</p>
+        <p><strong>Flaggers:</strong> ${job.flagger}${job.additionalFlaggers ? ` + Additional: ${job.additionalFlaggerCount}` : ''}</p>
+        <p><strong>Equipment:</strong> ${job.equipment.join(', ')}</p>
+        <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
+        ${job.additionalFlaggers ? '<p><strong>Note:</strong> The additional flagger charges still apply to this rescheduled date.</p>' : ''}
+
+        <h3>All Scheduled Dates:</h3>
+        <ul>
+          ${job.jobDates.map(jobDateObj => {
+            const dateStr = new Date(jobDateObj.date).toLocaleDateString('en-US');
+            const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
+            const cancelDateLink = `https://www.trafficbarriersolutions.com/cancel-job/${job._id}?date=${isoStr}`;
+            return `<li>${dateStr} – <a href="${cancelDateLink}">Cancel this date</a></li>`;
+          }).join('')}
+        </ul>
+
+        <p>If this was a mistake or you need to make changes, please <a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">update your job</a> or call (706) 263-0175.</p>
+        <p>— TBS Admin Team</p>
+      `
+    };
+
+    transporter.sendMail(rescheduleEmail, (err, info) => {
+      if (err) {
+        console.error('Error sending reschedule email:', err);
+      } else {
+        console.log('Reschedule email sent:', info.response);
+      }
+    });
+
+    res.status(200).json({ 
+      message: `Job rescheduled from ${oldFormatted} to ${newFormatted}`,
+      job 
+    });
+
+  } catch (err) {
+    console.error('Error rescheduling job:', err);
+    res.status(500).json({ error: 'Failed to reschedule job' });
+  }
+});
+
 // 🗑️ Cancel a job by ID
 router.delete('/cancel-job/:id', async (req, res) => {
   try {
