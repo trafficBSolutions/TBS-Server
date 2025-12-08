@@ -202,7 +202,7 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
         const cancelLinks = newUser.jobDates.map(jobDateObj => {
           const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
           const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
-          return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">${dateString} – Cancel this date</a></li>`;
+          return `<li>${dateString} – <a href="https://www.trafficbarriersolutions.com/reschedule-job/${newUser._id}?date=${isoStr}">Reschedule</a> | <a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">Cancel</a></li>`;
         }).join('');
         
         // Compose regular email options
@@ -252,7 +252,8 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
                   <h3>Additional Info:</h3>
                   <p>Terms & Conditions: ${terms}</p>
                   <p>${message}</p>
-                  <h3>If you need to cancel a date, use the link for that specific day:</h3>
+                  <h3>Manage Your Job Dates:</h3>
+                  <p>You can reschedule or cancel individual dates using the links below:</p>
                         <ul>${cancelLinks}</ul>
                     <p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.
                   <hr style="margin: 20px 0;">
@@ -379,7 +380,7 @@ const confirmAdditionalFlagger = async (req, res) => {
       const cancelLinks = newUser.jobDates.map(jobDateObj => {
         const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
         const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
-        return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">${dateString} – Cancel this date</a></li>`;
+        return `<li>${dateString} – <a href="https://www.trafficbarriersolutions.com/reschedule-job/${newUser._id}?date=${isoStr}">Reschedule</a> | <a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">Cancel</a></li>`;
       }).join('');
       
       const finalMailOptions = {
@@ -427,7 +428,8 @@ const confirmAdditionalFlagger = async (req, res) => {
               <p>Terms & Conditions: ${newUser.terms}</p>
               <p>${newUser.message}</p>
               
-              <h3>Cancel Links (if needed):</h3>
+              <h3>Manage Your Job Dates:</h3>
+              <p>You can reschedule or cancel individual dates:</p>
               <ul>${cancelLinks}</ul>
 <p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.
                   <hr style="margin: 20px 0;">
@@ -480,7 +482,7 @@ const confirmAdditionalFlagger = async (req, res) => {
       const cancelLinks = newUser.jobDates.map(jobDateObj => {
         const dateString = new Date(jobDateObj.date).toLocaleDateString('en-US');
         const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
-        return `<li><a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">${dateString} – Cancel this date</a></li>`;
+        return `<li>${dateString} – <a href="https://www.trafficbarriersolutions.com/reschedule-job/${newUser._id}?date=${isoStr}">Reschedule</a> | <a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">Cancel</a></li>`;
       }).join('');
       
       const originalMailOptions = {
@@ -527,7 +529,8 @@ const confirmAdditionalFlagger = async (req, res) => {
               <h3>Additional Info:</h3>
               <p>Terms & Conditions: ${newUser.terms}</p>
               <p>${newUser.message}</p>
-              <h3>If you need to cancel a date, use the link for that specific day:</h3>
+              <h3>Manage Your Job Dates:</h3>
+              <p>You can reschedule or cancel individual dates:</p>
               <ul>${cancelLinks}</ul>
               <p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.
               <hr style="margin: 20px 0;">
