@@ -221,38 +221,54 @@ router.patch('/reschedule-job/:id', async (req, res) => {
       ],
       subject: job.additionalFlaggers ? 'TRAFFIC CONTROL JOB WITH ADDITIONAL FLAGGERS RESCHEDULED' : 'TRAFFIC CONTROL JOB RESCHEDULED',
       html: `
-        <h2>Job Date Rescheduled${job.additionalFlaggers ? ' - With Additional Flaggers' : ''}</h2>
-        <p>Dear ${job.name},</p>
-        <p>Your traffic control job${job.additionalFlaggers ? ' with additional flaggers' : ''} has been successfully rescheduled:</p>
-        <ul>
-          <li><strong>Original Date:</strong> ${oldFormatted}</li>
-          <li><strong>New Date:</strong> ${newFormatted}</li>
-        </ul>
+        <html>
+          <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+            <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+              <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB RESCHEDULED</h1>
+              
+              <p>Hi <strong>${job.name}</strong>,</p>
+              <p>Your traffic control job${job.additionalFlaggers ? ' with additional flaggers' : ''} has been successfully rescheduled:</p>
+              <ul>
+                <li><strong>Original Date:</strong> ${oldFormatted}</li>
+                <li><strong>New Date:</strong> ${newFormatted}</li>
+              </ul>
 
-        <h3>Job Details:</h3>
-        <p><strong>Project/Task Number:</strong> ${job.project}</p>
-        <p><strong>Company:</strong> ${job.company}</p>
-        <p><strong>Coordinator:</strong> ${job.coordinator}</p>
-        <p><strong>Phone:</strong> ${job.phone}</p>
-        <p><strong>Time:</strong> ${job.time}</p>
-        <p><strong>Flaggers:</strong> ${job.flagger}${job.additionalFlaggers ? ` + Additional: ${job.additionalFlaggerCount}` : ''}</p>
-        <p><strong>Equipment:</strong> ${job.equipment.join(', ')}</p>
-        <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
-        ${job.additionalFlaggers ? '<p><strong>Note:</strong> The additional flagger charges still apply to this rescheduled date.</p>' : ''}
+              <h3>Summary:</h3>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                  <li><strong>Company:</strong> ${job.company}</li>
+                  <li><strong>Coordinator:</strong> ${job.coordinator}</li>
+                  <li><strong>Coordinator Phone:</strong> ${job.phone}</li>
+                  <li><strong>On-Site Contact:</strong> ${job.siteContact}</li>
+                  <li><strong>On-Site Phone:</strong> ${job.site}</li>
+                </ul>
+                <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
+                  <li><strong>Time:</strong> ${job.time}</li>
+                  <li><strong>Project/Task:</strong> ${job.project}</li>
+                  <li><strong>Flaggers:</strong> ${job.flagger}${job.additionalFlaggers ? ` + Additional: ${job.additionalFlaggerCount}` : ''}</li>
+                  <li><strong>Equipment:</strong> ${job.equipment.join(', ')}</li>
+                  <li><strong>Job Site Address:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</li>
+                </ul>
+              </div>
+              ${job.additionalFlaggers ? '<p><strong>Note:</strong> The additional flagger charges still apply to this rescheduled date.</p>' : ''}
 
-        <h3>All Scheduled Dates:</h3>
-        <ul>
-          ${job.jobDates.map(jobDateObj => {
-            const dateStr = new Date(jobDateObj.date).toLocaleDateString('en-US');
-            const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
-            const rescheduleLink = `https://www.trafficbarriersolutions.com/reschedule-job/${job._id}?date=${isoStr}`;
-            const cancelDateLink = `https://www.trafficbarriersolutions.com/cancel-job/${job._id}?date=${isoStr}`;
-            return `<li>${dateStr} – <a href="${rescheduleLink}">Reschedule</a> | <a href="${cancelDateLink}">Cancel</a></li>`;
-          }).join('')}
-        </ul>
-
-        <p>If this was a mistake, use the reschedule links above or call (706) 263-0175.</p>
-        <p>— TBS Admin Team</p>
+              <h3>Manage Your Job Dates:</h3>
+              <p>You can reschedule or cancel individual dates using the links below:</p>
+              <ul>
+                ${job.jobDates.map(jobDateObj => {
+                  const dateStr = new Date(jobDateObj.date).toLocaleDateString('en-US');
+                  const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
+                  const rescheduleLink = `https://www.trafficbarriersolutions.com/reschedule-job/${job._id}?date=${isoStr}`;
+                  const cancelDateLink = `https://www.trafficbarriersolutions.com/cancel-job/${job._id}?date=${isoStr}`;
+                  return `<li>${dateStr} – <a href="${rescheduleLink}">Reschedule</a> | <a href="${cancelDateLink}">Cancel</a></li>`;
+                }).join('')}
+              </ul>
+              <p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.</p>
+              <hr style="margin: 20px 0;">
+              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+            </div>
+          </body>
+        </html>
       `
     };
 
