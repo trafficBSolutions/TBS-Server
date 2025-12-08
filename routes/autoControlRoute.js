@@ -245,10 +245,13 @@ router.patch('/reschedule-job/:id', async (req, res) => {
           ${job.jobDates.map(jobDateObj => {
             const dateStr = new Date(jobDateObj.date).toLocaleDateString('en-US');
             const isoStr = new Date(jobDateObj.date).toISOString().split('T')[0];
+            const rescheduleLink = `https://www.trafficbarriersolutions.com/reschedule-job/${job._id}?date=${isoStr}`;
             const cancelDateLink = `https://www.trafficbarriersolutions.com/cancel-job/${job._id}?date=${isoStr}`;
-            return `<li>${dateStr} – <a href="${cancelDateLink}">Cancel this date</a></li>`;
+            return `<li>${dateStr} – <a href="${rescheduleLink}">Reschedule</a> | <a href="${cancelDateLink}">Cancel</a></li>`;
           }).join('')}
         </ul>
+
+        <p>If this was a mistake, use the reschedule links above or call (706) 263-0175.</p>
         <p>— TBS Admin Team</p>
       `
     };
