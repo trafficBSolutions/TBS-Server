@@ -249,8 +249,6 @@ router.patch('/reschedule-job/:id', async (req, res) => {
             return `<li>${dateStr} – <a href="${cancelDateLink}">Cancel this date</a></li>`;
           }).join('')}
         </ul>
-
-        <p>If this was a mistake or you need to make changes, please <a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">update your job</a> or call (706) 263-0175.</p>
         <p>— TBS Admin Team</p>
       `
     };
