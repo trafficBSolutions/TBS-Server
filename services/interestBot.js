@@ -63,6 +63,7 @@ async function sendInterestEmail(inv) {
         </h1>
 
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="margin: 6px 0; font-size: 18px;"><strong>Invoice Number:</strong> ${invNo}</p>
           <p style="margin: 6px 0; font-size: 16px;"><strong>Amount Due:</strong> $${amount.toFixed(2)}</p>
         </div>
 
@@ -81,6 +82,7 @@ async function sendInterestEmail(inv) {
 
   const text =
 `Invoice Reminder – ${inv.company}
+Invoice Number: ${invNo}
 Amount Due: $${amount.toFixed(2)}
 
 Please call Leah Davis for payment: (706) 913-3317`;
