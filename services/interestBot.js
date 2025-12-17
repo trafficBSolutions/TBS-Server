@@ -68,7 +68,7 @@ async function sendInterestEmail(inv) {
   inv.invoiceNumber ||
   inv.invoiceData?.invoiceNumber ||
   // final fallback: try the job’s saved invoice snapshot
-  (inv.jobInvoiceNumber /* set below if you like */) ||
+
   String(inv._id).slice(-6);
   const amount = Number(
     inv.invoiceData?.sheetTotal ??
