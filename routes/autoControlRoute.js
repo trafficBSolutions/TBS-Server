@@ -302,13 +302,36 @@ router.delete('/cancel-job/:id', async (req, res) => {
 
     // If no ?date provided, cancel the whole job (existing logic)
 if (!date) {
-  job.cancelled = true;
-  job.cancelledAt = new Date();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  // Only cancel future dates, not past/completed ones
+  let cancelledAnyDate = false;
+  job.jobDates.forEach(jobDate => {
+    const jobDateOnly = new Date(jobDate.date.getFullYear(), jobDate.date.getMonth(), jobDate.date.getDate());
+    if (jobDateOnly >= today && !jobDate.cancelled) {
+      jobDate.cancelled = true;
+      jobDate.cancelledAt = new Date();
+      cancelledAnyDate = true;
+    }
+  });
+  
+  if (!cancelledAnyDate) {
+    return res.status(400).json({ error: 'No future dates available to cancel. Past or completed jobs cannot be cancelled.' });
+  }
+  
+  // Check if all dates are now cancelled
+  const allCancelled = job.jobDates.every(d => d.cancelled);
+  job.cancelled = allCancelled;
+  job.cancelledAt = allCancelled ? new Date() : null;
+  
   await job.save();
 
-  const formattedDates = job.jobDates.map(d =>
-    new Date(d.date).toLocaleDateString('en-US')
-  ).join(', ');
+  const cancelledDates = job.jobDates
+    .filter(d => d.cancelled && d.cancelledAt && d.cancelledAt.toDateString() === new Date().toDateString())
+    .map(d => new Date(d.date).toLocaleDateString('en-US'));
+  
+  const formattedDates = cancelledDates.join(', ');
 
   const fullCancelEmail = {
     from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
@@ -327,8 +350,9 @@ if (!date) {
     html: `
       <h2>Traffic Control Job Cancelled${job.additionalFlaggers ? ' - With Additional Flaggers' : ''}</h2>
       <p>Dear ${job.name},</p>
-      <p>Your traffic control job${job.additionalFlaggers ? ' with additional flaggers' : ''} scheduled for the following date(s) has been cancelled:</p>
-      <ul>${job.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}</ul>
+      <p>Your traffic control job${job.additionalFlaggers ? ' with additional flaggers' : ''} scheduled for the following future date(s) has been cancelled:</p>
+      <ul>${cancelledDates.map(d => `<li>${d}</li>`).join('')}</ul>
+      ${job.jobDates.some(d => !d.cancelled) ? '<p><strong>Note:</strong> Past or completed job dates were not affected by this cancellation.</p>' : ''}
       <p><strong>Project/Task Number:</strong> ${job.project}</p>
       <p><strong>Coordinator:</strong> ${job.coordinator}</p>
       <p><strong>Company:</strong> ${job.company}</p>
@@ -359,6 +383,19 @@ const dateIndex = job.jobDates.findIndex(d =>
 
 if (dateIndex === -1) {
   return res.status(404).json({ error: 'Job date not found in record' });
+}
+
+// Check if the date is in the past
+const now = new Date();
+const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+const jobDateOnly = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+
+if (jobDateOnly < today) {
+  return res.status(400).json({ error: 'Cannot cancel past or completed job dates.' });
+}
+
+if (job.jobDates[dateIndex].cancelled) {
+  return res.status(400).json({ error: 'This job date is already cancelled.' });
 }
 
 // Cancel just the one date
