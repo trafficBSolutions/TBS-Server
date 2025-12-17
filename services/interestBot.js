@@ -12,14 +12,40 @@ async function buildAttachment(inv) {
    // fallback path for older invoices that didn’t save inv.job
    job = await WorkOrder.findOne({ invoiceId: inv._id }).lean().catch(() => null);
  }
-  let pdfBuffer;
-  pdfBuffer = await generateInvoicePdfFromInvoice(inv, job || {});
-
-  return {
-    filename: `invoice_${inv._id}.pdf`,
-    content: pdfBuffer,
-    contentType: 'application/pdf'
-  };
+  const attachments = [];
+  
+  // Add invoice PDF
+  try {
+    const invoicePdfBuffer = await generateInvoicePdfFromInvoice(inv, job || {});
+    if (invoicePdfBuffer) {
+      attachments.push({
+        filename: `invoice_${inv._id}.pdf`,
+        content: invoicePdfBuffer,
+        contentType: 'application/pdf'
+      });
+    }
+  } catch (err) {
+    console.error(`[buildAttachment] Invoice PDF failed for ${inv._id}:`, err);
+  }
+  
+  // Add work order PDF if job exists
+  if (job) {
+    try {
+      const { generateWorkOrderPdf } = require('../services/workOrderPDF');
+      const workOrderPdfBuffer = await generateWorkOrderPdf(job);
+      if (workOrderPdfBuffer) {
+        attachments.push({
+          filename: `work_order_${job._id}.pdf`,
+          content: workOrderPdfBuffer,
+          contentType: 'application/pdf'
+        });
+      }
+    } catch (err) {
+      console.error(`[buildAttachment] Work order PDF failed for ${job?._id}:`, err);
+    }
+  }
+  
+  return attachments;
 }
 
 async function sendInterestEmail(inv) {
@@ -85,12 +111,12 @@ Amount Due: $${amount.toFixed(2)}
 
 Please call Leah Davis for payment: (706) 913-3317`;
 
-  const attachment = await buildAttachment(inv).catch(err => {
+  const attachments = await buildAttachment(inv).catch(err => {
     console.error(`[sendInterestEmail] buildAttachment failed for ${inv._id}:`, err);
-    return null;
+    return [];
   });
   
-  console.log(`[sendInterestEmail] Attachment status for ${inv._id}: ${attachment ? 'SUCCESS' : 'FAILED'}`);
+  console.log(`[sendInterestEmail] Attachments for ${inv._id}: ${attachments.length} files`);
 
   const mailOptions = {
     from: 'trafficandbarriersolutions.ap@gmail.com',
@@ -98,10 +124,10 @@ Please call Leah Davis for payment: (706) 913-3317`;
     subject,
     text,
     html,
-    attachments: attachment ? [attachment] : []
+    attachments: attachments || []
   };
   
-  console.log(`[sendInterestEmail] Sending email to ${toEmail} with ${attachment ? 'PDF attachment' : 'NO attachment'}`);
+  console.log(`[sendInterestEmail] Sending email to ${toEmail} with ${attachments.length} attachment(s)`);
   await transporter7.sendMail(mailOptions);
   console.log(`[sendInterestEmail] Email sent successfully to ${toEmail}`);
 }
