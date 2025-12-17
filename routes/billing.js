@@ -1002,6 +1002,7 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
       dueDate: invoiceData?.dueDate ? new Date(invoiceData.dueDate) : undefined, // <-- add
          invoiceData,                                     // <-- persist the full snapshot
    invoiceNumber: invoiceData?.invoiceNumber ||     // <-- persist a stable invoice #
+                  tbsInvoiceNumber ||
                   String(workOrder?._id || '').slice(-6),
    workRequestNumber1: invoiceData?.workRequestNumber1,
    workRequestNumber2: invoiceData?.workRequestNumber2,
