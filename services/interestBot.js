@@ -44,14 +44,12 @@ async function sendInterestEmail(inv) {
   // final fallback: try the job’s saved invoice snapshot
   (inv.jobInvoiceNumber /* set below if you like */) ||
   String(inv._id).slice(-6);
-  const isOverdue = !!inv.dueDate && (new Date() > new Date(inv.dueDate));
-  const reminderType = isOverdue ? 'OVERDUE NOTICE' : 'PAYMENT REMINDER';
   const amount = Number(
     inv.invoiceData?.sheetTotal ??
     inv.principal ??
     0
   );
-  const subject = `${reminderType} – ${inv.company} – INV ${invNo} – $${amount.toFixed(2)}`;
+  const subject = `INVOICE REMINDER – ${inv.company} – INV ${invNo} – $${amount.toFixed(2)}`;
 
   // Styled body similar to your billing.js email, but with the three numbers + Leah message
   const html = `
