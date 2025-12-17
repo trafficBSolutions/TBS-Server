@@ -719,7 +719,7 @@ router.post('/process-late-fees', async (req, res) => {
                 <html>
                   <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
                     <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-                      <h1 style="text-align: center; background-color: #dc3545; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">OVERDUE NOTICE - ${workOrder.basic?.client}</h1>
+                      <h1 style="text-align: center; background-color: #dc3545; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">INVOICE REMINDER - ${workOrder.basic?.client}</h1>
                       
                       <div style="background-color: #f8d7da; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
                         <p style="margin: 5px 0; font-size: 16px;"><strong>Amount Due:</strong> $${originalTotal.toFixed(2)}</p>
@@ -741,7 +741,7 @@ router.post('/process-late-fees', async (req, res) => {
               const mailOptions = {
                 from: 'trafficandbarriersolutions.ap@gmail.com',
                 to: clientEmail,
-                subject: `OVERDUE NOTICE – ${workOrder.basic?.client} – $${originalTotal.toFixed(2)}`,
+                subject: `INVOICE REMINDER – ${workOrder.basic?.client} – $${originalTotal.toFixed(2)}`,
                 html: emailHtml
               };
               
