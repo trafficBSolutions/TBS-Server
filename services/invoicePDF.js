@@ -348,7 +348,6 @@ async function generateInvoicePdfFromInvoice(inv, job = {}) {
 const invoiceNo =
   inv.invoiceNumber ||
   inv.invoiceData?.invoiceNumber ||
-  job?.invoiceData?.invoiceNumber ||
   String(inv._id).slice(-6);
   // 4) Billing address logic (same as you had, but preserved)
   const BILLING_ADDRESSES = {
