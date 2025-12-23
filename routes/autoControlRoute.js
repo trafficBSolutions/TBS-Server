@@ -59,6 +59,27 @@ router.patch('/manage-job/:id', async (req, res) => {
     const job = await ControlUser.findById(id);
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
+    // Check if trying to update past job dates
+    if (updatedJob.jobDates) {
+      // Get current date in Eastern Time
+      const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+      const todayET = new Date(nowET);
+      todayET.setHours(0, 0, 0, 0);
+      
+      const hasPastDates = updatedJob.jobDates.some(jobDate => {
+        const jobDateET = new Date(jobDate.date);
+        jobDateET.setHours(0, 0, 0, 0);
+        return jobDateET < todayET;
+      });
+      
+      if (hasPastDates) {
+        return res.status(400).json({ 
+          error: 'Cannot modify past job dates. Jobs that have already taken place cannot be updated. Please schedule a new job for future dates.',
+          suggestion: 'To schedule a new job, please visit our website or call Carson Speer (706) 581-4465 for scheduling assistance.'
+        });
+      }
+    }
+
     // ✅ Safely update job fields
     Object.keys(updatedJob).forEach(key => {
       if (key !== '_id') {
@@ -124,7 +145,7 @@ html: `
     <li><a href="${cancelLink}">Cancel Entire Job</a></li>
   </ul>
 
-  <p>If anything looks incorrect, please call (706) 263-0175 immediately.</p>
+  <p>If anything looks incorrect, please call Carson Speer (706) 581-4465 immediately.</p>
   <p>— TBS Admin Team</p>
 `
 };
@@ -161,6 +182,22 @@ router.patch('/reschedule-job/:id', async (req, res) => {
     const oldDateObj = new Date(oldDate);
     const newDateObj = new Date(newDate);
 
+    // Check if the old date is in the past
+    // Get current date in Eastern Time
+    const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+    const todayET = new Date(nowET);
+    todayET.setHours(0, 0, 0, 0);
+    
+    const oldDateET = new Date(oldDateObj);
+    oldDateET.setHours(0, 0, 0, 0);
+
+    if (oldDateET < todayET) {
+      return res.status(400).json({ 
+        error: 'Cannot reschedule past job dates. This job has already taken place. Please schedule a new job instead.',
+        suggestion: 'To schedule a new job, please visit our website or call Carson Speer (706) 581-4465.'
+      });
+    }
+
     // Find the old date in jobDates array
     const dateIndex = job.jobDates.findIndex(d =>
       new Date(d.date).toDateString() === oldDateObj.toDateString()
@@ -168,6 +205,11 @@ router.patch('/reschedule-job/:id', async (req, res) => {
 
     if (dateIndex === -1) {
       return res.status(404).json({ error: 'Original job date not found' });
+    }
+
+    // Check if the job date is already cancelled
+    if (job.jobDates[dateIndex].cancelled) {
+      return res.status(400).json({ error: 'Cannot reschedule a cancelled job date.' });
     }
 
     // Check if the new date is already full
@@ -302,14 +344,17 @@ router.delete('/cancel-job/:id', async (req, res) => {
 
     // If no ?date provided, cancel the whole job (existing logic)
 if (!date) {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // Get current date in Eastern Time
+  const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+  const todayET = new Date(nowET);
+  todayET.setHours(0, 0, 0, 0);
   
   // Only cancel future dates, not past/completed ones
   let cancelledAnyDate = false;
   job.jobDates.forEach(jobDate => {
-    const jobDateOnly = new Date(jobDate.date.getFullYear(), jobDate.date.getMonth(), jobDate.date.getDate());
-    if (jobDateOnly >= today && !jobDate.cancelled) {
+    const jobDateET = new Date(jobDate.date);
+    jobDateET.setHours(0, 0, 0, 0);
+    if (jobDateET >= todayET && !jobDate.cancelled) {
       jobDate.cancelled = true;
       jobDate.cancelledAt = new Date();
       cancelledAnyDate = true;
@@ -386,11 +431,15 @@ if (dateIndex === -1) {
 }
 
 // Check if the date is in the past
-const now = new Date();
-const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-const jobDateOnly = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+// Get current date in Eastern Time
+const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+const todayET = new Date(nowET);
+todayET.setHours(0, 0, 0, 0);
 
-if (jobDateOnly < today) {
+const targetDateET = new Date(targetDate);
+targetDateET.setHours(0, 0, 0, 0);
+
+if (targetDateET < todayET) {
   return res.status(400).json({ error: 'Cannot cancel past or completed job dates.' });
 }
 
@@ -439,7 +488,7 @@ const formatted = new Date(job.jobDates[dateIndex].date).toLocaleDateString('en-
         <p><strong>Location:</strong> ${job.address}, ${job.city}, ${job.state} ${job.zip}</p>
         ${job.additionalFlaggers ? '<p><strong>Note:</strong> The additional flagger charges for this date have been cancelled.</p>' : ''}
 
-        <p>If this was a mistake, please <a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">update your job again</a> or call (706) 263-0175.</p>
+        <p>If this was a mistake, please <a href="https://www.trafficbarriersolutions.com/manage-job/${job._id}">update your job again</a> or call Carson Speer (706) 581-4465.</p>
         <p>— TBS Admin Team</p>
       `
     };
