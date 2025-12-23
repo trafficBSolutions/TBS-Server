@@ -9,7 +9,7 @@ async function buildAttachment(inv) {
    job = await WorkOrder.findById(inv.job).lean().catch(() => null);
  }
  if (!job) {
-   // fallback path for older invoices that didn’t save inv.job
+   // fallback path for older invoices that didn't save inv.job
    job = await WorkOrder.findOne({ invoiceId: inv._id }).lean().catch(() => null);
  }
   const attachments = [];
@@ -63,13 +63,28 @@ async function sendInterestEmail(inv) {
     return;
   }
 
-  // services/interestBot.js sendInterestEmail()
- const invNo =
-  inv.invoiceNumber ||
-  inv.invoiceData?.invoiceNumber ||
-  // final fallback: try the job’s saved invoice snapshot
-
-  String(inv._id).slice(-6);
+  // Generate proper invoice number
+  let invNo = inv.invoiceNumber || inv.invoiceData?.invoiceNumber;
+  
+  // If no invoice number exists, generate a sequential one
+  if (!invNo) {
+    // Get the creation date and create a sequential number
+    const createdAt = inv.createdAt || new Date();
+    const year = createdAt.getFullYear();
+    const month = String(createdAt.getMonth() + 1).padStart(2, '0');
+    const day = String(createdAt.getDate()).padStart(2, '0');
+    
+    // Create invoice number in format: TBS-YYYYMMDD-XXX where XXX is based on ObjectId
+    const shortId = String(inv._id).slice(-3).toUpperCase();
+    invNo = `TBS-${year}${month}${day}-${shortId}`;
+    
+    // Save the generated invoice number back to the database
+    try {
+      await Invoice.updateOne({ _id: inv._id }, { $set: { invoiceNumber: invNo } });
+    } catch (err) {
+      console.error(`Failed to save invoice number for ${inv._id}:`, err);
+    }
+  }
   const amount = Number(
     inv.invoiceData?.sheetTotal ??
     inv.principal ??
