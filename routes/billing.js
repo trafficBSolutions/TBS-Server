@@ -15,6 +15,9 @@ const fs = require('fs');
 const path = require('path');
 const WorkOrder = require('../models/workorder');
 const { runInterestReminderCycle } = require('../services/interestBot');
+
+// Interest bot control - set to false to disable
+const INTEREST_BOT_ENABLED = false;
 const PlanUser = require('../models/planuser');
 async function getPreviousTotal(workOrderId) {
   const WorkOrder = require('../models/workorder');
@@ -85,6 +88,9 @@ router.post('/test/backdate-due', async (req, res) => {
 // Run the interest bot once (with optional "now")
 router.post('/test/run-interest-once', async (req, res) => {
   try {
+    if (!INTEREST_BOT_ENABLED) {
+      return res.json({ ok: false, message: 'Interest bot is disabled' });
+    }
     const { nowISO, force = false } = req.body || {};
     const now = nowISO ? new Date(nowISO) : new Date();
     await runInterestReminderCycle(now, { force });
