@@ -685,6 +685,7 @@ router.post('/create-test-overdue', async (req, res) => {
 });
 
 // Late fee processor (run this as a cron job)
+/*
 router.post('/process-late-fees', async (req, res) => {
   try {
     const WorkOrder = require('../models/workorder');
@@ -772,7 +773,7 @@ router.post('/process-late-fees', async (req, res) => {
     res.status(500).json({ message: 'Failed to process late fees', error: e.message });
   }
 });
-
+*/
 // Update existing invoice
 router.post('/update-invoice', upload.array('attachments', 10), async (req, res) => {
   try {
