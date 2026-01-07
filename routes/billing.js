@@ -14,7 +14,7 @@ const { generateReceiptPdf } = require('../services/receiptPDF');
 const fs = require('fs');
 const path = require('path');
 const WorkOrder = require('../models/workorder');
-const { runInterestReminderCycle } = require('../services/interestBot');
+// const { runInterestReminderCycle } = require('../services/interestBot');
 
 // Interest bot control - set to false to disable
 const INTEREST_BOT_ENABLED = false;
@@ -86,6 +86,7 @@ router.post('/test/backdate-due', async (req, res) => {
 });
 
 // Run the interest bot once (with optional "now")
+/*
 router.post('/test/run-interest-once', async (req, res) => {
   try {
     if (!INTEREST_BOT_ENABLED) {
@@ -99,7 +100,7 @@ router.post('/test/run-interest-once', async (req, res) => {
     res.status(500).json({ message: e.message });
   }
 });
-
+*/
 const os = require('os');
 // === Email threading + PDF helpers ===
 async function findInvoiceForWorkOrder(wo) {
