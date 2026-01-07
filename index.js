@@ -9,7 +9,6 @@ const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
 const billingRouter = require('./routes/billing');
-const cron = require('node-cron');
 const { runInterestReminderCycle } = require('./services/interestBot');
 const workOrdersRouter = require('./routes/autoOrderRoute');
 const employeeAuth = require('./routes/employeeAuth');
@@ -20,9 +19,7 @@ const app = express();
 app.use(helmet()); // Secure headers
 app.use(xss()); // Prevent XSS
 app.use(compression()); // GZIP compression
-cron.schedule('0 13 * * *', () => runInterestReminderCycle(), {
-  timezone: 'America/New_York'
-});
+
 // Limit repeated requests
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 mins
