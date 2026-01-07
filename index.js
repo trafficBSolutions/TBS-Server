@@ -9,7 +9,6 @@ const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
 const billingRouter = require('./routes/billing');
-const { runInterestReminderCycle } = require('./services/interestBot');
 const workOrdersRouter = require('./routes/autoOrderRoute');
 const employeeAuth = require('./routes/employeeAuth');
 // Create Express app
