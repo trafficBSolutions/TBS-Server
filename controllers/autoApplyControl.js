@@ -21,6 +21,7 @@ const submitApply = async (req, res) => {
       email,
       phone,
       position,
+      location,
       languages,
       skills,
       message,
@@ -41,7 +42,7 @@ console.log("Cover File:", coverFilename);
 
 
     // ✅ Validate required fields
-    if (!first || !last || !email || !phone || !position || !languages || !skills || !message) {
+    if (!first || !last || !email || !phone || !position || !location || !languages || !skills || !message) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -81,6 +82,7 @@ console.log("Cover File:", coverFilename);
       phone,
       education: formattedEducation,
       position,
+      location,
       background: formattedBackground,
       languages,
       skills,
@@ -94,7 +96,7 @@ console.log("Cover File:", coverFilename);
             const pdfPath = path.join(__dirname, `../files/${pdfFilename}`);
     
             await generatePDF({
-                first, last, email, phone, position, languages, skills, message,
+                first, last, email, phone, position, location, languages, skills, message,
                 education: formattedEducation,
                 background: formattedBackground,
                 workHistory: formattedWorkHistory
@@ -180,6 +182,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
       <p><strong>Name:</strong> ${first} ${last}</p>
       <p><strong>Email:</strong> ${email}</p>
       <p><strong>Phone:</strong> ${phone}</p>
+      <p><strong>Location:</strong> ${location}</p>
       <p><strong>Languages:</strong> ${languages}</p>
       <p><strong>Skills:</strong> ${skills}</p>
 
@@ -260,6 +263,7 @@ const generatePDF = (data, filePath) => {
       doc.text(`Email: ${data.email}`);
       doc.text(`Phone: ${data.phone}`);
       doc.text(`Position: ${data.position}`);
+      doc.text(`Location: ${data.location}`);
       doc.text(`Languages: ${data.languages}`);
       doc.text(`Skills: ${data.skills}`);
       doc.text(`Message: ${data.message}`).moveDown(2);
@@ -311,4 +315,3 @@ const generatePDF = (data, filePath) => {
   });
 };
 module.exports = { submitApply };
-
