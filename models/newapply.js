@@ -36,6 +36,7 @@ const applySchema = new mongoose.Schema({
   phone: { type: String, unique: true, required: true },
   education: [educationSchema], 
   position: { type: String, required: true },
+  location: { type: String, required: true },
   background: [backgroundSchema], 
   languages: { type: String, required: true },
   skills: { type: String, required: true },
