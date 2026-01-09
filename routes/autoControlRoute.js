@@ -182,7 +182,6 @@ router.patch('/reschedule-job/:id', async (req, res) => {
     const oldDateObj = new Date(oldDate);
     const newDateObj = new Date(newDate);
 
-    // Check if the old date is in the past
     // Get current date in Eastern Time
     const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
     const todayET = new Date(nowET);
@@ -191,6 +190,16 @@ router.patch('/reschedule-job/:id', async (req, res) => {
     const oldDateET = new Date(oldDateObj);
     oldDateET.setHours(0, 0, 0, 0);
 
+    // Check if trying to reschedule on the same day as the job
+    if (oldDateET.getTime() === todayET.getTime()) {
+      return res.status(400).json({ 
+        error: 'Cannot reschedule jobs on the day they are taking place. This job is scheduled for today and cannot be rescheduled.',
+        suggestion: 'To schedule a new job for future dates, please visit https://www.trafficbarriersolutions.com/trafficcontrol or call Carson Speer (706) 581-4465.',
+        redirectUrl: 'https://www.trafficbarriersolutions.com/trafficcontrol'
+      });
+    }
+
+    // Check if the old date is in the past
     if (oldDateET < todayET) {
       return res.status(400).json({ 
         error: 'Cannot reschedule past job dates. This job has already taken place. Please schedule a new job instead.',
