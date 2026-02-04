@@ -112,7 +112,8 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
           const confirmMailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
-            bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail }],
+            bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+                  { name: 'Carson Speer', address: userEmail }],
             subject: 'CONFIRM ADDITIONAL FLAGGER - TRAFFIC CONTROL JOB',
             html: `
             <html>
