@@ -388,6 +388,7 @@ const confirmAdditionalFlagger = async (req, res) => {
         to: userEmail,
         bcc: [
           { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
+            {name: 'Carson Speer', address: userEmail},
           { name: 'Bryson Davis', address: mainEmail },
           { name: 'Jonkell Tolbert', address: foreemail },
           { name: 'Salvador Gonzalez', address: foremanmail },
