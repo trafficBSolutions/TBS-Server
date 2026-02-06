@@ -11,6 +11,7 @@ const path = require('path');
 const billingRouter = require('./routes/billing');
 const workOrdersRouter = require('./routes/autoOrderRoute');
 const employeeAuth = require('./routes/employeeAuth');
+const employeeHandbook = require('./routes/employeeHandbook');
 // Create Express app
 const app = express();
 
@@ -63,6 +64,7 @@ app.use(require('./routes/payCard'));  // if using Stripe
 app.use('/', require('./routes/complaints'));
  app.use('/employee-complaint-form', complaintsRouter);
 app.use('/employee', employeeAuth);
+app.use('/', employeeHandbook);
 app.use('/tasks', require('./routes/taskRoute'));
 // ✅ Static file routes
 app.use('/forms', express.static(path.join(__dirname, 'forms')));
