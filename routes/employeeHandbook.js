@@ -21,7 +21,7 @@ router.post('/api/employee-handbook', async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: ['tbsolutions1999@gmail.com', 'tbsolutions4@gmail.com', 'tbsolutions3@gmail.com', 'tbsolutions9@gmail.com'],
+      to: ['tbsolutions9@gmail.com'],
       subject: 'Employee Handbook Acknowledgment',
       html: `
         <h2>Employee Handbook Acknowledgment</h2>
