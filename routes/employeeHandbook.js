@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const cors = require('cors');
-router.use(
-    cors({
-        credentials: true,
-        origin: 'https://www.trafficbarriersolutions.com'
-    })
-);
+const nodemailer = require('nodemailer');
+
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
 router.post('/api/employee-handbook', async (req, res) => {
   try {
@@ -18,14 +21,15 @@ router.post('/api/employee-handbook', async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: 'tbsolutions1999@gmail.com',
+      to: ['tbsolutions1999@gmail.com', 'tbsolutions4@gmail.com', 'tbsolutions3@gmail.com', 'tbsolutions9@gmail.com'],
       subject: 'Employee Handbook Acknowledgment',
       html: `
         <h2>Employee Handbook Acknowledgment</h2>
         <p><strong>Employee Name:</strong> ${firstName} ${lastName}</p>
-        <p><strong>Signature:</strong> ${signature}</p>
         <p><strong>Acknowledged:</strong> ${hasRead ? 'Yes' : 'No'}</p>
         <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+        <p><strong>Signature:</strong></p>
+        <img src="${signature}" alt="Employee Signature" style="border: 1px solid #ccc; padding: 10px;" />
       `
     };
 
