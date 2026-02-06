@@ -19,12 +19,15 @@ router.post('/api/employee-handbook', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
+    // Extract base64 data from signature
+    const base64Data = signature.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
     const mailOptions = {
       from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
       to: ['tbsolutions1999@gmail.com'],
       bcc: [
         { name: 'Traffic & Barrier Solutions, LLC', address: 'tbsolutions9@gmail.com' },
-
       ],
       subject: 'Employee Handbook Acknowledgment',
       html: `
@@ -44,7 +47,7 @@ router.post('/api/employee-handbook', async (req, res) => {
               
               <h3>Employee Signature:</h3>
               <div style="text-align: center; margin: 10px 0; padding: 10px; border: 1px solid #ddd; background: #f9f9f9;">
-                <img src="${signature}" alt="Employee Signature" style="max-width: 300px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;"/>
+                <img src="cid:signature" alt="Employee Signature" style="max-width: 300px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;"/>
               </div>
               
               <hr style="margin: 20px 0;">
@@ -52,7 +55,14 @@ router.post('/api/employee-handbook', async (req, res) => {
             </div>
           </body>
         </html>
-      `
+      `,
+      attachments: [
+        {
+          filename: `${firstName}_${lastName}_signature.png`,
+          content: buffer,
+          cid: 'signature'
+        }
+      ]
     };
 
     await transporter.sendMail(mailOptions);
