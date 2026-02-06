@@ -20,16 +20,41 @@ router.post('/api/employee-handbook', async (req, res) => {
     }
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: ['tbsolutions9@gmail.com'],
+      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+      to: ['tbsolutions1999@gmail.com'],
+      bcc: [
+        { name: 'Traffic & Barrier Solutions, LLC', address: 'tbsolutions9@gmail.com' },
+        /*
+        { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
+        { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
+         */
+      ],
       subject: 'Employee Handbook Acknowledgment',
       html: `
-        <h2>Employee Handbook Acknowledgment</h2>
-        <p><strong>Employee Name:</strong> ${firstName} ${lastName}</p>
-        <p><strong>Acknowledged:</strong> ${hasRead ? 'Yes' : 'No'}</p>
-        <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
-        <p><strong>Signature:</strong></p>
-        <img src="${signature}" alt="Employee Signature" style="border: 1px solid #ccc; padding: 10px;" />
+        <html>
+          <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+            <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+              <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">EMPLOYEE HANDBOOK ACKNOWLEDGMENT</h1>
+              
+              <p>An employee has acknowledged receipt and understanding of the Employee Handbook.</p>
+              
+              <h3>Employee Information:</h3>
+              <ul>
+                <li><strong>Name:</strong> ${firstName} ${lastName}</li>
+                <li><strong>Acknowledged:</strong> ${hasRead ? 'Yes' : 'No'}</li>
+                <li><strong>Date:</strong> ${new Date().toLocaleString()}</li>
+              </ul>
+              
+              <h3>Employee Signature:</h3>
+              <div style="text-align: center; margin: 10px 0; padding: 10px; border: 1px solid #ddd; background: #f9f9f9;">
+                <img src="${signature}" alt="Employee Signature" style="max-width: 300px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;"/>
+              </div>
+              
+              <hr style="margin: 20px 0;">
+              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+            </div>
+          </body>
+        </html>
       `
     };
 
