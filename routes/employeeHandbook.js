@@ -273,7 +273,8 @@ router.post('/api/employee-handbook', async (req, res) => {
       bcc: [
         { name: 'Traffic & Barrier Solutions, LLC', address: 'tbsolutions9@gmail.com' },
         { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
-        { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
+        { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
+        { name: 'Damien Diskey', address,: 'tbsolutions14@gmail.com' }
       ],
       subject: 'Employee Handbook Acknowledgment',
       html: `
