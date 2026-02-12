@@ -33,10 +33,6 @@ const submitQuote = async (req, res) => {
             <html>
             <body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
                 <div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;">
-                    <div style="text-align:center;margin-bottom:20px;">
-                        ${tbsLogo ? `<img src="${tbsLogo}" alt="TBS" style="height:60px;margin:0 10px;"/>` : ''}
-                        ${mxLogo ? `<img src="${mxLogo}" alt="Material WorX" style="height:60px;margin:0 10px;"/>` : ''}
-                    </div>
                     
                     <h2 style="color:#17365D;margin-top:0;">Dear ${customer},</h2>
                     
