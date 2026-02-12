@@ -20,23 +20,23 @@ async function generateQuotePdf(quoteData) {
     <html>
     <head>
       <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .header { background-color: #efad76; padding: 20px; text-align: center; margin-bottom: 30px; }
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #e7e7e7; }
+        .header { background-color: #1dd2ff; padding: 20px; text-align: center; margin-bottom: 30px; }
         .header h1 { margin: 0; font-size: 28px; }
         .info { margin-bottom: 30px; }
         .info p { margin: 5px 0; font-size: 14px; }
         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th { background-color: #efad76; padding: 10px; text-align: left; border: 1px solid #ddd; }
+        th { background-color: #1dd2ff; padding: 10px; text-align: left; border: 1px solid #ddd; }
         td { padding: 8px; border: 1px solid #ddd; }
         .totals { text-align: right; margin-top: 30px; }
         .totals p { margin: 8px 0; font-size: 16px; }
         .totals .grand { font-size: 20px; font-weight: bold; }
-        .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #efad76; font-size: 12px; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #1dd2ff; font-size: 12px; }
       </style>
     </head>
     <body>
       <div class="header">
-        <h1>TRAFFIC & BARRIER SOLUTIONS, LLC</h1>
+        <h1>TRAFFIC & BARRIER SOLUTIONS, LLC/MATERIAL WORX</h1>
         <h2>QUOTE</h2>
       </div>
       
