@@ -90,7 +90,12 @@ td{padding:6px;border:1px solid #ddd;}
   </div>
 
   <div class="footer">
-    <p><strong>Traffic & Barrier Solutions, LLC</strong> | 723 N Wall St, Calhoun, GA 30701 | 706-263-0175 | www.trafficbarriersolutions.com</p>
+    <p style="margin:10px 0 5px 0;"><strong>REMIT PAYMENT TO:</strong></p>
+    <p style="margin:3px 0;">Traffic and Barrier Solutions, LLC</p>
+    <p style="margin:3px 0;">723 N Wall St, Calhoun, GA 30701</p>
+    <p style="margin:10px 0 3px 0;">If your company is tax exempt, then the subtotal will be your final total.</p>
+    <p style="margin:3px 0;">A 3.5% charge will be added to credit card payments.</p>
+    <p style="margin:10px 0 3px 0;">If you have any questions about this quote, please contact Bryson Davis, (706) 263-0175, tbsolutions3@gmail.com</p>
   </div>
 </body>
 </html>`;
