@@ -86,7 +86,6 @@ td{padding:6px;border:1px solid #ddd;}
     <p>Tax: $${computed.taxDue.toFixed(2)}</p>
     ${computed.ccFee > 0 ? `<p>Card Fee: $${computed.ccFee.toFixed(2)}</p>` : ''}
     <p class="grand">TOTAL: $${computed.total.toFixed(2)}</p>
-    <p style="color:#d97706;">Deposit (50%): $${computed.depositDue.toFixed(2)}</p>
   </div>
 
   <div class="footer">
@@ -94,7 +93,7 @@ td{padding:6px;border:1px solid #ddd;}
     <p style="margin:3px 0;">Traffic and Barrier Solutions, LLC</p>
     <p style="margin:3px 0;">723 N Wall St, Calhoun, GA 30701</p>
     <p style="margin:10px 0 3px 0;">If your company is tax exempt, then the subtotal will be your final total.</p>
-    <p style="margin:3px 0;">A 3.5% charge will be added to credit card payments.</p>
+    <p style="margin:3px 0;">A 3% charge will be added to credit card payments.</p>
     <p style="margin:10px 0 3px 0;">If you have any questions about this quote, please contact Bryson Davis, (706) 263-0175, tbsolutions3@gmail.com</p>
   </div>
 </body>
