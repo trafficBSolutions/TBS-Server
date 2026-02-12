@@ -19,8 +19,6 @@ const submitQuote = async (req, res) => {
             to: email,
             bcc: [
                 { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
-                { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
-                { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
             ],
             subject: `Quote for ${customer} - ${company}`,
             html: `
@@ -28,22 +26,22 @@ const submitQuote = async (req, res) => {
             <html lang="en">
             <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #e7e7e7;">
                 <div style="background-color: #e7e7e7; padding: 20px;">
-                    <header style="background-color: #efad76; padding: 20px; text-align: center;">
-                        <h2 style="margin: 0; font-size: 36px; color: #000000;">TRAFFIC & BARRIER SOLUTIONS, LLC</h2>
+                    <header style="background-color: #1dd2ff; padding: 20px; text-align: center;">
+                        <h2 style="margin: 0; font-size: 36px; color: #000000;">TRAFFIC & BARRIER SOLUTIONS, LLC/MATERIAL WORX</h2>
                     </header>
                     
                     <div style="background-color: white; padding: 30px; margin-top: 20px;">
                         <h2 style="font-size: 28px; color: #000000;">Dear ${customer},</h2>
                         
                         <p style="font-size: 18px; line-height: 1.6; margin: 20px 0;">
-                            Thank you for your interest in Traffic & Barrier Solutions! We appreciate the opportunity to provide you with a quote for your project.
+                            Thank you for your interest in Traffic & Barrier Solutions, LLC/Material WorX! We appreciate the opportunity to provide you with a quote for your project.
                         </p>
                         
                         <p style="font-size: 18px; line-height: 1.6; margin: 20px 0;">
                             Please see the attached quote for detailed pricing and services. If you have any questions or would like to proceed with this quote, please don't hesitate to email us or call at <strong>706-263-0175</strong>.
                         </p>
 
-                        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #efad76;">
+                        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #1dd2ff;">
                             <h3 style="font-size: 24px; color: #000000;">Contact Information:</h3>
                             <p style="font-size: 16px; margin: 5px 0;">Bryson C Davis</p>
                             <p style="font-size: 16px; margin: 5px 0;">Traffic and Barrier Solutions, LLC/Material WorX</p>
