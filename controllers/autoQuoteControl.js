@@ -23,39 +23,25 @@ const submitQuote = async (req, res) => {
             subject: `Quote for ${customer} - ${company}`,
             html: `
             <!DOCTYPE html>
-            <html lang="en">
-            <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #e7e7e7;">
-                <div style="background-color: #e7e7e7; padding: 20px;">
-                    <header style="background-color: #1dd2ff; padding: 20px; text-align: center;">
-                        <h2 style="margin: 0; font-size: 36px; color: #000000;">TRAFFIC & BARRIER SOLUTIONS, LLC/MATERIAL WORX</h2>
-                    </header>
+            <html>
+            <body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
+                <div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;">
+                    <h2 style="color:#17365D;margin-top:0;">Dear ${customer},</h2>
                     
-                    <div style="background-color: white; padding: 30px; margin-top: 20px;">
-                        <h2 style="font-size: 28px; color: #000000;">Dear ${customer},</h2>
-                        
-                        <p style="font-size: 18px; line-height: 1.6; margin: 20px 0;">
-                            Thank you for your interest in Traffic & Barrier Solutions, LLC/Material WorX! We appreciate the opportunity to provide you with a quote for your project.
-                        </p>
-                        
-                        <p style="font-size: 18px; line-height: 1.6; margin: 20px 0;">
-                            Please see the attached quote for detailed pricing and services. If you have any questions or would like to proceed with this quote, please don't hesitate to email us or call at <strong>706-263-0175</strong>.
-                        </p>
+                    <p style="font-size:16px;line-height:1.6;">
+                        Thank you for your interest in Traffic & Barrier Solutions! Please see the attached quote for your project.
+                    </p>
+                    
+                    <p style="font-size:16px;line-height:1.6;">
+                        If you have any questions or would like to proceed, please email us or call <strong>706-263-0175</strong>.
+                    </p>
 
-                        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #1dd2ff;">
-                            <h3 style="font-size: 24px; color: #000000;">Contact Information:</h3>
-                            <p style="font-size: 16px; margin: 5px 0;">Bryson C Davis</p>
-                            <p style="font-size: 16px; margin: 5px 0;">Traffic and Barrier Solutions, LLC/Material WorX</p>
-                            <p style="font-size: 16px; margin: 5px 0;">723 N Wall Street</p>
-                            <p style="font-size: 16px; margin: 5px 0;">Calhoun, GA 30701</p>
-                            <p style="font-size: 16px; margin: 5px 0;">Cell: 706-263-0175</p>
-                            <p style="font-size: 16px; margin: 5px 0;">Website: <a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
-                        </div>
-                        
-                        <p style="font-size: 18px; line-height: 1.6; margin: 30px 0 10px 0; font-weight: bold;">
-                            We look forward to working with you!
-                        </p>
-                        
-                        <p style="font-size: 16px; margin: 5px 0;">Best Regards,<br/>The TBS Team</p>
+                    <div style="margin-top:30px;padding-top:20px;border-top:1px solid #ddd;font-size:14px;color:#666;">
+                        <p style="margin:5px 0;"><strong>Bryson C Davis</strong></p>
+                        <p style="margin:5px 0;">Traffic & Barrier Solutions, LLC</p>
+                        <p style="margin:5px 0;">723 N Wall Street, Calhoun, GA 30701</p>
+                        <p style="margin:5px 0;">Cell: 706-263-0175</p>
+                        <p style="margin:5px 0;">www.trafficbarriersolutions.com</p>
                     </div>
                 </div>
             </body>
