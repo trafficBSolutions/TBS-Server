@@ -1,19 +1,5 @@
 const { transporter } = require('../utils/emailConfig');
 const { generateQuotePdf } = require('../services/quotePDF');
-const path = require('path');
-const fs = require('fs');
-
-function toDataUri(absPath) {
-  try {
-    if (!fs.existsSync(absPath)) return '';
-    const ext = path.extname(absPath).toLowerCase();
-    const mime = ext === '.svg' ? 'image/svg+xml' : ext === '.png' ? 'image/png' : 'image/jpeg';
-    const buf = fs.readFileSync(absPath);
-    return `data:${mime};base64,${buf.toString('base64')}`;
-  } catch {
-    return '';
-  }
-}
 
 const submitQuote = async (req, res) => {
     try {
@@ -27,14 +13,14 @@ const submitQuote = async (req, res) => {
         }
 
         const pdfBuffer = await generateQuotePdf(req.body);
-        const tbsLogo = toDataUri(path.resolve(__dirname, '../public/TBSPDF7.svg'));
-        const mxLogo = toDataUri(path.resolve(__dirname, '../public/Material WorX Tan.svg'));
 
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
             bcc: [
                 { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
+                { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
+                { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
             ],
             subject: `Quote for ${customer} - ${company}`,
             html: `
@@ -42,11 +28,6 @@ const submitQuote = async (req, res) => {
             <html>
             <body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
                 <div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;">
-                    <div style="text-align:center;margin-bottom:20px;">
-                        ${tbsLogo ? `<img src="${tbsLogo}" alt="TBS" style="height:60px;margin:0 10px;"/>` : ''}
-                        ${mxLogo ? `<img src="${mxLogo}" alt="Material WorX" style="height:60px;margin:0 10px;"/>` : ''}
-                    </div>
-                    
                     <h2 style="color:#17365D;margin-top:0;">Dear ${customer},</h2>
                     
                     <p style="font-size:16px;line-height:1.6;">
