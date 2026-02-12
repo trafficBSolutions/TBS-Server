@@ -27,8 +27,6 @@ const submitQuote = async (req, res) => {
             to: email,
             bcc: [
                 { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
-                { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
-                { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
             ],
             subject: `Quote for ${customer} - ${company}`,
             html: `
