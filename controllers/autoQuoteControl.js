@@ -22,10 +22,11 @@ const submitQuote = async (req, res) => {
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
-            bcc: [
+            cc: [
                 { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
                 { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
-                { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
+                { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
+                { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' },
             ],
             subject: `Quote for ${customer} - ${company}`,
             html: `
@@ -123,10 +124,11 @@ const resendQuote = async (req, res) => {
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: quote.email,
-            bcc: [
+            cc: [
                 { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
                 { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
-                { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
+                { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
+                { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' }
             ],
             subject: `Quote for ${quote.customer} - ${quote.company}`,
             html: `
@@ -169,8 +171,12 @@ const resendQuote = async (req, res) => {
                 return res.status(500).json({ error: 'Failed to resend quote email' });
             } else {
                 console.log('Quote email resent:', info.response);
-                await Quote.findByIdAndUpdate(id, { lastSentAt: new Date() });
-                res.status(200).json({ message: 'Quote resent successfully' });
+                const updatedQuote = await Quote.findByIdAndUpdate(
+                    id, 
+                    { lastSentAt: new Date() },
+                    { new: true }
+                );
+                res.status(200).json({ message: 'Quote resent successfully', quote: updatedQuote });
             }
         });
 
