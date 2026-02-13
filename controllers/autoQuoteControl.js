@@ -109,4 +109,75 @@ const getDailyQuotes = async (req, res) => {
     }
 };
 
-module.exports = { submitQuote, getMonthlyQuotes, getDailyQuotes };
+const resendQuote = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const quote = await Quote.findById(id);
+        
+        if (!quote) {
+            return res.status(404).json({ error: 'Quote not found' });
+        }
+
+        const pdfBuffer = await generateQuotePdf(quote);
+
+        const mailOptions = {
+            from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+            to: quote.email,
+            bcc: [
+                { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
+                { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
+                { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' }
+            ],
+            subject: `Quote for ${quote.customer} - ${quote.company}`,
+            html: `
+            <!DOCTYPE html>
+            <html>
+            <body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
+                <div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;">
+                    
+                    <h2 style="color:#17365D;margin-top:0;">Dear ${quote.customer},</h2>
+                    
+                    <p style="font-size:16px;line-height:1.6;">
+                        Thank you for your interest in Traffic & Barrier Solutions! Please see the attached quote for your project.
+                    </p>
+                    
+                    <p style="font-size:16px;line-height:1.6;">
+                        If you have any questions or would like to proceed, please email us or call <strong>706-263-0175</strong>.
+                    </p>
+
+                    <div style="margin-top:30px;padding-top:20px;border-top:1px solid #ddd;font-size:14px;color:#666;">
+                        <p style="margin:5px 0;"><strong>Bryson C Davis</strong></p>
+                        <p style="margin:5px 0;">Traffic & Barrier Solutions, LLC</p>
+                        <p style="margin:5px 0;">723 N Wall Street, Calhoun, GA 30701</p>
+                        <p style="margin:5px 0;">Cell: 706-263-0175</p>
+                        <p style="margin:5px 0;">www.trafficbarriersolutions.com</p>
+                    </div>
+                </div>
+            </body>
+            </html>`,
+            attachments: [
+                {
+                    filename: `TBS_Quote_${quote.customer.replace(/\s+/g, '_')}_${quote.date}.pdf`,
+                    content: pdfBuffer
+                }
+            ]
+        };
+
+        transporter.sendMail(mailOptions, async (error, info) => {
+            if (error) {
+                console.log('Error resending quote email:', error);
+                return res.status(500).json({ error: 'Failed to resend quote email' });
+            } else {
+                console.log('Quote email resent:', info.response);
+                await Quote.findByIdAndUpdate(id, { lastSentAt: new Date() });
+                res.status(200).json({ message: 'Quote resent successfully' });
+            }
+        });
+
+    } catch (error) {
+        console.error('Error resending quote:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+module.exports = { submitQuote, getMonthlyQuotes, getDailyQuotes, resendQuote };
