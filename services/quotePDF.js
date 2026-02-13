@@ -15,7 +15,7 @@ function toDataUri(absPath) {
 }
 
 async function generateQuotePdf(quoteData) {
-  const { date, company, customer, address, city, state, zip, email, phone, rows, computed } = quoteData;
+  const { date, company, customer, address, city, state, zip, email, phone, rows, computed, isTaxExempt, taxExemptNumber } = quoteData;
 
   const tbsLogo = toDataUri(path.resolve(__dirname, '../public/TBSPDF7.svg'));
   const mxLogo = toDataUri(path.resolve(__dirname, '../public/Material WorX Tan.svg'));
@@ -65,6 +65,7 @@ td{padding:6px;border:1px solid #ddd;}
     <p><strong>Company:</strong> ${company}</p>
     <p><strong>Address:</strong> ${address}, ${city}, ${state} ${zip}</p>
     <p><strong>Email:</strong> ${email} | <strong>Phone:</strong> ${phone}</p>
+    ${isTaxExempt && taxExemptNumber ? `<p><strong>Tax Exemption Number:</strong> ${taxExemptNumber}</p>` : ''}
   </div>
 
   <table>
