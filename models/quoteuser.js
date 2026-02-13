@@ -28,7 +28,8 @@ const quoteSchema = new mongoose.Schema({
     total: Number,
     depositDue: Number
   },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  lastSentAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Quote', quoteSchema);
