@@ -12,6 +12,7 @@ const quoteSchema = new mongoose.Schema({
   phone: String,
   taxRate: Number,
   isTaxExempt: Boolean,
+  taxExemptNumber: String,
   payMethod: String,
   rows: [{
     item: String,
