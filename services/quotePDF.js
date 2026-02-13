@@ -24,7 +24,7 @@ async function generateQuotePdf(quoteData) {
     <tr>
       <td>${r.item}</td>
       <td>${r.description}</td>
-      <td style="text-align:center;">${r.taxable ? 'Yes' : 'No'}</td>
+      <td style="text-align:center;">${isTaxExempt ? 'No' : (r.taxable ? 'Yes' : 'No')}</td>
       <td style="text-align:center;">${r.qty}</td>
       <td style="text-align:right;">$${r.unitPrice.toFixed(2)}</td>
       <td style="text-align:right;">$${(r.qty * r.unitPrice).toFixed(2)}</td>
