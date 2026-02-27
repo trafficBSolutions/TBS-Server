@@ -13,6 +13,44 @@ const { printHtmlToPdfBuffer } = require('../services/invoicePDF'); // optional:
 const { generateReceiptPdf } = require('../services/receiptPDF');
 const fs = require('fs');
 const path = require('path');
+
+// Create invoices directory if it doesn't exist
+const INVOICES_DIR = path.join(__dirname, '..', 'invoices');
+if (!fs.existsSync(INVOICES_DIR)) {
+  fs.mkdirSync(INVOICES_DIR, { recursive: true });
+}
+
+// Helper to save PDF attachments
+async function savePdfAttachments(invoiceId, files) {
+  const invoiceDir = path.join(INVOICES_DIR, String(invoiceId));
+  if (!fs.existsSync(invoiceDir)) {
+    fs.mkdirSync(invoiceDir, { recursive: true });
+  }
+  
+  const savedFiles = [];
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const filename = file.originalname || `invoice-${i + 1}.pdf`;
+    const filepath = path.join(invoiceDir, filename);
+    fs.writeFileSync(filepath, file.buffer);
+    savedFiles.push({ filename, filepath });
+  }
+  return savedFiles;
+}
+
+// Helper to load saved PDF attachments
+function loadPdfAttachments(invoiceId) {
+  const invoiceDir = path.join(INVOICES_DIR, String(invoiceId));
+  if (!fs.existsSync(invoiceDir)) return [];
+  
+  const files = fs.readdirSync(invoiceDir);
+  return files.map(filename => ({
+    filename,
+    content: fs.readFileSync(path.join(invoiceDir, filename)),
+    contentType: 'application/pdf',
+    contentDisposition: 'attachment'
+  }));
+}
 const WorkOrder = require('../models/workorder');
 // const { runInterestReminderCycle } = require('../services/interestBot');
 
@@ -878,6 +916,15 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
     }
 
     const invoiceUpdateResult = await Invoice.updateOne({ _id: targetInvoiceId }, { $set: updateData });
+    
+    // Save updated PDF attachments to filesystem
+    if (req.files && req.files.length > 0) {
+      const savedFiles = await savePdfAttachments(targetInvoiceId, req.files);
+      await Invoice.updateOne(
+        { _id: targetInvoiceId },
+        { $set: { attachmentFiles: savedFiles.map(f => f.filename) } }
+      );
+    }
 
     // Update work order with new invoice data
     await WorkOrder.updateOne(
@@ -1064,6 +1111,15 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
       }
     });
     await invoice.save();
+    
+    // Save PDF attachments to filesystem
+    if (req.files && req.files.length > 0) {
+      const savedFiles = await savePdfAttachments(invoice._id, req.files);
+      await Invoice.updateOne(
+        { _id: invoice._id },
+        { $set: { attachmentFiles: savedFiles.map(f => f.filename) } }
+      );
+    }
     
     // Mark work order as billed
     await WorkOrder.updateOne(
@@ -1445,6 +1501,15 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
       { _id: invoice._id },
       { $set: { emailMessageId: mailOptions.messageId || info.messageId } }
     );
+    
+    // Save plan PDF attachments to filesystem
+    if (req.files && req.files.length > 0) {
+      const savedFiles = await savePdfAttachments(invoice._id, req.files);
+      await Invoice.updateOne(
+        { _id: invoice._id },
+        { $set: { attachmentFiles: savedFiles.map(f => f.filename) } }
+      );
+    }
 
     return res.json({ ok: true, invoiceId: invoice._id });
   } catch (e) {
