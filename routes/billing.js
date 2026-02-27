@@ -371,6 +371,20 @@ router.use((req, res, next) => {
   next();
 });
 
+// Get all invoices for spreadsheet
+router.get('/all-invoices', async (req, res) => {
+  try {
+    const invoices = await Invoice.find({})
+      .select('invoiceNumber billedTo sentAt createdAt principal status')
+      .sort({ invoiceNumber: 1 })
+      .lean();
+    res.json(invoices);
+  } catch (e) {
+    console.error('Get all invoices error:', e);
+    res.status(500).json({ message: 'Failed to fetch invoices', error: e.message });
+  }
+});
+
 // Mark invoice as paid
 router.post('/mark-paid', async (req, res) => {
   try {
@@ -552,7 +566,7 @@ if (paymentMethod === 'card') {
         <html>
           <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;">Payment Receipt - ${workOrder.basic?.client}</h1>
+              <h1 style="text-align: center; background-color: #28a745; color: white; padding: 15px; border-radius: 6px; margin: 0 0 20px 0;"><strong>INVOICE</strong> Payment Receipt${tbsInvoiceNumber ? ` – <strong>TBS#${tbsInvoiceNumber}</strong>` : ''} - ${workOrder.basic?.client}</h1>
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
                 <p style="margin: 5px 0; font-size: 16px;"><strong>Total Owed:</strong> $${totalOwedFinal.toFixed(2)}</p>
@@ -583,7 +597,7 @@ const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailList,
-  subject: `Re: INVOICE – ${workOrder.basic?.client}${tbsInvoiceText} – PAYMENT RECEIPT $${actualPaid.toFixed(2)}`,
+  subject: `Re: <strong>INVOICE</strong> – ${workOrder.basic?.client}${tbsInvoiceText ? ` – <strong>TBS#${tbsInvoiceNumber}</strong>` : ''} – PAYMENT RECEIPT $${actualPaid.toFixed(2)}`,
   html: receiptHtml,
   headers,
   attachments: []
