@@ -55,6 +55,8 @@ const InvoiceSchema = new mongoose.Schema({
   invoiceData:   { type: mongoose.Schema.Types.Mixed }, // <- add snapshot if you want to reuse editor data
   workRequestNumber1: { type: String }, // optional but you already set these
   workRequestNumber2: { type: String }, // optional
+  attachmentFiles: [{ type: String }], // filenames of saved PDF attachments
+  emailMessageId: { type: String }, // for email threading
 }, { timestamps: true });
 
 InvoiceSchema.index(
