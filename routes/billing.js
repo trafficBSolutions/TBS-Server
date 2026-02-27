@@ -371,6 +371,28 @@ router.use((req, res, next) => {
   next();
 });
 
+// Quick mark invoice as paid from spreadsheet
+router.post('/quick-mark-paid', async (req, res) => {
+  try {
+    const { invoiceId } = req.body;
+    if (!invoiceId) return res.status(400).json({ message: 'invoiceId required' });
+
+    const invoice = await Invoice.findById(invoiceId);
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+
+    await Invoice.updateOne({ _id: invoiceId }, { $set: { status: 'PAID', paidAt: new Date() } });
+    
+    if (invoice.job) {
+      await WorkOrder.updateOne({ _id: invoice.job }, { $set: { paid: true, paidAt: new Date() } });
+    }
+
+    res.json({ message: 'Invoice marked as paid' });
+  } catch (e) {
+    console.error('Quick mark paid error:', e);
+    res.status(500).json({ message: 'Failed to mark paid', error: e.message });
+  }
+});
+
 // Get all invoices for spreadsheet
 router.get('/all-invoices', async (req, res) => {
   try {
