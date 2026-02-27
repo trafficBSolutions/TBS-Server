@@ -396,7 +396,9 @@ router.post('/quick-mark-paid', async (req, res) => {
 // Get all invoices for spreadsheet
 router.get('/all-invoices', async (req, res) => {
   try {
-    const invoices = await Invoice.find({})
+    const invoices = await Invoice.find({
+      createdAt: { $gte: new Date('2026-01-01'), $lt: new Date('2027-01-01') }
+    })
       .select('invoiceNumber billedTo sentAt createdAt principal status')
       .sort({ invoiceNumber: 1 })
       .lean();
