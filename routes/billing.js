@@ -621,7 +621,7 @@ const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailList,
-  subject: `Re: <strong>INVOICE</strong> – ${workOrder.basic?.client}${tbsInvoiceText ? ` – <strong>TBS#${tbsInvoiceNumber}</strong>` : ''} – PAYMENT RECEIPT $${actualPaid.toFixed(2)}`,
+  subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${workOrder.basic?.client} - PAYMENT RECEIPT`,
   html: receiptHtml,
   headers,
   attachments: []
@@ -935,7 +935,7 @@ const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi,
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailList,
-  subject: `UPDATED INVOICE – ${workOrder.basic?.client}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${Number(finalInvoiceTotal).toFixed(2)}`,
+  subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${workOrder.basic?.client} (UPDATED)`,
   html: emailHtml,
   attachments: [],
   headers, // <- In-Reply-To + References (if available)
@@ -1123,7 +1123,7 @@ const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailList,
-  subject: `INVOICE – ${workOrder.basic?.client}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${Number(finalInvoiceTotal).toFixed(2)}`,
+  subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${workOrder.basic?.client}`,
   html: emailHtml,
   attachments: [],
   // Deterministic message-id starts the thread
@@ -1423,7 +1423,7 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
       to: emailList,
-      subject: `Traffic Control Plan – INVOICE – ${plan.company}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${principal.toFixed(2)}`,
+      subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${plan.company} (Traffic Control Plan)`,
       html,
       attachments: [],
       messageId: `plan-invoice-${String(invoice._id)}@trafficbarriersolutions.com`
@@ -1525,7 +1525,7 @@ router.post('/update-plan', upload.array('attachments', 10), async (req, res) =>
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
       to: emailList,
-      subject: `UPDATED TCP INVOICE – ${plan.company}${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – $${principal.toFixed(2)}`,
+      subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${plan.company} (Traffic Control Plan - UPDATED)`,
       html,
       headers,
       attachments: [],
@@ -1622,7 +1622,7 @@ const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailList,
-  subject: `Re: Traffic Control Plan${tbsInvoiceNumber ? ` – TBS#${tbsInvoiceNumber}` : ''} – PAYMENT RECEIPT $${amount.toFixed(2)}`,
+  subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${plan?.company || 'Traffic Control Plan'} - PAYMENT RECEIPT`,
   html: receiptHtml,
   headers,
   attachments: []
