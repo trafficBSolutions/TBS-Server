@@ -55,7 +55,7 @@ const controlUserSchema = new mongoose.Schema({
     },
     equipment: {
         type: [String],
-        required: true
+        required: false
     },
     terms: {
         type: String,
@@ -94,7 +94,12 @@ const controlUserSchema = new mongoose.Schema({
       emergency: {
   type: Boolean,
   default: false
+},
+additionalApproval: {
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'n/a'], default: 'n/a' },
+  decidedAt: Date
 }
+
 
 }, { timestamps: true });
 
