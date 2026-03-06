@@ -93,6 +93,7 @@ const jobCount = result[0]?.count || 0;
             }).format(d)
           );          
         // Check if additional flaggers need confirmation
+        /* COMMENTED OUT - Email confirmation disabled to prevent duplicate jobs
         if (additionalFlaggers && additionalFlaggerCount > 0) {
           // Don't create jobs yet, just send confirmation email with form data
           const confirmToken = signQuery({ 
@@ -102,57 +103,17 @@ const jobCount = result[0]?.count || 0;
             userEmail: email
           });
 
-// IMPORTANT: encode the token
-const encoded = encodeURIComponent(confirmToken);
-
-// IMPORTANT: hit an API route (server) first, then redirect back to the SPA page
-const confirmLinkBase = 'https://tbs-server.onrender.com/confirm-additional-flagger';
-const confirmYes = `${confirmLinkBase}?token=${encoded}&confirm=yes`;
-const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
+          const encoded = encodeURIComponent(confirmToken);
+          const confirmLinkBase = 'https://tbs-server.onrender.com/confirm-additional-flagger';
+          const confirmYes = `${confirmLinkBase}?token=${encoded}&confirm=yes`;
+          const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
+          
           const confirmMailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
-            bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                  { name: 'Carson Speer', address: userEmail }],
+            bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail }],
             subject: 'CONFIRM ADDITIONAL FLAGGER - TRAFFIC CONTROL JOB',
-            html: `
-            <html>
-              <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
-                <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-                  <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">ADDITIONAL FLAGGER CONFIRMATION REQUIRED</h1>
-                  <p>Hi <strong>${name}, ${email}</strong></p>
-                  <p>You have requested <strong>${additionalFlaggerCount} additional flagger(s)</strong> for your traffic control job.</p>
-                  <p><strong>IMPORTANT:</strong> Additional flaggers incur extra charges. Please confirm if you want to proceed.</p>
-                  
-                  <div style="display: flex; justify-content: center; gap: 15px; margin: 30px 0; flex-wrap: wrap;">
-                    <a href="${confirmYes}" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">YES - I CONFIRM</a>
-                    <a href="${confirmNo}" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 14px;">NO - CANCEL</a>
-                  </div>
-                  
-                  <p>Job Details:</p>
-                  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Company:</strong> ${company}</li>
-                      <li><strong>Coordinator:</strong> ${coordinator}</li>
-                      <li><strong>Coordinator Phone:</strong> ${phone}</li>
-                      <li><strong>On-Site Contact:</strong> ${siteContact}</li>
-                      <li><strong>On-Site Phone:</strong> ${site}</li>
-                      <li><strong>Time:</strong> ${time}</li>
-                    </ul>
-                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Project/Task:</strong> ${project}</li>
-                      <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
-                      <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
-                      <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
-                      <li><strong>Dates:</strong> ${scheduledDates.map(d => d.toLocaleDateString('en-US')).join(', ')}</li>
-                    </ul>
-                  </div>
-                  
-                  <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>Phone: (706) 263-0175</p>
-                </div>
-              </body>
-            </html>
-            `
+            html: `...`
           };
           
           transporter.sendMail(confirmMailOptions, (error, info) => {
@@ -170,6 +131,7 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
             scheduledDates: scheduledDates.map(d => d.toISOString().split('T')[0])
           });
         }
+        */
         
         // Create ONE job with multiple dates
         const newUser = await ControlUser.create({
@@ -206,7 +168,15 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
           return `<li>${dateString} – <a href="https://www.trafficbarriersolutions.com/reschedule-job/${newUser._id}?date=${isoStr}">Reschedule</a> | <a href="https://www.trafficbarriersolutions.com/cancel-job/${newUser._id}?date=${isoStr}">Cancel</a></li>`;
         }).join('');
         
-        // Compose regular email options
+        // Compose email with additional flagger notification if applicable
+        const emailSubject = additionalFlaggers && additionalFlaggerCount > 0
+          ? `TRAFFIC CONTROL JOB REQUEST - ${name} has scheduled a job with additional flaggers`
+          : 'TRAFFIC CONTROL JOB REQUEST';
+        
+        const additionalFlaggerNote = additionalFlaggers && additionalFlaggerCount > 0
+          ? `<p style="background-color: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 15px 0;"><strong>⚠️ Note:</strong> ${name} has approved <strong>${additionalFlaggerCount} additional flagger(s)</strong> for this job. Additional charges apply.</p>`
+          : '';
+        
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
@@ -219,12 +189,14 @@ const confirmNo  = `${confirmLinkBase}?token=${encoded}&confirm=no`;
       { name: 'Damien Diskey', address: damienemail}
       
              ],
-            subject: 'TRAFFIC CONTROL JOB REQUEST',
+            subject: emailSubject,
             html: `
             <html>
               <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
                 <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
                   <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB REQUEST</h1>
+                  
+                  ${additionalFlaggerNote}
                   
                   <p>Hi <strong>${name}</strong>,</p>
                   Your job has been scheduled on the following date(s):<br>
@@ -389,7 +361,6 @@ const confirmAdditionalFlagger = async (req, res) => {
         to: userEmail,
         bcc: [
           { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-            {name: 'Carson Speer', address: userEmail},
           { name: 'Bryson Davis', address: mainEmail },
           { name: 'Jonkell Tolbert', address: foreemail },
           { name: 'Salvador Gonzalez', address: foremanmail },
