@@ -7,7 +7,7 @@ const fs = require('fs');
 const submitQuote = async (req, res) => {
     try {
         const { 
-            date, company, customer, address, city, state, zip, email, phone,
+            date, company, customer, email, phone,
             taxRate, isTaxExempt, payMethod, rows, computed
         } = req.body;
 
@@ -19,9 +19,11 @@ const submitQuote = async (req, res) => {
 
         const pdfBuffer = await generateQuotePdf(req.body);
 
+        const emailList = email.split(',').map(e => e.trim()).filter(e => e);
+
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-            to: email,
+            to: emailList,
             cc: [
                 { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
                 { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
@@ -121,9 +123,11 @@ const resendQuote = async (req, res) => {
 
         const pdfBuffer = await generateQuotePdf(quote);
 
+        const emailList = quote.email.split(',').map(e => e.trim()).filter(e => e);
+
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-            to: quote.email,
+            to: emailList,
             cc: [
                 { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
                 { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
