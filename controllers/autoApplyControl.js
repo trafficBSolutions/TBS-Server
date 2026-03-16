@@ -21,6 +21,8 @@ const submitApply = async (req, res) => {
       email,
       phone,
       position,
+      wantsDriver,
+      drivingRecord,
       location,
       languages,
       skills,
@@ -59,11 +61,13 @@ console.log("Cover File:", coverFilename);
     let formattedEducation = [];
     let formattedBackground = [];
     let formattedWorkHistory = [];
+    let formattedDrivingRecord = {};
     
     try {
         formattedEducation = typeof education === "string" ? JSON.parse(education) : Array.isArray(education) ? education : [];
         formattedBackground = typeof background === "string" ? JSON.parse(background) : Array.isArray(background) ? background : [];
         formattedWorkHistory = typeof workHistory === "string" ? JSON.parse(workHistory) : Array.isArray(workHistory) ? workHistory : [];
+        formattedDrivingRecord = typeof drivingRecord === "string" ? JSON.parse(drivingRecord) : drivingRecord || {};
     } catch (error) {
         console.error("Error parsing JSON data:", error);
         return res.status(400).json({ error: "Invalid JSON format in form data" });
@@ -82,6 +86,8 @@ console.log("Cover File:", coverFilename);
       phone,
       education: formattedEducation,
       position,
+      wantsDriver: wantsDriver || '',
+      drivingRecord: wantsDriver === 'Yes' ? formattedDrivingRecord : {},
       location,
       background: formattedBackground,
       languages,
@@ -96,7 +102,8 @@ console.log("Cover File:", coverFilename);
             const pdfPath = path.join(__dirname, `../files/${pdfFilename}`);
     
             await generatePDF({
-                first, last, email, phone, position, location, languages, skills, message,
+                first, last, email, phone, position, wantsDriver, drivingRecord: formattedDrivingRecord,
+                location, languages, skills, message,
                 education: formattedEducation,
                 background: formattedBackground,
                 workHistory: formattedWorkHistory
@@ -183,6 +190,14 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
       <p><strong>Email:</strong> ${email}</p>
       <p><strong>Phone:</strong> ${phone}</p>
       <p><strong>Location:</strong> ${location}</p>
+      <p><strong>Wants to be a Driver:</strong> ${wantsDriver || 'No'}</p>
+      ${wantsDriver === 'Yes' ? `
+      <h3>Driving Record</h3>
+      <p><strong>Speeding Tickets:</strong> ${formattedDrivingRecord.speedingTickets || '0'}</p>
+      <p><strong>Traffic Violations:</strong> ${formattedDrivingRecord.trafficViolations || '0'}</p>
+      <p><strong>DUIs:</strong> ${formattedDrivingRecord.duis || '0'}</p>
+      <p><strong>Other Violations:</strong> ${formattedDrivingRecord.otherViolations || 'None'}</p>
+      ` : ''}
       <p><strong>Languages:</strong> ${languages}</p>
       <p><strong>Skills:</strong> ${skills}</p>
 
@@ -263,6 +278,13 @@ const generatePDF = (data, filePath) => {
       doc.text(`Email: ${data.email}`);
       doc.text(`Phone: ${data.phone}`);
       doc.text(`Position: ${data.position}`);
+      doc.text(`Wants to be a Driver: ${data.wantsDriver || 'No'}`);
+      if (data.wantsDriver === 'Yes' && data.drivingRecord) {
+          doc.text(`Speeding Tickets: ${data.drivingRecord.speedingTickets || '0'}`);
+          doc.text(`Traffic Violations: ${data.drivingRecord.trafficViolations || '0'}`);
+          doc.text(`DUIs: ${data.drivingRecord.duis || '0'}`);
+          doc.text(`Other Violations: ${data.drivingRecord.otherViolations || 'None'}`);
+      }
       doc.text(`Location: ${data.location}`);
       doc.text(`Languages: ${data.languages}`);
       doc.text(`Skills: ${data.skills}`);
