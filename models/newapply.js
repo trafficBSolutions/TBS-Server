@@ -29,6 +29,13 @@ const workHistorySchema = new mongoose.Schema({
 });
 
 
+const drivingRecordSchema = new mongoose.Schema({
+  speedingTickets: { type: String, default: '0' },
+  trafficViolations: { type: String, default: '0' },
+  duis: { type: String, default: '0' },
+  otherViolations: { type: String, default: '' }
+});
+
 const applySchema = new mongoose.Schema({
   first: { type: String, required: true },
   last: { type: String, required: true },
@@ -36,6 +43,8 @@ const applySchema = new mongoose.Schema({
   phone: { type: String, unique: true, required: true },
   education: [educationSchema], 
   position: { type: String, required: true },
+  wantsDriver: { type: String, enum: ['Yes', 'No', ''], default: '' },
+  drivingRecord: { type: drivingRecordSchema, default: () => ({}) },
   location: { type: String, required: true },
   background: [backgroundSchema], 
   languages: { type: String, required: true },
