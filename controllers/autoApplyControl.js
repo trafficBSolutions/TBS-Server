@@ -3,7 +3,7 @@ const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const myEmail = "tbsolutions9@gmail.com";
 /*
 const userEmail = 'tbsolutions4@gmail.com';
-const mainEmail = 'tbsolutions1999@gmail.com';
+const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
@@ -166,7 +166,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
                 { name: 'Jonkell Tolbert', address: foreemail },
                 { name: 'Salvador Gonzalez', address: foremanmail },
                 { name: 'Damien Diskey', address: damienemail}
-                */
+                 */
             ],
             subject: 'JOB APPLICATION REQUEST',
          html: `
@@ -251,12 +251,13 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
 
     return res.json(newApp);
   } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({
-        error: "Duplicate email or phone",
-        message: `Application has already been submitted with this email and/or phone number. Please call (706) 263-0175 if you're a former TBS employee requesting for your job back. Otherwise, please wait until we review your application.`
-      });
-    }
+    // TODO: RE-ENABLE THIS ONCE ALL CURRENT EMPLOYEES HAVE APPLIED
+    // if (error.code === 11000) {
+    //   return res.status(400).json({
+    //     error: "Duplicate email or phone",
+    //     message: `Application has already been submitted with this email and/or phone number. Please call (706) 263-0175 if you're a former TBS employee requesting for your job back. Otherwise, please wait until we review your application.`
+    //   });
+    // }
 
     console.log(error);
     return res.status(500).json({ error: "Internal Server Error! Please report any submission errors to William Rowell: (706) 879-0106 to fix the issue on your application." });
