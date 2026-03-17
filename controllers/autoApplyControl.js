@@ -3,7 +3,7 @@ const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const myEmail = "tbsolutions9@gmail.com";
 
 const userEmail = 'tbsolutions4@gmail.com';
-const mainEmail = 'tbsolutions3@gmail.com';
+const mainEmail = 'tbsolutions1999@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
@@ -48,10 +48,6 @@ console.log("Cover File:", coverFilename);
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // ✅ Ensure the resume is uploaded
-    if (!resumeFilename) {
-      return res.status(400).json({ error: "Resume file is required." });
-    }
 
     // ✅ Validate email format
     const isValidEmail = /\S+@\S+\.\S+/.test(email);
@@ -93,7 +89,7 @@ console.log("Cover File:", coverFilename);
       languages,
       skills,
       workHistory: formattedWorkHistory,
-      resume: resumeFilename,
+      resume: resumeFilename || null,
       cover: coverFilename,
       message
     });
