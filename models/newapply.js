@@ -39,8 +39,8 @@ const drivingRecordSchema = new mongoose.Schema({
 const applySchema = new mongoose.Schema({
   first: { type: String, required: true },
   last: { type: String, required: true },
-  email: { type: String, required: true },
-  phone: { type: String, required: true },
+  email: { type: String, unique: true },
+  phone: { type: String, unique: true },
   education: [educationSchema], 
   position: { type: String, required: true },
   wantsDriver: { type: String, enum: ['Yes', 'No', ''], default: '' },
