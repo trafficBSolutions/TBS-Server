@@ -74,6 +74,12 @@ const WorkOrderSchema = new mongoose.Schema({
   },
 
   mismatch: { type: Boolean, required: true },
+
+  policeOfficer: {
+    used: { type: Boolean, default: false },
+    name: { type: String, trim: true, default: '' },
+    signature: { type: String, default: '' },
+  },
 }, { timestamps: true });
 
 
