@@ -222,6 +222,16 @@ function renderWorkOrderHTML(wo, assets) {
     ${wo.foremanSignature ? `<img src="data:image/png;base64,${wo.foremanSignature}" alt="Foreman Signature" />` : ''}
     <p><strong>${formatName(basic.foremanName)}</strong></p>
   </div>
+
+  ${wo.policeOfficer?.used ? `
+  <div class="section">
+    <h3>🚔 Police Officer On Site</h3>
+    <div class="field"><span class="label">Officer Name:</span><span class="value">${formatName(wo.policeOfficer.name)}</span></div>
+    <div class="signature-section">
+      ${wo.policeOfficer.signature ? `<img src="data:image/png;base64,${wo.policeOfficer.signature}" alt="Officer Signature" />` : ''}
+      <p><strong>${formatName(wo.policeOfficer.name)}</strong></p>
+    </div>
+  </div>` : ''}
 </body>
 </html>`;
 }
@@ -399,7 +409,8 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       basic = {},
       tbs,
       mismatch,
-      foremanSignature
+      foremanSignature,
+      policeOfficer
     } = req.body;
 
     // Parse JSON fields if they're strings (from FormData)
@@ -416,6 +427,14 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
         tbs = JSON.parse(tbs);
       } catch (e) {
         return res.status(400).json({ error: 'Invalid tbs data format' });
+      }
+    }
+
+    if (typeof policeOfficer === 'string') {
+      try {
+        policeOfficer = JSON.parse(policeOfficer);
+      } catch (e) {
+        policeOfficer = { used: false, name: '', signature: '' };
       }
     }
 
@@ -471,7 +490,12 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       tbs,
       mismatch: mismatchServer,
       ...(foremanSignature ? { foremanSignature } : {}),
-      ...(photos.length > 0 ? { photos } : {})
+      ...(photos.length > 0 ? { photos } : {}),
+      policeOfficer: policeOfficer?.used ? {
+        used: true,
+        name: (policeOfficer.name || '').trim(),
+        signature: policeOfficer.signature || '',
+      } : { used: false, name: '', signature: '' },
     });
 
     console.log('Work order created successfully:', created._id);
@@ -548,6 +572,14 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
           ${foremanSignature ? `<div style="text-align: center; margin: 10px 0; padding: 10px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Signature Captured</strong><br/><em>(See attached PDF for signature image)</em></div>` : ''}
           <p><strong>${formatName(basic.foremanName)}</strong></p>
           
+          ${created.policeOfficer?.used ? `
+          <h3>🚔 Police Officer On Site:</h3>
+          <ul>
+            <li><strong>Officer Name:</strong> ${formatName(created.policeOfficer.name)}</li>
+            <li><strong>Officer Signature:</strong> Captured (See attached PDF)</li>
+          </ul>
+          ` : ''}
+
           ${basic.notes ? `<h3>Additional Notes:</h3><p>${basic.notes}</p>` : ''}
           
           ${created.photos && created.photos.length > 0 ? `<h3>Work Order Photos:</h3><p>${created.photos.length} photo(s) attached to this work order.</p>` : ''}
@@ -703,5 +735,4 @@ router.get('/auth/debug', (req, res) => {
   });
 });
 module.exports = router;
-
 
