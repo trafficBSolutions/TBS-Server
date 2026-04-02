@@ -1,5 +1,5 @@
 const { transporter } = require('../utils/emailConfig');
-const { generateQuotePdf } = require('../services/quotePDF');
+const { generateQuotePdf, generateInvoicePdf } = require('../services/quotePDF');
 const Quote = require('../models/quoteuser');
 const path = require('path');
 const fs = require('fs');
@@ -190,4 +190,61 @@ const resendQuote = async (req, res) => {
     }
 };
 
-module.exports = { submitQuote, getMonthlyQuotes, getDailyQuotes, resendQuote };
+const submitInvoice = async (req, res) => {
+    try {
+        const { invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber } = req.body;
+        if (!email) return res.status(400).json({ error: "Email is required" });
+        if (!invoiceNumber) return res.status(400).json({ error: "Invoice number is required" });
+
+        const pdfBuffer = await generateInvoicePdf(req.body);
+        const emailList = email.split(',').map(e => e.trim()).filter(e => e);
+
+        const mailOptions = {
+            from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+            to: emailList,
+            cc: [
+                { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
+                { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
+                { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
+                { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' },
+            ],
+            subject: `Invoice #${invoiceNumber} for ${customer} - ${company}`,
+            html: `
+            <!DOCTYPE html>
+            <html>
+            <body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
+                <div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;">
+                    <h2 style="color:#17365D;margin-top:0;">Dear ${customer},</h2>
+                    <p style="font-size:16px;line-height:1.6;">Please see the attached invoice <strong>#${invoiceNumber}</strong> for your project.</p>
+                    <p style="font-size:16px;line-height:1.6;">If you have any questions, please email us or call <strong>706-263-0175</strong>.</p>
+                    <div style="margin-top:30px;padding-top:20px;border-top:1px solid #ddd;font-size:14px;color:#666;">
+                        <p style="margin:5px 0;"><strong>Bryson C Davis</strong></p>
+                        <p style="margin:5px 0;">Traffic & Barrier Solutions, LLC</p>
+                        <p style="margin:5px 0;">723 N Wall Street, Calhoun, GA 30701</p>
+                        <p style="margin:5px 0;">Cell: 706-263-0175</p>
+                        <p style="margin:5px 0;">www.trafficbarriersolutions.com</p>
+                    </div>
+                </div>
+            </body>
+            </html>`,
+            attachments: [{
+                filename: `TBS_Invoice_${invoiceNumber}_${customer.replace(/\s+/g, '_')}_${date}.pdf`,
+                content: pdfBuffer
+            }]
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.log('Error sending invoice email:', error);
+                return res.status(500).json({ error: 'Failed to send invoice email' });
+            }
+            console.log('Invoice email sent:', info.response);
+            res.status(200).json({ message: 'Invoice sent successfully' });
+        });
+    } catch (error) {
+        console.error('Error submitting invoice:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+module.exports = { submitQuote, getMonthlyQuotes, getDailyQuotes, resendQuote, submitInvoice };
