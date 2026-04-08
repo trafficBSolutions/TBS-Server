@@ -83,5 +83,26 @@ router.get('/me', (req, res) => {
   } catch { return res.status(200).json({ authenticated: false }); }
 });
 
+router.put('/change-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body || {};
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: 'Email and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+    const emp = await Employee.findOne({ email: email.toLowerCase() });
+    if (!emp) return res.status(404).json({ message: 'Employee not found' });
+
+    emp.passwordHash = await bcrypt.hash(newPassword, 12);
+    await emp.save();
+    return res.json({ message: 'Password updated successfully' });
+  } catch (e) {
+    console.error('Change password error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 
 module.exports = router;
