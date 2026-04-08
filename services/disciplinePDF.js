@@ -189,7 +189,8 @@ function generateDisciplineHTML(doc) {
 }
 
 async function generateDisciplinePdf(doc) {
-  return await printHtmlToPdfBuffer(generateDisciplineHTML(doc));
+  const plain = doc.toObject ? doc.toObject() : doc;
+  return await printHtmlToPdfBuffer(generateDisciplineHTML(plain));
 }
 
 module.exports = { generateDisciplinePdf };
