@@ -1,112 +1,210 @@
+const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
-const { printHtmlToPdfBuffer } = require('./invoicePDF'); // you already have this
-const { loadStdAssets } = require('./v42Base');           // if you keep shared assets
 
-function fmt(d) {
+async function printHtmlToPdfBuffer(html) {
+  let browser;
+  try {
+    const candidates = [];
+    try { const p = await puppeteer.executablePath(); if (p) candidates.push(p); } catch (_) {}
+    candidates.push(
+      '/usr/bin/google-chrome-stable', '/usr/bin/google-chrome',
+      '/usr/bin/chromium-browser', '/usr/bin/chromium',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+    );
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) candidates.unshift(process.env.PUPPETEER_EXECUTABLE_PATH);
+
+    let executablePath;
+    for (const p of candidates) {
+      try { if (p && fs.existsSync(p)) { executablePath = p; break; } } catch (_) {}
+    }
+
+    browser = await puppeteer.launch({
+      headless: true,
+      ...(executablePath ? { executablePath } : {}),
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1240, height: 1754, deviceScaleFactor: 2 });
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
+    await page.emulateMediaType('screen');
+    return await page.pdf({
+      format: 'A4', printBackground: true,
+      margin: { top: '18mm', right: '18mm', bottom: '18mm', left: '18mm' }
+    });
+  } finally {
+    if (browser) try { await browser.close(); } catch (_) {}
+  }
+}
+
+function loadTBSLogo() {
+  try {
+    const logoPath = path.join(__dirname, '..', 'public', 'TBSPDF7.png');
+    return `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`;
+  } catch (e) { return ''; }
+}
+
+function fmtDate(d) {
   if (!d) return '';
   const dt = new Date(d);
-  return dt.toLocaleDateString('en-US');
-}
-function esc(s='') {
-  return String(s).replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+  return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-exports.generateDisciplinePdfBuffer = async (doc) => {
-  const assets = await loadStdAssets?.() || {}; // optional shared logos/colors
-  const logoDataUri = assets.tbsLogoDataUri || '';
+function generateDisciplineHTML(doc) {
+  const logo = loadTBSLogo();
+  const violations = (doc.violationTypes || []).join(', ') + (doc.otherViolationText ? ` — ${doc.otherViolationText}` : '');
 
-  const violationList = (doc.violationTypes || []).join(', ') + (doc.otherViolationText ? ` (Other: ${doc.otherViolationText})` : '');
+  const prevRows = (doc.previousWarnings || []).map(p => `
+    <tr>
+      <td style="border:1px solid #ccc;padding:6px">${p.type || ''}</td>
+      <td style="border:1px solid #ccc;padding:6px">${fmtDate(p.date)}</td>
+      <td style="border:1px solid #ccc;padding:6px">${p.byWhom || ''}</td>
+    </tr>`).join('');
 
-  const html = `
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Employee Disciplinary Action</title>
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Disciplinary Action</title>
 <style>
-  body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
-  .wrap { width: 820px; margin: 0 auto; padding: 20px; }
-  .head { display:flex; align-items:center; gap: 12px; margin-bottom: 8px; }
-  .logo { height: 42px; }
-  h1 { font-size: 20px; margin: 8px 0 16px; }
-  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .box { border: 1px solid #ccc; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
-  .label { font-weight: 700; margin-right: 4px; }
-  .row { margin-bottom: 6px; }
-  .sig-row { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 18px; }
-  .sig { height: 64px; border: 1px dashed #bbb; background:#fff; }
-  .line { border-bottom: 1px solid #333; height: 22px; margin-top: 34px; }
-  .sig-cap { font-size: 11px; margin-top: 4px; text-align:center; }
-  .small { font-size: 11px; color: #444; }
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="head">
-      ${logoDataUri ? `<img class="logo" src="${logoDataUri}" />` : ''}
-      <div>
-        <h1>Employee Disciplinary Action</h1>
-        <div class="small">To be signed during the in-office meeting</div>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Arial,sans-serif;font-size:12px;line-height:1.5;color:#333;background:#fff}
+  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;padding-bottom:15px;border-bottom:3px solid #1e3a8a}
+  .logo{max-height:80px;max-width:200px}
+  .co-info{text-align:right;font-size:11px;color:#666}
+  .title{text-align:center;font-size:22px;font-weight:bold;color:#1e3a8a;margin:18px 0;text-transform:uppercase;letter-spacing:1px}
+  .section{margin-bottom:20px;background:#f8f9fa;padding:14px;border-radius:8px;border-left:4px solid #1e3a8a}
+  .section-title{font-size:13px;font-weight:bold;color:#1e3a8a;margin-bottom:10px;text-transform:uppercase;border-bottom:1px solid #ddd;padding-bottom:4px}
+  .row{display:flex;margin-bottom:6px}
+  .label{font-weight:bold;min-width:180px;color:#555}
+  .val{flex:1;padding-left:10px}
+  .text-box{background:#fff;padding:10px;border:1px solid #ddd;border-radius:4px;margin-top:5px;white-space:pre-wrap}
+  .two-col{display:flex;gap:20px}
+  .two-col .col{flex:1}
+  table.prev{width:100%;border-collapse:collapse;margin-top:8px;font-size:11px}
+  table.prev th{background:#e9ecef;border:1px solid #ccc;padding:6px;text-align:left}
+  .sig-section{margin-top:40px;page-break-inside:avoid}
+  .sig-grid{display:flex;flex-wrap:wrap;gap:30px;margin-top:25px}
+  .sig-col{flex:1;min-width:200px}
+  .sig-line{border-bottom:2px solid #333;margin-bottom:6px;height:50px}
+  .sig-label{font-size:11px;color:#555}
+  .date-line{border-bottom:1px solid #333;width:140px;display:inline-block;margin-left:8px;height:18px}
+  .footer{margin-top:40px;padding-top:15px;border-top:2px solid #1e3a8a;text-align:center;font-size:10px;color:#666}
+  .notice{background:#fff3cd;border:1px solid #ffeaa7;border-radius:6px;padding:12px;margin-bottom:18px;border-left:4px solid #f39c12}
+  .notice b{color:#856404}
+</style></head><body>
+  <div class="header">
+    ${logo ? `<img src="${logo}" alt="TBS Logo" class="logo">` : '<div></div>'}
+    <div class="co-info">
+      <div><strong>Traffic & Barrier Solutions, LLC</strong></div>
+      <div>721 N Wall St, Calhoun, GA 30701</div>
+      <div>Phone: (706) 263-0175</div>
+      <div>www.trafficbarriersolutions.com</div>
+    </div>
+  </div>
+
+  <div class="title">Employee Disciplinary Action Form</div>
+
+  <div class="notice">
+    <b>NOTICE:</b> This document is an official record of disciplinary action. All parties must sign this form to acknowledge receipt. Signatures are to be obtained in the office on the scheduled meeting date.
+  </div>
+
+  <div class="section">
+    <div class="section-title">Employee Information</div>
+    <div class="two-col">
+      <div class="col">
+        <div class="row"><div class="label">Employee Name:</div><div class="val">${doc.employeeName || ''}</div></div>
+        <div class="row"><div class="label">Title / Position:</div><div class="val">${doc.employeeTitle || ''}</div></div>
+        <div class="row"><div class="label">Department:</div><div class="val">${doc.department || ''}</div></div>
       </div>
-    </div>
-
-    <div class="box grid2">
-      <div><span class="label">Employee:</span> ${esc(doc.employeeName)} (${esc(doc.employeeTitle||'')})</div>
-      <div><span class="label">Department:</span> ${esc(doc.department||'')}</div>
-      <div><span class="label">Issued By (Person Warning):</span> ${esc(doc.issuedByName)} (${esc(doc.issuedByTitle||'')})</div>
-      <div><span class="label">Supervisor:</span> ${esc(doc.supervisorName)} (${esc(doc.supervisorTitle||'')})</div>
-      <div><span class="label">Incident Date:</span> ${fmt(doc.incidentDate)}</div>
-      <div><span class="label">Incident Time:</span> ${esc(doc.incidentTime||'')}</div>
-      <div><span class="label">Place:</span> ${esc(doc.incidentPlace||'')}</div>
-      <div><span class="label">Violations:</span> ${esc(violationList)}</div>
-    </div>
-
-    <div class="box">
-      <div class="label">Employee Statement</div>
-      <div>${esc(doc.employeeStatement||'')}</div>
-    </div>
-
-    <div class="box">
-      <div class="label">Employer/Supervisor Statement</div>
-      <div>${esc(doc.employerStatement||'')}</div>
-    </div>
-
-    <div class="box">
-      <div class="label">Warning Decision</div>
-      <div>${esc(doc.decision||'')}</div>
-      ${doc.meetingDate ? `<div class="row"><span class="label">Meeting Date:</span> ${fmt(doc.meetingDate)}</div>` : ''}
-    </div>
-
-    ${(doc.previousWarnings?.length||0) > 0 ? `
-    <div class="box">
-      <div class="label">Previous Warnings</div>
-      <ul>
-        ${doc.previousWarnings.map(w => `<li>${esc(w.type)} — ${fmt(w.date)}${w.byWhom ? ` (by ${esc(w.byWhom)})` : ''}</li>`).join('')}
-      </ul>
-    </div>` : ''}
-
-    <div class="sig-row">
-      <div>
-        <div class="line"></div>
-        <div class="sig-cap">Employee Signature (sign in office)</div>
-        <div class="sig-cap small">Date: _____________</div>
-      </div>
-      <div>
-        <div class="line"></div>
-        <div class="sig-cap">Signature of Person Warning</div>
-        <div class="sig-cap small">Date: _____________</div>
-      </div>
-      <div>
-        <div class="line"></div>
-        <div class="sig-cap">Supervisor's Signature</div>
-        <div class="sig-cap small">Date: _____________</div>
+      <div class="col">
+        <div class="row"><div class="label">Issued By:</div><div class="val">${doc.issuedByName || ''}${doc.issuedByTitle ? ' (' + doc.issuedByTitle + ')' : ''}</div></div>
+        <div class="row"><div class="label">Supervisor:</div><div class="val">${doc.supervisorName || ''}${doc.supervisorTitle ? ' (' + doc.supervisorTitle + ')' : ''}</div></div>
       </div>
     </div>
   </div>
-</body>
-</html>
-  `;
 
-  return await printHtmlToPdfBuffer(html); // your existing html->pdf helper
-};
+  <div class="section">
+    <div class="section-title">Incident Details</div>
+    <div class="two-col">
+      <div class="col">
+        <div class="row"><div class="label">Date of Incident:</div><div class="val">${fmtDate(doc.incidentDate)}</div></div>
+        <div class="row"><div class="label">Time:</div><div class="val">${doc.incidentTime || ''}</div></div>
+      </div>
+      <div class="col">
+        <div class="row"><div class="label">Place:</div><div class="val">${doc.incidentPlace || ''}</div></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px"><div class="label">Type of Violation:</div><div class="val">${violations || 'N/A'}</div></div>
+  </div>
+
+  ${doc.employeeStatement ? `
+  <div class="section">
+    <div class="section-title">Employee Statement</div>
+    <div class="text-box">${doc.employeeStatement.replace(/\n/g, '<br>')}</div>
+  </div>` : ''}
+
+  ${doc.employerStatement ? `
+  <div class="section">
+    <div class="section-title">Employer / Supervisor Statement</div>
+    <div class="text-box">${doc.employerStatement.replace(/\n/g, '<br>')}</div>
+  </div>` : ''}
+
+  ${doc.decision ? `
+  <div class="section">
+    <div class="section-title">Warning Decision</div>
+    <div class="text-box">${doc.decision.replace(/\n/g, '<br>')}</div>
+  </div>` : ''}
+
+  ${(doc.previousWarnings && doc.previousWarnings.length) ? `
+  <div class="section">
+    <div class="section-title">Previous Warnings</div>
+    <table class="prev">
+      <thead><tr><th>Type</th><th>Date</th><th>By Whom</th></tr></thead>
+      <tbody>${prevRows}</tbody>
+    </table>
+  </div>` : ''}
+
+  ${doc.meetingDate ? `
+  <div class="section">
+    <div class="section-title">Meeting Date for Signatures</div>
+    <div class="row"><div class="label">Scheduled:</div><div class="val">${fmtDate(doc.meetingDate)}</div></div>
+  </div>` : ''}
+
+  <div class="sig-section">
+    <div class="section-title">Signatures</div>
+    <p style="margin-bottom:8px;font-size:11px;color:#555">By signing below, all parties acknowledge that this disciplinary action has been discussed and a copy has been provided to the employee.</p>
+    <div class="sig-grid">
+      <div class="sig-col">
+        <div class="sig-line"></div>
+        <div class="sig-label"><strong>Supervisor Signature</strong></div>
+        <div class="sig-label">${doc.supervisorName || ''}</div>
+        <div style="margin-top:10px">Date: <span class="date-line"></span></div>
+      </div>
+      <div class="sig-col">
+        <div class="sig-line"></div>
+        <div class="sig-label"><strong>Issued By Signature</strong></div>
+        <div class="sig-label">${doc.issuedByName || ''}</div>
+        <div style="margin-top:10px">Date: <span class="date-line"></span></div>
+      </div>
+      <div class="sig-col">
+        <div class="sig-line"></div>
+        <div class="sig-label"><strong>Employee Signature</strong></div>
+        <div class="sig-label">${doc.employeeName || ''}</div>
+        <div style="margin-top:10px">Date: <span class="date-line"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div><strong>Traffic & Barrier Solutions, LLC</strong></div>
+    <div>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
+    <div>Discipline ID: ${doc._id || 'N/A'}</div>
+  </div>
+</body></html>`;
+}
+
+async function generateDisciplinePdf(doc) {
+  return await printHtmlToPdfBuffer(generateDisciplineHTML(doc));
+}
+
+module.exports = { generateDisciplinePdf };
