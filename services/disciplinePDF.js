@@ -56,13 +56,6 @@ function generateDisciplineHTML(doc) {
   const logo = loadTBSLogo();
   const violations = (doc.violationTypes || []).join(', ') + (doc.otherViolationText ? ` — ${doc.otherViolationText}` : '');
 
-  const prevRows = (doc.previousWarnings || []).map(p => `
-    <tr>
-      <td style="border:1px solid #ccc;padding:6px">${p.type || ''}</td>
-      <td style="border:1px solid #ccc;padding:6px">${fmtDate(p.date)}</td>
-      <td style="border:1px solid #ccc;padding:6px">${p.byWhom || ''}</td>
-    </tr>`).join('');
-
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Disciplinary Action</title>
 <style>
@@ -168,21 +161,6 @@ function generateDisciplineHTML(doc) {
     ${doc.decision ? `<div class="text-box" style="margin-top:10px">${doc.decision.replace(/\n/g, '<br>')}</div>` : ''}
   </div>
 
-  ${(doc.previousWarnings && doc.previousWarnings.length) ? `
-  <div class="section">
-    <div class="section-title">Previous Warnings</div>
-    <table class="prev">
-      <thead><tr><th>Type</th><th>Date</th><th>By Whom</th></tr></thead>
-      <tbody>${prevRows}</tbody>
-    </table>
-  </div>` : ''}
-
-  ${doc.meetingDate ? `
-  <div class="section">
-    <div class="section-title">Meeting Date for Signatures</div>
-    <div class="row"><div class="label">Scheduled:</div><div class="val">${fmtDate(doc.meetingDate)}</div></div>
-  </div>` : ''}
-
   <div class="sig-section">
     <div class="section-title">Signatures</div>
     <p style="margin-bottom:8px;font-size:11px;color:#555">By signing below, all parties acknowledge that this disciplinary action has been discussed and a copy has been provided to the employee.</p>
@@ -191,12 +169,6 @@ function generateDisciplineHTML(doc) {
         <div class="sig-line"></div>
         <div class="sig-label"><strong>Supervisor Signature</strong></div>
         <div class="sig-label">${doc.supervisorName || ''}</div>
-        <div style="margin-top:10px">Date: <span class="date-line"></span></div>
-      </div>
-      <div class="sig-col">
-        <div class="sig-line"></div>
-        <div class="sig-label"><strong>Issued By Signature</strong></div>
-        <div class="sig-label">${doc.issuedByName || ''}</div>
         <div style="margin-top:10px">Date: <span class="date-line"></span></div>
       </div>
       <div class="sig-col">
