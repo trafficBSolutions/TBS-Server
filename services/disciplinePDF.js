@@ -113,12 +113,11 @@ function generateDisciplineHTML(doc) {
     <div class="two-col">
       <div class="col">
         <div class="row"><div class="label">Employee Name:</div><div class="val">${doc.employeeName || ''}</div></div>
-        <div class="row"><div class="label">Title / Position:</div><div class="val">${doc.employeeTitle || ''}</div></div>
         <div class="row"><div class="label">Position:</div><div class="val">${doc.position || ''}</div></div>
       </div>
       <div class="col">
-        <div class="row"><div class="label">Issued By:</div><div class="val">${doc.issuedByName || ''}${doc.issuedByTitle ? ' (' + doc.issuedByTitle + ')' : ''}</div></div>
-        <div class="row"><div class="label">Supervisor:</div><div class="val">${doc.supervisorName || ''}${doc.supervisorTitle ? ' (' + doc.supervisorTitle + ')' : ''}</div></div>
+        <div class="row"><div class="label">Issued By:</div><div class="val">${doc.issuedByName || ''}</div></div>
+        <div class="row"><div class="label">Supervisor:</div><div class="val">${doc.supervisorName || ''}</div></div>
       </div>
     </div>
   </div>
@@ -137,11 +136,16 @@ function generateDisciplineHTML(doc) {
     <div class="row" style="margin-top:8px"><div class="label">Type of Violation:</div><div class="val">${violations || 'N/A'}</div></div>
   </div>
 
-  ${doc.employeeStatement ? `
   <div class="section">
     <div class="section-title">Employee Statement</div>
-    <div class="text-box">${doc.employeeStatement.replace(/\n/g, '<br>')}</div>
-  </div>` : ''}
+    <p style="font-size:11px;color:#555;margin-bottom:8px">Employee: Please write your statement below.</p>
+    <div style="background:#fff;border:1px solid #ccc;border-radius:4px;padding:10px;min-height:120px">
+      <div style="border-bottom:1px solid #ddd;height:28px"></div>
+      <div style="border-bottom:1px solid #ddd;height:28px"></div>
+      <div style="border-bottom:1px solid #ddd;height:28px"></div>
+      <div style="border-bottom:1px solid #ddd;height:28px"></div>
+    </div>
+  </div>
 
   ${doc.employerStatement ? `
   <div class="section">
