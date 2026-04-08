@@ -9,9 +9,10 @@ const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com'];
 
 const addEmployee = async (req, res) => {
   try {
-    const { name, position } = req.body;
+    const { name, position, totalPoints } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
-    const doc = await DisciplineEmployee.create({ name: name.trim(), position: position?.trim() || '' });
+    const pts = Math.min(Math.max(parseFloat(totalPoints) || 0, 0), 3);
+    const doc = await DisciplineEmployee.create({ name: name.trim(), position: position?.trim() || '', totalPoints: pts, terminated: pts >= 3 });
     res.status(201).json(doc);
   } catch (e) {
     console.error('addEmployee:', e);
@@ -87,7 +88,7 @@ const submitDiscipline = async (req, res) => {
 
     // Email with PDF
     try {
-      const pdfBuffer = await generateDisciplinePdf(doc);
+      const pdfBuffer = await generateDisciplinePdf(doc.toObject());
       const dateStr = doc.incidentDate ? new Date(doc.incidentDate).toLocaleDateString() : '';
       const termNotice = newTotal >= 3 ? '<p style="color:red;font-weight:bold">⚠️ EMPLOYEE HAS REACHED 3.00 POINTS — TERMINATION REQUIRED</p>' : '';
       await transporter.sendMail({
