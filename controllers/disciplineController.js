@@ -55,8 +55,8 @@ const getEmployeePoints = async (req, res) => {
 
 const submitDiscipline = async (req, res) => {
   try {
-    const { employeeName, issuedByName, supervisorName, incidentDate, employeeRef, points } = req.body;
-    if (!employeeName || !issuedByName || !supervisorName || !incidentDate) {
+    const { employeeName, supervisorName, incidentDate, employeeRef, points } = req.body;
+    if (!employeeName || !supervisorName || !incidentDate) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
