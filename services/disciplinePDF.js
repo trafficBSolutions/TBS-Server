@@ -120,7 +120,7 @@ function generateDisciplineHTML(doc) {
       <div class="col">
         <div class="row"><div class="label">Date of Warning:</div><div class="val">${fmtDate(doc.dateOfWarning)}</div></div>
         <div class="row"><div class="label">Date of Incident:</div><div class="val">${fmtDate(doc.incidentDate)}</div></div>
-        <div class="row"><div class="label">Time:</div><div class="val">${doc.incidentTime || ''}${doc.incidentPeriod ? ' ' + doc.incidentPeriod : ''}</div></div>
+        <div class="row"><div class="label">Time of Day:</div><div class="val">${doc.incidentPeriod || ''}</div></div>
       </div>
       <div class="col">
         <div class="row"><div class="label">Place:</div><div class="val">${doc.incidentPlace || ''}</div></div>
