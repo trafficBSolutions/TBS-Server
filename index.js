@@ -67,6 +67,7 @@ app.use('/', require('./routes/complaints'));
 app.use('/employee', employeeAuth);
 app.use('/', employeeHandbook);
 app.use('/tasks', require('./routes/taskRoute'));
+app.use('/discipline', require('./routes/disciplineRoute'));
 // ✅ Static file routes
 app.use('/forms', express.static(path.join(__dirname, 'forms')));
 app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
