@@ -6,6 +6,7 @@ const DisciplineSchema = new mongoose.Schema({
   position:          { type: String },
   issuedByName:      { type: String, required: true },
   supervisorName:    { type: String, required: true },
+  dateOfWarning:     { type: Date },
   incidentDate:      { type: Date, required: true },
   incidentTime:      { type: String },
   incidentPlace:     { type: String },
