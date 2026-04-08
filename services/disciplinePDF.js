@@ -114,7 +114,7 @@ function generateDisciplineHTML(doc) {
       <div class="col">
         <div class="row"><div class="label">Employee Name:</div><div class="val">${doc.employeeName || ''}</div></div>
         <div class="row"><div class="label">Title / Position:</div><div class="val">${doc.employeeTitle || ''}</div></div>
-        <div class="row"><div class="label">Department:</div><div class="val">${doc.department || ''}</div></div>
+        <div class="row"><div class="label">Position:</div><div class="val">${doc.position || ''}</div></div>
       </div>
       <div class="col">
         <div class="row"><div class="label">Issued By:</div><div class="val">${doc.issuedByName || ''}${doc.issuedByTitle ? ' (' + doc.issuedByTitle + ')' : ''}</div></div>
