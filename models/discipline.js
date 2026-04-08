@@ -4,7 +4,7 @@ const DisciplineSchema = new mongoose.Schema({
   employeeRef:       { type: mongoose.Schema.Types.ObjectId, ref: 'DisciplineEmployee' },
   employeeName:      { type: String, required: true },
   position:          { type: String },
-  issuedByName:      { type: String, required: true },
+  issuedByName:      { type: String },
   supervisorName:    { type: String, required: true },
   dateOfWarning:     { type: Date },
   incidentDate:      { type: Date, required: true },
