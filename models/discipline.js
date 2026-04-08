@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const DisciplineSchema = new mongoose.Schema({
   employeeName:      { type: String, required: true },
   employeeTitle:     { type: String },
-  department:        { type: String },
+  position:          { type: String },
   issuedByName:      { type: String, required: true },
   issuedByTitle:     { type: String },
   supervisorName:    { type: String, required: true },
