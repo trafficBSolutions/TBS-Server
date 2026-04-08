@@ -149,11 +149,20 @@ function generateDisciplineHTML(doc) {
     <div class="text-box">${doc.employerStatement.replace(/\n/g, '<br>')}</div>
   </div>` : ''}
 
-  ${doc.decision ? `
   <div class="section">
-    <div class="section-title">Warning Decision</div>
-    <div class="text-box">${doc.decision.replace(/\n/g, '<br>')}</div>
-  </div>` : ''}
+    <div class="section-title">Warning Decision & Points</div>
+    <div class="two-col">
+      <div class="col">
+        <div class="row"><div class="label">Points Added:</div><div class="val" style="font-size:16px;font-weight:bold;color:#c0392b">${(doc.points || 0).toFixed(2)}</div></div>
+        <div class="row"><div class="label">Previous Points:</div><div class="val">${(doc.previousPoints || 0).toFixed(2)}</div></div>
+      </div>
+      <div class="col">
+        <div class="row"><div class="label">New Total:</div><div class="val" style="font-size:16px;font-weight:bold;color:${(doc.newTotalPoints || 0) >= 3 ? '#c0392b' : '#1e3a8a'}">${(doc.newTotalPoints || 0).toFixed(2)} / 3.00</div></div>
+      </div>
+    </div>
+    ${(doc.newTotalPoints || 0) >= 3 ? '<div style="background:#f8d7da;border:1px solid #f5c6cb;border-radius:6px;padding:10px;margin-top:10px;color:#721c24;font-weight:bold;text-align:center">⚠️ EMPLOYEE HAS REACHED 3.00 POINTS — TERMINATION</div>' : ''}
+    ${doc.decision ? `<div class="text-box" style="margin-top:10px">${doc.decision.replace(/\n/g, '<br>')}</div>` : ''}
+  </div>
 
   ${(doc.previousWarnings && doc.previousWarnings.length) ? `
   <div class="section">
