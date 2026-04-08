@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const DisciplineSchema = new mongoose.Schema({
+  employeeRef:       { type: mongoose.Schema.Types.ObjectId, ref: 'DisciplineEmployee' },
   employeeName:      { type: String, required: true },
   employeeTitle:     { type: String },
   position:          { type: String },
@@ -16,6 +17,9 @@ const DisciplineSchema = new mongoose.Schema({
   employeeStatement: { type: String },
   employerStatement: { type: String },
   decision:          { type: String },
+  points:            { type: Number, default: 0, min: 0, max: 3 },
+  previousPoints:    { type: Number, default: 0 },
+  newTotalPoints:    { type: Number, default: 0 },
   meetingDate:       { type: Date },
   previousWarnings:  [{
     type:   { type: String, enum: ['Verbal', 'Written'] },
