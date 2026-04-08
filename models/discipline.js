@@ -3,12 +3,9 @@ const mongoose = require('mongoose');
 const DisciplineSchema = new mongoose.Schema({
   employeeRef:       { type: mongoose.Schema.Types.ObjectId, ref: 'DisciplineEmployee' },
   employeeName:      { type: String, required: true },
-  employeeTitle:     { type: String },
   position:          { type: String },
   issuedByName:      { type: String, required: true },
-  issuedByTitle:     { type: String },
   supervisorName:    { type: String, required: true },
-  supervisorTitle:   { type: String },
   incidentDate:      { type: Date, required: true },
   incidentTime:      { type: String },
   incidentPlace:     { type: String },
