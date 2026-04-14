@@ -1,5 +1,6 @@
 const BollardWheelUser = require('../models/bollardwheeluser');
-const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
+const { transporter } = require('../utils/emailConfig');
+const axios = require('axios');
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
@@ -19,10 +20,22 @@ const submitBollardWheel = async (req, res) => {
             zip,
             bollard,
             wheel,
-            message
+            message,
+            token
         } = req.body;
 
-        // Ensure that file upload exists
+        if (!token) {
+            return res.status(400).json({ error: 'reCAPTCHA token is missing.' });
+        }
+
+        const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+        const { data } = await axios.post('https://www.google.com/recaptcha/api/siteverify', null, {
+            params: { secret: secretKey, response: token }
+        });
+
+        if (!data.success || data.score < 0.4) {
+            return res.status(400).json({ error: 'Failed reCAPTCHA verification.' });
+        }
         
 
 
@@ -307,6 +320,35 @@ const submitBollardWheel = async (req, res) => {
     }
 };
 
+const getBollardsByMonth = async (req, res) => {
+    try {
+        const { month, year } = req.query;
+        const start = new Date(year, month - 1, 1);
+        const end = new Date(year, month, 1);
+        const results = await BollardWheelUser.find({ createdAt: { $gte: start, $lt: end } }).sort({ createdAt: -1 });
+        res.json(results);
+    } catch (e) {
+        console.error('Error fetching monthly bollard quotes:', e);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+const getBollardsByDay = async (req, res) => {
+    try {
+        const { date } = req.query;
+        const start = new Date(date);
+        const end = new Date(date);
+        end.setDate(end.getDate() + 1);
+        const results = await BollardWheelUser.find({ createdAt: { $gte: start, $lt: end } }).sort({ createdAt: -1 });
+        res.json(results);
+    } catch (e) {
+        console.error('Error fetching daily bollard quotes:', e);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
-    submitBollardWheel
+    submitBollardWheel,
+    getBollardsByMonth,
+    getBollardsByDay
 };
