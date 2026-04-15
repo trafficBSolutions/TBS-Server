@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const SignShopJob = require('../models/signShopJob');
+const { transporter } = require('../utils/emailConfig');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, '..', 'signshop-photos')),
@@ -66,6 +67,47 @@ router.post('/', upload.array('photos', 5), async (req, res) => {
     const photos = (req.files || []).map(f => f.filename);
     const job = new SignShopJob({ ...req.body, photos });
     const saved = await job.save();
+
+    // Send email notification
+    const attachments = (req.files || []).map(f => ({
+      filename: f.originalname,
+      path: f.path
+    }));
+
+    const mailOptions = {
+      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+      to: 'tbsolutions9@gmail.com',
+      cc: ['tbsolutions1999@gmail.com', 'tbsolutions4@gmail.com'],
+      subject: `🏭 New Sign Shop Job: ${saved.title}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <div style="background:#e67e22;padding:20px;text-align:center;">
+            <h1 style="color:#fff;margin:0;">Material WorX - Sign Shop</h1>
+          </div>
+          <div style="padding:20px;background:#f9f9f9;">
+            <h2 style="color:#333;">New Sign Shop Job Added</h2>
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Job Title:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${saved.title}</td></tr>
+              <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Customer:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${saved.customer || 'N/A'}</td></tr>
+              <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Date:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${saved.date}</td></tr>
+              <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Added By:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${saved.author}</td></tr>
+              <tr><td style="padding:8px;font-weight:bold;">Description:</td><td style="padding:8px;">${saved.description || 'N/A'}</td></tr>
+            </table>
+            ${photos.length > 0 ? '<p style="margin-top:16px;color:#555;">📎 ' + photos.length + ' photo(s) attached below.</p>' : ''}
+          </div>
+          <div style="background:#333;padding:12px;text-align:center;">
+            <p style="color:#aaa;margin:0;font-size:12px;">Traffic & Barrier Solutions, LLC / Material WorX</p>
+          </div>
+        </div>
+      `,
+      attachments
+    };
+
+    transporter.sendMail(mailOptions, (err, info) => {
+      if (err) console.error('Sign shop email error:', err);
+      else console.log('Sign shop email sent:', info.response);
+    });
+
     res.status(201).json(saved);
   } catch (e) {
     res.status(400).json({ message: e.message });
