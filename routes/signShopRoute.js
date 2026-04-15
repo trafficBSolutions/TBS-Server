@@ -1,8 +1,30 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const SignShopJob = require('../models/signShopJob');
 
-// Get all sign shop jobs
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '..', 'signshop-photos')),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|gif|webp|heic/;
+    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowed.test(file.mimetype);
+    cb(null, ext && mime);
+  }
+});
+
+// Get all
 router.get('/', async (req, res) => {
   try {
     const jobs = await SignShopJob.find().sort({ createdAt: -1 });
@@ -12,7 +34,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get jobs for a specific month
+// Get by month
 router.get('/month', async (req, res) => {
   try {
     const { month, year } = req.query;
@@ -27,7 +49,7 @@ router.get('/month', async (req, res) => {
   }
 });
 
-// Get jobs for a specific day
+// Get by day
 router.get('/day', async (req, res) => {
   try {
     const { date } = req.query;
@@ -38,10 +60,11 @@ router.get('/day', async (req, res) => {
   }
 });
 
-// Create new sign shop job
-router.post('/', async (req, res) => {
+// Create with photos
+router.post('/', upload.array('photos', 5), async (req, res) => {
   try {
-    const job = new SignShopJob(req.body);
+    const photos = (req.files || []).map(f => f.filename);
+    const job = new SignShopJob({ ...req.body, photos });
     const saved = await job.save();
     res.status(201).json(saved);
   } catch (e) {
@@ -49,7 +72,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update sign shop job
+// Update
 router.put('/:id', async (req, res) => {
   try {
     const job = await SignShopJob.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -60,11 +83,15 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete sign shop job
+// Delete (also removes photo files)
 router.delete('/:id', async (req, res) => {
   try {
     const job = await SignShopJob.findByIdAndDelete(req.params.id);
     if (!job) return res.status(404).json({ message: 'Job not found' });
+    (job.photos || []).forEach(photo => {
+      const filePath = path.join(__dirname, '..', 'signshop-photos', photo);
+      fs.unlink(filePath, () => {});
+    });
     res.json({ message: 'Job deleted' });
   } catch (e) {
     res.status(500).json({ message: e.message });
