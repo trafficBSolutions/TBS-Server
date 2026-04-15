@@ -81,7 +81,7 @@ router.post('/', upload.array('photos', 5), async (req, res) => {
       from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
       to: 'tbsolutions9@gmail.com',
       cc: ['tbsolutions1999@gmail.com', 'tbsolutions4@gmail.com'],
-      subject: `🏭 New Sign Shop Job: ${saved.title}`,
+      subject: `🪧 New Sign Shop Job: ${saved.title}`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:#e67e22;padding:20px;text-align:center;">
