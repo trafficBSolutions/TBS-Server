@@ -73,7 +73,7 @@ app.use('/forms', express.static(path.join(__dirname, 'forms')));
 app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 // server.js or app.js
-
+app.use('/signshop-jobs', require('./routes/signShopRoute'));
 // ✅ Job cleaner utility (MongoDB cleanup job)
 require('./utils/cleanJob');
 
