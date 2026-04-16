@@ -15,7 +15,7 @@ function toDataUri(absPath) {
 }
 
 async function generateQuotePdf(quoteData) {
-  const { date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber } = quoteData;
+  const { date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, cardType, cardLast4 } = quoteData;
 
   const tbsLogo = toDataUri(path.resolve(__dirname, '../public/TBSPDF7.svg'));
   const mxLogo = toDataUri(path.resolve(__dirname, '../public/Material WorX Tan.svg'));
@@ -84,7 +84,7 @@ td{padding:6px;border:1px solid #ddd;}
   <div class="totals">
     <p>Subtotal: $${computed.subtotal.toFixed(2)}</p>
     <p>Tax: $${computed.taxDue.toFixed(2)}</p>
-    ${computed.ccFee > 0 ? `<p>Card Fee: $${computed.ccFee.toFixed(2)}</p>` : ''}
+    ${computed.ccFee > 0 ? `<p>Card Fee (3%): $${computed.ccFee.toFixed(2)}${cardType ? ` — ${cardType}` : ''}${cardLast4 ? ` ending in ${cardLast4}` : ''}</p>` : ''}
     <p class="grand">TOTAL: $${computed.total.toFixed(2)}</p>
   </div>
 
@@ -149,7 +149,7 @@ td{padding:6px;border:1px solid #ddd;}
 }
 
 async function generateInvoicePdf(invoiceData) {
-  const { invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber } = invoiceData;
+  const { invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, cardType, cardLast4 } = invoiceData;
 
   const tbsLogo = toDataUri(path.resolve(__dirname, '../public/TBSPDF7.svg'));
   const mxLogo = toDataUri(path.resolve(__dirname, '../public/Material WorX Tan.svg'));
@@ -222,7 +222,7 @@ td{padding:6px;border:1px solid #ddd;}
   <div class="totals">
     <p>Subtotal: $${computed.subtotal.toFixed(2)}</p>
     <p>Tax: $${computed.taxDue.toFixed(2)}</p>
-    ${computed.ccFee > 0 ? `<p>Card Fee: $${computed.ccFee.toFixed(2)}</p>` : ''}
+    ${computed.ccFee > 0 ? `<p>Card Fee (3%): $${computed.ccFee.toFixed(2)}${cardType ? ` — ${cardType}` : ''}${cardLast4 ? ` ending in ${cardLast4}` : ''}</p>` : ''}
     <p class="grand">TOTAL: $${computed.total.toFixed(2)}</p>
   </div>
 
