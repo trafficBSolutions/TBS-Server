@@ -117,12 +117,34 @@ router.post('/', upload.array('photos', 5), async (req, res) => {
   }
 });
 
-// Update
-router.put('/:id', async (req, res) => {
+// Update (with optional new photos)
+router.put('/:id', upload.array('photos', 5), async (req, res) => {
   try {
-    const job = await SignShopJob.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const job = await SignShopJob.findById(req.params.id);
     if (!job) return res.status(404).json({ message: 'Job not found' });
-    res.json(job);
+
+    if (req.body.title !== undefined) job.title = req.body.title;
+    if (req.body.customer !== undefined) job.customer = req.body.customer;
+    if (req.body.description !== undefined) job.description = req.body.description;
+    if (req.body.completed !== undefined) job.completed = req.body.completed === 'true' || req.body.completed === true;
+    if (req.body.date !== undefined) job.date = req.body.date;
+
+    // Remove specific photos if requested
+    const removePhotos = req.body.removePhotos ? JSON.parse(req.body.removePhotos) : [];
+    if (removePhotos.length > 0) {
+      removePhotos.forEach(photo => {
+        const filePath = path.join(uploadDir, photo);
+        fs.unlink(filePath, () => {});
+      });
+      job.photos = job.photos.filter(p => !removePhotos.includes(p));
+    }
+
+    // Append new photos
+    const newPhotos = (req.files || []).map(f => f.filename);
+    job.photos = [...job.photos, ...newPhotos];
+
+    const saved = await job.save();
+    res.json(saved);
   } catch (e) {
     res.status(400).json({ message: e.message });
   }
