@@ -15,7 +15,7 @@ function toDataUri(absPath) {
 }
 
 async function generateQuotePdf(quoteData) {
-  const { date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, cardType, cardLast4, checkNumber } = quoteData;
+  const { date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, cardType, cardLast4, checkNumber, donation } = quoteData;
 
   const tbsLogo = toDataUri(path.resolve(__dirname, '../public/TBSPDF7.svg'));
   const mxLogo = toDataUri(path.resolve(__dirname, '../public/Material WorX Tan.svg'));
@@ -85,6 +85,7 @@ td{padding:6px;border:1px solid #ddd;}
     <p>Subtotal: $${computed.subtotal.toFixed(2)}</p>
     <p>Tax: $${computed.taxDue.toFixed(2)}</p>
     ${computed.ccFee > 0 ? `<p>Card Fee (3%): $${computed.ccFee.toFixed(2)}${cardType ? ` — ${cardType}` : ''}${cardLast4 ? ` ending in ${cardLast4}` : ''}</p>` : ''}
+    ${donation > 0 ? `<p style="color:red;font-weight:bold;">Donation: -$${Number(donation).toFixed(2)}</p>` : ''}
     <p class="grand">TOTAL: $${computed.total.toFixed(2)}</p>
     ${checkNumber ? `<p>Check #: ${checkNumber}</p>` : ''}
   </div>
