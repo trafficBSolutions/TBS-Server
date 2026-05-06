@@ -102,8 +102,8 @@ router.post('/shop-work-order', async (req, res) => {
     if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
     fs.writeFileSync(path.join(pdfDir, `${wo._id}.pdf`), pdfBuffer);
 
-    // Build approval URL base
-    const baseUrl = process.env.BASE_URL || 'https://www.trafficbarriersolutions.com';
+    // Build approval URL base - must point to the API server, not the frontend
+    const baseUrl = process.env.API_BASE_URL || 'https://tbs-server.onrender.com';
 
     // Send email to supervisors for approval
     const approvalHtml = `
