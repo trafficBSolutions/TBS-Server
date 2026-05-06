@@ -8,9 +8,9 @@ const fs = require('fs');
 
 // Supervisors who can approve
 const SUPERVISORS = [
-  { name: 'Bryson Davis', email: 'tbsolutions9@gmail.com', phone: '7062630175', username: 'tbsolutions9' },
-  { name: 'Carson Speer', email: 'tbsolutions4@gmail.com', phone: '7065814465', username: 'tbsolutions4' },
-  { name: 'William Rowell', email: 'tbsolutions1999@gmail.com', phone: '7068790106', username: 'tbsolutions1999' },
+  { name: 'Bryson Davis', email: 'tbsolutions9@gmail.com', username: 'tbsolutions9' },
+  { name: 'Carson Speer', email: 'tbsolutions4@gmail.com', username: 'tbsolutions4' },
+  { name: 'William Rowell', email: 'tbsolutions1999@gmail.com', username: 'tbsolutions1999' },
 ];
 
 const ALLOWED_APPROVERS = new Set(SUPERVISORS.map(s => s.email));
@@ -102,8 +102,8 @@ router.post('/shop-work-order', async (req, res) => {
     if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
     fs.writeFileSync(path.join(pdfDir, `${wo._id}.pdf`), pdfBuffer);
 
-    // Build approval URL base - must point to the API server, not the frontend
-    const baseUrl = process.env.API_BASE_URL || 'https://tbs-server.onrender.com';
+    // Build approval URL base - must point to the API server for processing
+    const apiBase = process.env.API_BASE_URL || 'https://tbs-server.onrender.com';
 
     // Send email to supervisors for approval
     const approvalHtml = `
@@ -122,8 +122,8 @@ router.post('/shop-work-order', async (req, res) => {
           <tr><td style="padding:8px;font-weight:bold;">Description:</td><td style="padding:8px;">${wo.description.substring(0, 200)}${wo.description.length > 200 ? '...' : ''}</td></tr>
         </table>
         <div style="margin-top:20px;text-align:center;">
-          <a href="${baseUrl}/shop-work-order/approve/${wo._id}" style="display:inline-block;padding:12px 30px;background:#4CAF50;color:#fff;text-decoration:none;border-radius:5px;margin:5px;font-weight:bold;">✅ APPROVE</a>
-          <a href="${baseUrl}/shop-work-order/disapprove/${wo._id}" style="display:inline-block;padding:12px 30px;background:#f44336;color:#fff;text-decoration:none;border-radius:5px;margin:5px;font-weight:bold;">❌ DISAPPROVE</a>
+          <a href="${apiBase}/shop-work-order/approve/${wo._id}" style="display:inline-block;padding:12px 30px;background:#4CAF50;color:#fff;text-decoration:none;border-radius:5px;margin:5px;font-weight:bold;">✅ APPROVE</a>
+          <a href="${apiBase}/shop-work-order/disapprove/${wo._id}" style="display:inline-block;padding:12px 30px;background:#f44336;color:#fff;text-decoration:none;border-radius:5px;margin:5px;font-weight:bold;">❌ DISAPPROVE</a>
         </div>
         <p style="margin-top:15px;font-size:12px;color:#666;">PDF is attached for your review. Click Approve or Disapprove above.</p>
       </div>
@@ -142,20 +142,7 @@ router.post('/shop-work-order', async (req, res) => {
       else console.log('Shop work order approval email sent:', info.response);
     });
 
-    // Send SMS via email-to-SMS gateways (AT&T, Verizon, T-Mobile)
-    const smsGateways = ['@txt.att.net', '@vtext.com', '@tmomail.net'];
-    const smsBody = `TBS Shop Work Order needs approval.\nEmployee: ${wo.employeeNames}\nDate: ${wo.date}\nApprove: ${baseUrl}/shop-work-order/approve/${wo._id}`;
 
-    SUPERVISORS.forEach(sup => {
-      smsGateways.forEach(gateway => {
-        transporter.sendMail({
-          from: 'tbsolutions9@gmail.com',
-          to: `${sup.phone}${gateway}`,
-          subject: '',
-          text: smsBody,
-        }, (err) => { if (err) console.log(`SMS gateway ${gateway} failed for ${sup.name}:`, err.message); });
-      });
-    });
 
     res.status(201).json({ message: 'Shop work order submitted for approval', id: wo._id });
   } catch (e) {
@@ -243,20 +230,9 @@ router.post('/shop-work-order/approve/:id', express.urlencoded({ extended: true 
 
     transporter.sendMail(mailOptions, (err) => { if (err) console.error('Approved email error:', err); });
 
-    // SMS notification
-    const smsGateways = ['@txt.att.net', '@vtext.com', '@tmomail.net'];
-    SUPERVISORS.forEach(sup => {
-      smsGateways.forEach(gateway => {
-        transporter.sendMail({
-          from: 'tbsolutions9@gmail.com',
-          to: `${sup.phone}${gateway}`,
-          subject: '',
-          text: `✅ Shop Work Order APPROVED by ${approverInfo.name}. Employee: ${wo.employeeNames}, Date: ${wo.date}`,
-        }, () => {});
-      });
-    });
 
-    res.send(`<!doctype html><html><head><meta charset="utf-8"/><style>body{font-family:Arial;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5;margin:0;}.card{background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center;}</style></head><body><div class="card"><h2 style="color:#4CAF50;">✅ Work Order Approved!</h2><p>Approved by ${approverInfo.name}</p><p>An approved PDF has been sent to all supervisors.</p></div></body></html>`);
+
+    res.send(`<!doctype html><html><head><meta charset="utf-8"/><style>body{font-family:Arial;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5;margin:0;}.card{background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center;}</style></head><body><div class="card"><h2 style="color:#4CAF50;">✅ Work Order Approved!</h2><p>Approved by ${approverInfo.name}</p><p>An approved PDF has been sent to all supervisors via email.</p><p>Please check your email for the approved PDF.</p></div></body></html>`);
   } catch (e) {
     console.error('Approval failed:', e);
     res.status(500).send('Error processing approval.');
@@ -281,7 +257,7 @@ router.get('/shop-work-order/disapprove/:id', async (req, res) => {
       html: `<div style="font-family:Arial;padding:20px;"><h2 style="color:#f44336;">❌ Shop Work Order Disapproved (VOID)</h2><p>Employee: ${wo.employeeNames}</p><p>Date: ${wo.date}</p><p>This work order has been voided and will not be processed.</p></div>`,
     }, () => {});
 
-    res.send(`<!doctype html><html><head><meta charset="utf-8"/><style>body{font-family:Arial;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5;margin:0;}.card{background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center;}</style></head><body><div class="card"><h2 style="color:#f44336;">❌ Work Order Disapproved</h2><p>This work order has been voided.</p></div></body></html>`);
+    res.send(`<!doctype html><html><head><meta charset="utf-8"/><style>body{font-family:Arial;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5;margin:0;}.card{background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center;}</style></head><body><div class="card"><h2 style="color:#f44336;">❌ Work Order Disapproved</h2><p>This work order has been voided and will not be processed.</p></div></body></html>`);
   } catch (e) {
     res.status(500).send('Error processing disapproval.');
   }
