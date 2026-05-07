@@ -15,7 +15,7 @@ function toDataUri(absPath) {
 }
 
 async function generateQuotePdf(quoteData) {
-  const { date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, cardType, cardLast4, checkNumber, donation } = quoteData;
+  const { date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, cardType, cardLast4, checkNumber, donation, notes } = quoteData;
 
   const tbsLogo = toDataUri(path.resolve(__dirname, '../public/TBSPDF7.svg'));
   const mxLogo = toDataUri(path.resolve(__dirname, '../public/Material WorX Tan.svg'));
@@ -91,6 +91,7 @@ td{padding:6px;border:1px solid #ddd;}
   </div>
 
   <div class="footer">
+    ${notes ? `<p style="margin:10px 0 5px 0;"><strong>NOTES:</strong></p><p style="margin:3px 0;white-space:pre-wrap;">${notes}</p>` : ''}
     <p style="margin:10px 0 5px 0;"><strong>REMIT PAYMENT TO:</strong></p>
     <p style="margin:3px 0;">Traffic and Barrier Solutions, LLC</p>
     <p style="margin:3px 0;">723 N Wall St, Calhoun, GA 30701</p>
@@ -151,7 +152,7 @@ td{padding:6px;border:1px solid #ddd;}
 }
 
 async function generateInvoicePdf(invoiceData) {
-  const { invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, cardType, cardLast4, checkNumber, donation } = invoiceData;
+  const { invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, cardType, cardLast4, checkNumber, donation, notes } = invoiceData;
 
   const tbsLogo = toDataUri(path.resolve(__dirname, '../public/TBSPDF7.svg'));
   const mxLogo = toDataUri(path.resolve(__dirname, '../public/Material WorX Tan.svg'));
@@ -231,6 +232,7 @@ td{padding:6px;border:1px solid #ddd;}
   </div>
 
   <div class="footer">
+    ${notes ? `<p style="margin:10px 0 5px 0;"><strong>NOTES:</strong></p><p style="margin:3px 0;white-space:pre-wrap;">${notes}</p>` : ''}
     <p style="margin:10px 0 5px 0;"><strong>REMIT PAYMENT TO:</strong></p>
     <p style="margin:3px 0;">Traffic and Barrier Solutions, LLC</p>
     <p style="margin:3px 0;">723 N Wall St, Calhoun, GA 30701</p>
