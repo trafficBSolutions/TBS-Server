@@ -6,6 +6,7 @@ const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
+const wilton = 'tbsolutions81@gmail.com';
 const submitPlan = async (req, res) => {
     try {
         const {
@@ -61,7 +62,8 @@ const submitPlan = async (req, res) => {
                 { name: 'Bryson Davis', address: mainEmail },
         { name: 'Jonkell Tolbert', address: foreemail },
         { name: 'Salvador Gonzalez', address: foremanmail},
-        { name: 'Damien Diskey', address: damienemail}
+        { name: 'Damien Diskey', address: damienemail},
+                  {name: 'Wilton Schweitzer', address: wilton}
                ],
             subject: 'TRAFFIC CONTROL PLAN REQUEST',
             html: `
