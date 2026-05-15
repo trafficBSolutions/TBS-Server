@@ -247,13 +247,13 @@ router.get('/employees', async (req, res) => {
 // POST /timeclock/add-employee - Salary admin adds a new employee to the time clock roster
 router.post('/add-employee', async (req, res) => {
   try {
-    const { firstName, lastName } = req.body;
+    const { firstName, lastName, pin } = req.body;
     if (!firstName?.trim() || !lastName?.trim()) {
       return res.status(400).json({ message: 'First name and last name are required' });
     }
-
-    // All employees share the same login email
-    const sharedEmail = 'tbsolutions55@gmail.com';
+    if (!pin || pin.length < 4) {
+      return res.status(400).json({ message: 'PIN must be at least 4 digits' });
+    }
 
     // Check if employee with this name already exists
     const existing = await Employee.findOne({
@@ -263,22 +263,14 @@ router.post('/add-employee', async (req, res) => {
     });
     if (existing) return res.status(409).json({ message: `${firstName} ${lastName} already exists` });
 
-    // Create employee with a unique email variant (for DB uniqueness) but they all use the shared login
+    // Check PIN uniqueness across both collections
+    const existsEmp = await Employee.findOne({ pin });
+    const existsAdmin = await Admin.findOne({ pin });
+    if (existsEmp || existsAdmin) return res.status(409).json({ message: 'That PIN is already in use. Choose a different one.' });
+
     const uniqueEmail = `${firstName.trim().toLowerCase()}.${lastName.trim().toLowerCase()}@tbs-employee.internal`;
     const bcrypt = require('bcryptjs');
     const placeholderHash = await bcrypt.hash('shared-login-only', 12);
-
-    // Auto-generate a unique PIN
-    let pin;
-    let attempts = 0;
-    while (attempts < 100) {
-      pin = String(Math.floor(1000 + Math.random() * 9000));
-      const existsEmp = await Employee.findOne({ pin });
-      const existsAdmin = await Admin.findOne({ pin });
-      if (!existsEmp && !existsAdmin) break;
-      attempts++;
-    }
-    if (attempts >= 100) return res.status(500).json({ message: 'Could not generate unique PIN' });
 
     const emp = await Employee.create({
       firstName: firstName.trim(),
@@ -294,7 +286,7 @@ router.post('/add-employee', async (req, res) => {
       employee: { _id: emp._id, name: `${emp.firstName} ${emp.lastName}`, pin, type: 'Employee' }
     });
   } catch (e) {
-    if (e.code === 11000) return res.status(409).json({ message: 'Employee already exists' });
+    if (e.code === 11000) return res.status(409).json({ message: 'Employee or PIN already exists' });
     console.error('Add employee error:', e);
     return res.status(500).json({ message: 'Server error' });
   }
@@ -311,32 +303,26 @@ router.delete('/remove-employee/:id', async (req, res) => {
   }
 });
 
-// POST /timeclock/generate-pin - Auto-generate a unique PIN for an employee/admin
+// POST /timeclock/generate-pin - Manually set a PIN for an employee/admin
 router.post('/generate-pin', async (req, res) => {
   try {
-    const { employeeId, adminId } = req.body;
+    const { employeeId, adminId, pin } = req.body;
     if (!employeeId && !adminId) return res.status(400).json({ message: 'id required' });
+    if (!pin || pin.length < 4) return res.status(400).json({ message: 'PIN must be at least 4 digits' });
 
-    // Generate unique 4-digit PIN
-    let pin;
-    let attempts = 0;
-    while (attempts < 100) {
-      pin = String(Math.floor(1000 + Math.random() * 9000));
-      const existsEmp = await Employee.findOne({ pin });
-      const existsAdmin = await Admin.findOne({ pin });
-      if (!existsEmp && !existsAdmin) break;
-      attempts++;
-    }
-    if (attempts >= 100) return res.status(500).json({ message: 'Could not generate unique PIN. Try again.' });
+    // Check uniqueness across both collections
+    const existsEmp = await Employee.findOne({ pin, _id: { $ne: employeeId || null } });
+    const existsAdmin = await Admin.findOne({ pin, _id: { $ne: adminId || null } });
+    if (existsEmp || existsAdmin) return res.status(409).json({ message: 'That PIN is already in use' });
 
     if (employeeId) {
       const emp = await Employee.findByIdAndUpdate(employeeId, { pin }, { new: true });
       if (!emp) return res.status(404).json({ message: 'Employee not found' });
-      return res.json({ message: `PIN generated for ${emp.firstName} ${emp.lastName}`, pin, name: `${emp.firstName} ${emp.lastName}` });
+      return res.json({ message: `PIN set for ${emp.firstName} ${emp.lastName}`, pin, name: `${emp.firstName} ${emp.lastName}` });
     } else {
       const adm = await Admin.findByIdAndUpdate(adminId, { pin }, { new: true });
       if (!adm) return res.status(404).json({ message: 'Admin not found' });
-      return res.json({ message: `PIN generated for ${adm.firstName} ${adm.lastName || ''}`, pin, name: `${adm.firstName} ${adm.lastName || ''}` });
+      return res.json({ message: `PIN set for ${adm.firstName} ${adm.lastName || ''}`, pin, name: `${adm.firstName} ${adm.lastName || ''}` });
     }
   } catch (e) {
     return res.status(500).json({ message: 'Server error' });
