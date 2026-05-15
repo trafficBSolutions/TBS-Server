@@ -241,6 +241,31 @@ router.post('/add-employee', async (req, res) => {
   }
 });
 
+// POST /timeclock/add-points - Add discipline points to an employee
+router.post('/add-points', async (req, res) => {
+  try {
+    const { employeeName, points } = req.body;
+    if (!employeeName || !points) return res.status(400).json({ message: 'employeeName and points required' });
+
+    const pts = Math.min(Math.max(parseFloat(points) || 0, 0), 3);
+    const emp = await DisciplineEmployee.findOne({ name: { $regex: new RegExp(`^${employeeName.trim()}$`, 'i') } });
+    if (!emp) return res.status(404).json({ message: `${employeeName} not found in discipline roster` });
+
+    const newTotal = Math.min(emp.totalPoints + pts, 3);
+    emp.totalPoints = newTotal;
+    if (newTotal >= 3) emp.terminated = true;
+    await emp.save();
+
+    return res.json({
+      message: `${pts.toFixed(2)} point(s) added to ${employeeName}. New total: ${newTotal.toFixed(2)}/3.00${newTotal >= 3 ? ' — TERMINATION' : ''}`,
+      newTotal
+    });
+  } catch (e) {
+    console.error('Add points error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // DELETE /timeclock/remove-employee/:id - Terminate/deactivate an employee
 router.delete('/remove-employee/:id', async (req, res) => {
   try {
