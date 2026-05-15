@@ -552,6 +552,53 @@ router.get('/time-worked', async (req, res) => {
   }
 });
 
+// POST /timeclock/manual-entry - Salary admin manually adds hours for an employee
+router.post('/manual-entry', async (req, res) => {
+  try {
+    const { employeeId, date, clockIn, clockOut, reason } = req.body;
+    if (!employeeId || !date || !clockIn || !clockOut) {
+      return res.status(400).json({ message: 'employeeId, date, clockIn, clockOut are required' });
+    }
+
+    // Find the person
+    let personName;
+    let person = await TimeClockEmployee.findById(employeeId);
+    if (person) {
+      personName = `${person.firstName} ${person.lastName}`;
+    } else {
+      const admin = await Admin.findById(employeeId);
+      if (!admin) return res.status(404).json({ message: 'Employee not found' });
+      personName = `${admin.firstName} ${admin.lastName || ''}`;
+      person = admin;
+    }
+
+    // Parse clock in/out times for the given date
+    const clockInDate = new Date(`${date}T${clockIn}:00`);
+    const clockOutDate = new Date(`${date}T${clockOut}:00`);
+
+    if (clockOutDate <= clockInDate) {
+      return res.status(400).json({ message: 'Clock out must be after clock in' });
+    }
+
+    const entry = await TimeClock.create({
+      employeeId: person._id,
+      employeeName: personName,
+      clockIn: clockInDate,
+      clockOut: clockOutDate,
+      ip: `admin-manual${reason ? ': ' + reason : ''}`
+    });
+
+    const mins = Math.round((clockOutDate - clockInDate) / 60000);
+    return res.json({
+      message: `${personName}: ${(mins/60).toFixed(2)} hrs added for ${date}`,
+      record: entry
+    });
+  } catch (e) {
+    console.error('Manual entry error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /timeclock/check-ip
 router.get('/check-ip', (req, res) => {
   const clientIp = getClientIp(req);
