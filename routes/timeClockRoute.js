@@ -5,6 +5,10 @@ const TimeClockEmployee = require('../models/timeClockEmployee');
 const DisciplineEmployee = require('../models/disciplineEmployee');
 const Admin = require('../models/Admin');
 const Discipline = require('../models/discipline');
+const { transporter } = require('../utils/emailConfig');
+const { generateDisciplinePdf } = require('../services/disciplinePDF');
+
+const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com'];
 
 // Allowed IPs - only this location can clock in/out
 const ALLOWED_IPS = [
@@ -132,6 +136,31 @@ router.post('/acknowledge-discipline', verifyIp, async (req, res) => {
       discipline.linkedPersonType = person.type;
     }
     await discipline.save();
+
+    // Send updated PDF with signatures to admins
+    try {
+      const pdfBuffer = await generateDisciplinePdf(discipline.toObject ? discipline.toObject() : discipline);
+      const dateStr = discipline.incidentDate ? new Date(discipline.incidentDate).toLocaleDateString() : '';
+      await transporter.sendMail({
+        from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+        to: NOTIFY_EMAILS.join(','),
+        subject: `ACKNOWLEDGED: ${discipline.employeeName} – Disciplinary Action ${dateStr}`,
+        html: `<h2>Disciplinary Action Acknowledged</h2>
+          <p><strong>Employee:</strong> ${discipline.employeeName}</p>
+          <p><strong>Signed By:</strong> ${typedName.trim()}</p>
+          <p><strong>Acknowledged At:</strong> ${new Date().toLocaleString()}</p>
+          <p><strong>Supervisor:</strong> ${discipline.supervisorName || ''}</p>
+          ${employeeStatement ? `<p><strong>Employee Statement:</strong> ${employeeStatement}</p>` : ''}
+          <p>Updated PDF with employee signature attached.</p>`,
+        attachments: [{
+          filename: `Discipline_${discipline.employeeName.replace(/\s+/g, '_')}_SIGNED.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }]
+      });
+    } catch (emailErr) {
+      console.error('Discipline acknowledgment email failed:', emailErr);
+    }
 
     const remaining = await Discipline.find({
       $or: [
@@ -395,6 +424,31 @@ router.post('/admin-self-acknowledge', verifyIp, async (req, res) => {
       discipline.linkedPersonType = 'Admin';
     }
     await discipline.save();
+
+    // Send updated PDF with signatures to admins
+    try {
+      const pdfBuffer = await generateDisciplinePdf(discipline.toObject ? discipline.toObject() : discipline);
+      const dateStr = discipline.incidentDate ? new Date(discipline.incidentDate).toLocaleDateString() : '';
+      await transporter.sendMail({
+        from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+        to: NOTIFY_EMAILS.join(','),
+        subject: `ACKNOWLEDGED: ${discipline.employeeName} – Disciplinary Action ${dateStr}`,
+        html: `<h2>Disciplinary Action Acknowledged</h2>
+          <p><strong>Employee:</strong> ${discipline.employeeName}</p>
+          <p><strong>Signed By:</strong> ${typedName.trim()}</p>
+          <p><strong>Acknowledged At:</strong> ${new Date().toLocaleString()}</p>
+          <p><strong>Supervisor:</strong> ${discipline.supervisorName || ''}</p>
+          ${employeeStatement ? `<p><strong>Employee Statement:</strong> ${employeeStatement}</p>` : ''}
+          <p>Updated PDF with employee signature attached.</p>`,
+        attachments: [{
+          filename: `Discipline_${discipline.employeeName.replace(/\s+/g, '_')}_SIGNED.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }]
+      });
+    } catch (emailErr) {
+      console.error('Discipline acknowledgment email failed:', emailErr);
+    }
 
     const remaining = await Discipline.find({
       $or: [
