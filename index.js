@@ -67,20 +67,23 @@ app.use('/', require('./routes/complaints'));
 app.use('/employee', employeeAuth);
 app.use('/', employeeHandbook);
 app.use('/tasks', require('./routes/taskRoute'));
+app.use('/signshop-jobs', require('./routes/signShopRoute'));
 app.use('/discipline', require('./routes/disciplineRoute'));
+app.use('/timeclock', require('./routes/timeClockRoute'));
 // ✅ Static file routes
 app.use('/forms', express.static(path.join(__dirname, 'forms')));
 app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
+app.use('/signshop-photos', express.static(path.join(__dirname, 'signshop-photos')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 // server.js or app.js
-app.use('/signshop-jobs', require('./routes/signShopRoute'));
-app.use('/', require('./routes/shopWorkOrderRoute'));
+
 // ✅ Job cleaner utility (MongoDB cleanup job)
 require('./utils/cleanJob');
 
 
 
 app.use('/', workOrdersRouter);
+app.use('/', require('./routes/shopWorkOrderRoute'));
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, '0.0.0.0', () => {
