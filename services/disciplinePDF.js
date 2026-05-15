@@ -132,12 +132,12 @@ function generateDisciplineHTML(doc) {
   <div class="section">
     <div class="section-title">Employee Statement</div>
     <p style="font-size:11px;color:#555;margin-bottom:8px">Employee: Please write your statement below.</p>
-    <div style="background:#fff;border:1px solid #ccc;border-radius:4px;padding:10px;min-height:120px">
+    ${doc.employeeStatement ? `<div class="text-box">${doc.employeeStatement.replace(/\n/g, '<br>')}</div>` : `<div style="background:#fff;border:1px solid #ccc;border-radius:4px;padding:10px;min-height:120px">
       <div style="border-bottom:1px solid #ddd;height:28px"></div>
       <div style="border-bottom:1px solid #ddd;height:28px"></div>
       <div style="border-bottom:1px solid #ddd;height:28px"></div>
       <div style="border-bottom:1px solid #ddd;height:28px"></div>
-    </div>
+    </div>`}
   </div>
 
   ${doc.employerStatement ? `
@@ -166,16 +166,16 @@ function generateDisciplineHTML(doc) {
     <p style="margin-bottom:8px;font-size:11px;color:#555">By signing below, all parties acknowledge that this disciplinary action has been discussed and a copy has been provided to the employee.</p>
     <div class="sig-grid">
       <div class="sig-col">
-        <div class="sig-line"></div>
+        ${doc.supervisorName ? `<div style="border-bottom:2px solid #333;height:50px;display:flex;align-items:flex-end;padding-bottom:4px;font-style:italic;font-size:16px">${doc.supervisorName}</div>` : '<div class="sig-line"></div>'}
         <div class="sig-label"><strong>Supervisor Signature</strong></div>
         <div class="sig-label">${doc.supervisorName || ''}</div>
-        <div style="margin-top:10px">Date: <span class="date-line"></span></div>
+        <div style="margin-top:10px">Date: <span class="date-line">${doc.dateOfWarning ? fmtDate(doc.dateOfWarning) : ''}</span></div>
       </div>
       <div class="sig-col">
-        <div class="sig-line"></div>
+        ${doc.acknowledgedName ? `<div style="border-bottom:2px solid #333;height:50px;display:flex;align-items:flex-end;padding-bottom:4px;font-style:italic;font-size:16px">${doc.acknowledgedName}</div>` : '<div class="sig-line"></div>'}
         <div class="sig-label"><strong>Employee Signature</strong></div>
         <div class="sig-label">${doc.employeeName || ''}</div>
-        <div style="margin-top:10px">Date: <span class="date-line"></span></div>
+        <div style="margin-top:10px">Date: <span class="date-line">${doc.acknowledgedAt ? fmtDate(doc.acknowledgedAt) : ''}</span></div>
       </div>
     </div>
   </div>
