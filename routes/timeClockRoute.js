@@ -229,6 +229,53 @@ router.post('/set-pin', async (req, res) => {
   }
 });
 
+// GET /timeclock/employees - List all employees and hourly admins with PIN status
+router.get('/employees', async (req, res) => {
+  try {
+    const employees = await Employee.find({ active: true }).select('firstName lastName email pin').sort({ firstName: 1 });
+    const hourlyAdminEmails = ['tbsolutions77@gmail.com', 'tbsolutions14@gmail.com', 'tbsolutions66@gmail.com'];
+    const hourlyAdmins = await Admin.find({ email: { $in: hourlyAdminEmails } }).select('firstName lastName email pin').sort({ firstName: 1 });
+    return res.json({
+      employees: employees.map(e => ({ _id: e._id, name: `${e.firstName} ${e.lastName}`, email: e.email, pin: e.pin || null, type: 'Employee' })),
+      hourlyAdmins: hourlyAdmins.map(a => ({ _id: a._id, name: `${a.firstName} ${a.lastName || ''}`, email: a.email, pin: a.pin || null, type: 'Admin' }))
+    });
+  } catch (e) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /timeclock/generate-pin - Auto-generate a unique PIN for an employee/admin
+router.post('/generate-pin', async (req, res) => {
+  try {
+    const { employeeId, adminId } = req.body;
+    if (!employeeId && !adminId) return res.status(400).json({ message: 'id required' });
+
+    // Generate unique 4-digit PIN
+    let pin;
+    let attempts = 0;
+    while (attempts < 100) {
+      pin = String(Math.floor(1000 + Math.random() * 9000));
+      const existsEmp = await Employee.findOne({ pin });
+      const existsAdmin = await Admin.findOne({ pin });
+      if (!existsEmp && !existsAdmin) break;
+      attempts++;
+    }
+    if (attempts >= 100) return res.status(500).json({ message: 'Could not generate unique PIN. Try again.' });
+
+    if (employeeId) {
+      const emp = await Employee.findByIdAndUpdate(employeeId, { pin }, { new: true });
+      if (!emp) return res.status(404).json({ message: 'Employee not found' });
+      return res.json({ message: `PIN generated for ${emp.firstName} ${emp.lastName}`, pin, name: `${emp.firstName} ${emp.lastName}` });
+    } else {
+      const adm = await Admin.findByIdAndUpdate(adminId, { pin }, { new: true });
+      if (!adm) return res.status(404).json({ message: 'Admin not found' });
+      return res.json({ message: `PIN generated for ${adm.firstName} ${adm.lastName || ''}`, pin, name: `${adm.firstName} ${adm.lastName || ''}` });
+    }
+  } catch (e) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /timeclock/check-ip - Check if current IP is allowed (for frontend UI)
 router.get('/check-ip', (req, res) => {
   const clientIp = getClientIp(req);
