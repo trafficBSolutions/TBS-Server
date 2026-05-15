@@ -6,7 +6,6 @@ const EmployeeSchema = new mongoose.Schema({
   lastName:  { type: String, trim: true, required: true },
   email:     { type: String, trim: true, lowercase: true, unique: true, required: true },
   passwordHash: { type: String, required: true },
-  pin: { type: String, unique: true, sparse: true },
   active: { type: Boolean, default: true },
   role: { type: String, default: 'employee', enum: ['employee'] }
 }, { timestamps: true });
