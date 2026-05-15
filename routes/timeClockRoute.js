@@ -308,6 +308,106 @@ router.put('/update-pin', async (req, res) => {
   }
 });
 
+// POST /timeclock/admin-self-punch - Hourly admin clocks themselves in/out (no PIN, IP required)
+router.post('/admin-self-punch', verifyIp, async (req, res) => {
+  try {
+    const { adminId } = req.body;
+    if (!adminId) return res.status(400).json({ message: 'adminId required' });
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+    const personName = `${admin.firstName} ${admin.lastName || ''}`;
+
+    // Check for unacknowledged disciplines
+    const pendingDisciplines = await Discipline.find({
+      $or: [
+        { linkedPersonId: admin._id, acknowledged: false },
+        { employeeName: { $regex: new RegExp(`^${personName.trim()}$`, 'i') }, linkedPersonId: { $exists: false }, acknowledged: false }
+      ]
+    }).sort({ createdAt: -1 });
+
+    const openEntry = await TimeClock.findOne({ employeeId: admin._id, clockOut: null });
+
+    if (openEntry) {
+      if (pendingDisciplines.length > 0) {
+        return res.status(403).json({
+          message: 'You must review and acknowledge your disciplinary action(s) before clocking out.',
+          action: 'discipline_required',
+          disciplines: pendingDisciplines,
+          personId: admin._id,
+          personName
+        });
+      }
+      openEntry.clockOut = new Date();
+      await openEntry.save();
+      return res.json({ action: 'clocked_out', message: `${personName} clocked out.`, record: openEntry });
+    } else {
+      if (pendingDisciplines.length > 0) {
+        return res.status(403).json({
+          message: 'You must review and acknowledge your disciplinary action(s) before clocking in.',
+          action: 'discipline_required',
+          disciplines: pendingDisciplines,
+          personId: admin._id,
+          personName
+        });
+      }
+      const entry = await TimeClock.create({
+        employeeId: admin._id,
+        employeeName: personName,
+        clockIn: new Date(),
+        ip: req.clientIp
+      });
+      return res.json({ action: 'clocked_in', message: `${personName} clocked in.`, record: entry });
+    }
+  } catch (e) {
+    console.error('Admin self-punch error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /timeclock/admin-self-acknowledge - Hourly admin acknowledges discipline (no PIN)
+router.post('/admin-self-acknowledge', verifyIp, async (req, res) => {
+  try {
+    const { adminId, disciplineId, typedName } = req.body;
+    if (!adminId || !disciplineId || !typedName) {
+      return res.status(400).json({ message: 'adminId, disciplineId, and typed name are required' });
+    }
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(401).json({ message: 'Admin not found' });
+    const personName = `${admin.firstName} ${admin.lastName || ''}`;
+
+    if (typedName.trim().toLowerCase() !== personName.trim().toLowerCase()) {
+      return res.status(400).json({ message: 'Typed name does not match your name on file.' });
+    }
+
+    const discipline = await Discipline.findById(disciplineId);
+    if (!discipline) return res.status(404).json({ message: 'Discipline record not found' });
+
+    discipline.acknowledged = true;
+    discipline.acknowledgedAt = new Date();
+    discipline.acknowledgedName = typedName.trim();
+    if (!discipline.linkedPersonId) {
+      discipline.linkedPersonId = admin._id;
+      discipline.linkedPersonType = 'Admin';
+    }
+    await discipline.save();
+
+    const remaining = await Discipline.find({
+      $or: [
+        { linkedPersonId: admin._id, acknowledged: false },
+        { employeeName: { $regex: new RegExp(`^${personName.trim()}$`, 'i') }, linkedPersonId: { $exists: false }, acknowledged: false }
+      ]
+    });
+
+    return res.json({ message: 'Disciplinary action acknowledged.', remainingCount: remaining.length, remaining });
+  } catch (e) {
+    console.error('Admin self-acknowledge error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // POST /timeclock/admin-punch - Admin clocks in/out an employee by ID
 router.post('/admin-punch', async (req, res) => {
   try {
