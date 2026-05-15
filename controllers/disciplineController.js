@@ -1,5 +1,7 @@
 const Discipline = require('../models/discipline');
 const DisciplineEmployee = require('../models/disciplineEmployee');
+const TimeClockEmployee = require('../models/timeClockEmployee');
+const Admin = require('../models/Admin');
 const { transporter } = require('../utils/emailConfig');
 const { generateDisciplinePdf } = require('../services/disciplinePDF');
 
@@ -78,6 +80,32 @@ const submitDiscipline = async (req, res) => {
       previousPoints,
       newTotalPoints: newTotal
     });
+
+    // Auto-link to TimeClockEmployee or Admin by name match
+    const nameParts = employeeName.trim().split(/\s+/);
+    if (nameParts.length >= 2) {
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ');
+      let linked = await TimeClockEmployee.findOne({
+        firstName: { $regex: new RegExp(`^${firstName}$`, 'i') },
+        lastName: { $regex: new RegExp(`^${lastName}$`, 'i') },
+        active: true
+      });
+      if (linked) {
+        doc.linkedPersonId = linked._id;
+        doc.linkedPersonType = 'Employee';
+      } else {
+        const adminMatch = await Admin.findOne({
+          firstName: { $regex: new RegExp(`^${firstName}$`, 'i') },
+          lastName: { $regex: new RegExp(`^${lastName}$`, 'i') }
+        });
+        if (adminMatch) {
+          doc.linkedPersonId = adminMatch._id;
+          doc.linkedPersonType = 'Admin';
+        }
+      }
+      await doc.save();
+    }
 
     // Update employee total points
     if (emp) {
