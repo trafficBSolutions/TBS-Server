@@ -174,11 +174,11 @@ router.get('/history', async (req, res) => {
 // GET /timeclock/employees - List all time clock employees and hourly admins
 router.get('/employees', async (req, res) => {
   try {
-    const employees = await TimeClockEmployee.find({ active: true }).select('firstName lastName pin').sort({ firstName: 1 });
+    const employees = await TimeClockEmployee.find({ active: true }).select('firstName lastName position pin').sort({ firstName: 1 });
     const hourlyAdminEmails = ['tbsolutions77@gmail.com', 'tbsolutions14@gmail.com', 'tbsolutions66@gmail.com'];
     const hourlyAdmins = await Admin.find({ email: { $in: hourlyAdminEmails } }).select('firstName lastName email pin').sort({ firstName: 1 });
     return res.json({
-      employees: employees.map(e => ({ _id: e._id, name: `${e.firstName} ${e.lastName}`, pin: e.pin, type: 'Employee' })),
+      employees: employees.map(e => ({ _id: e._id, name: `${e.firstName} ${e.lastName}`, position: e.position, pin: e.pin, type: 'Employee' })),
       hourlyAdmins: hourlyAdmins.map(a => ({ _id: a._id, name: `${a.firstName} ${a.lastName || ''}`, email: a.email, pin: a.pin || null, type: 'Admin' }))
     });
   } catch (e) {
@@ -189,9 +189,12 @@ router.get('/employees', async (req, res) => {
 // POST /timeclock/add-employee - Add a new employee to the time clock roster
 router.post('/add-employee', async (req, res) => {
   try {
-    const { firstName, lastName, pin } = req.body;
+    const { firstName, lastName, position, pin } = req.body;
     if (!firstName?.trim() || !lastName?.trim()) {
       return res.status(400).json({ message: 'First name and last name are required' });
+    }
+    if (!position) {
+      return res.status(400).json({ message: 'Position is required' });
     }
     if (!pin || pin.length < 4) {
       return res.status(400).json({ message: 'PIN must be at least 4 digits' });
@@ -205,6 +208,7 @@ router.post('/add-employee', async (req, res) => {
     const emp = await TimeClockEmployee.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
+      position,
       pin
     });
 
@@ -212,12 +216,12 @@ router.post('/add-employee', async (req, res) => {
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
     const existingDisciplineEmp = await DisciplineEmployee.findOne({ name: { $regex: new RegExp(`^${fullName}$`, 'i') } });
     if (!existingDisciplineEmp) {
-      await DisciplineEmployee.create({ name: fullName, position: '', totalPoints: 0 });
+      await DisciplineEmployee.create({ name: fullName, position, totalPoints: 0 });
     }
 
     return res.status(201).json({
-      message: `${firstName} ${lastName} added with PIN: ${pin}`,
-      employee: { _id: emp._id, name: fullName, pin, type: 'Employee' }
+      message: `${firstName} ${lastName} (${position}) added with PIN: ${pin}`,
+      employee: { _id: emp._id, name: fullName, position, pin, type: 'Employee' }
     });
   } catch (e) {
     if (e.code === 11000) return res.status(409).json({ message: 'That PIN is already in use' });
