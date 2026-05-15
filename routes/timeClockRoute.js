@@ -251,6 +251,46 @@ router.put('/update-pin', async (req, res) => {
   }
 });
 
+// GET /timeclock/time-worked?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD - Total time worked per employee
+router.get('/time-worked', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) return res.status(400).json({ message: 'startDate and endDate required' });
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setDate(end.getDate() + 1);
+
+    const records = await TimeClock.find({
+      clockIn: { $gte: start, $lt: end },
+      clockOut: { $ne: null }
+    }).sort({ clockIn: 1 });
+
+    // Group by employee and calculate total minutes
+    const summary = {};
+    records.forEach(r => {
+      const name = r.employeeName;
+      if (!summary[name]) summary[name] = { totalMinutes: 0, days: {} };
+      const mins = Math.round((new Date(r.clockOut) - new Date(r.clockIn)) / 60000);
+      summary[name].totalMinutes += mins;
+      const dayKey = new Date(r.clockIn).toISOString().split('T')[0];
+      if (!summary[name].days[dayKey]) summary[name].days[dayKey] = 0;
+      summary[name].days[dayKey] += mins;
+    });
+
+    // Convert to array
+    const result = Object.entries(summary).map(([name, data]) => ({
+      name,
+      totalMinutes: data.totalMinutes,
+      totalHours: (data.totalMinutes / 60).toFixed(2),
+      days: data.days
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
+    return res.json(result);
+  } catch (e) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /timeclock/check-ip
 router.get('/check-ip', (req, res) => {
   const clientIp = getClientIp(req);
