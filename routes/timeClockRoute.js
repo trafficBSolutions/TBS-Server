@@ -244,6 +244,73 @@ router.get('/employees', async (req, res) => {
   }
 });
 
+// POST /timeclock/add-employee - Salary admin adds a new employee to the time clock roster
+router.post('/add-employee', async (req, res) => {
+  try {
+    const { firstName, lastName } = req.body;
+    if (!firstName?.trim() || !lastName?.trim()) {
+      return res.status(400).json({ message: 'First name and last name are required' });
+    }
+
+    // All employees share the same login email
+    const sharedEmail = 'tbsolutions55@gmail.com';
+
+    // Check if employee with this name already exists
+    const existing = await Employee.findOne({
+      firstName: { $regex: new RegExp(`^${firstName.trim()}$`, 'i') },
+      lastName: { $regex: new RegExp(`^${lastName.trim()}$`, 'i') },
+      active: true
+    });
+    if (existing) return res.status(409).json({ message: `${firstName} ${lastName} already exists` });
+
+    // Create employee with a unique email variant (for DB uniqueness) but they all use the shared login
+    const uniqueEmail = `${firstName.trim().toLowerCase()}.${lastName.trim().toLowerCase()}@tbs-employee.internal`;
+    const bcrypt = require('bcryptjs');
+    const placeholderHash = await bcrypt.hash('shared-login-only', 12);
+
+    // Auto-generate a unique PIN
+    let pin;
+    let attempts = 0;
+    while (attempts < 100) {
+      pin = String(Math.floor(1000 + Math.random() * 9000));
+      const existsEmp = await Employee.findOne({ pin });
+      const existsAdmin = await Admin.findOne({ pin });
+      if (!existsEmp && !existsAdmin) break;
+      attempts++;
+    }
+    if (attempts >= 100) return res.status(500).json({ message: 'Could not generate unique PIN' });
+
+    const emp = await Employee.create({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: uniqueEmail,
+      passwordHash: placeholderHash,
+      pin,
+      active: true
+    });
+
+    return res.status(201).json({
+      message: `${firstName} ${lastName} added with PIN: ${pin}`,
+      employee: { _id: emp._id, name: `${emp.firstName} ${emp.lastName}`, pin, type: 'Employee' }
+    });
+  } catch (e) {
+    if (e.code === 11000) return res.status(409).json({ message: 'Employee already exists' });
+    console.error('Add employee error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// DELETE /timeclock/remove-employee/:id - Deactivate an employee from time clock
+router.delete('/remove-employee/:id', async (req, res) => {
+  try {
+    const emp = await Employee.findByIdAndUpdate(req.params.id, { active: false, pin: null }, { new: true });
+    if (!emp) return res.status(404).json({ message: 'Employee not found' });
+    return res.json({ message: `${emp.firstName} ${emp.lastName} removed from time clock` });
+  } catch (e) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // POST /timeclock/generate-pin - Auto-generate a unique PIN for an employee/admin
 router.post('/generate-pin', async (req, res) => {
   try {
