@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const TimeClock = require('../models/timeClock');
-const Employee = require('../models/employee');
+const TimeClockEmployee = require('../models/timeClockEmployee');
+const DisciplineEmployee = require('../models/disciplineEmployee');
 const Admin = require('../models/Admin');
 const Discipline = require('../models/discipline');
 
@@ -22,7 +23,6 @@ const getClientIp = (req) => {
 
 const verifyIp = (req, res, next) => {
   const clientIp = getClientIp(req);
-  // Check if IP matches or starts with the allowed IPv6 prefix
   const allowed = ALLOWED_IPS.some(ip => clientIp === ip) ||
     clientIp.startsWith('2603:3001:3502:8200:');
   if (!allowed) {
@@ -32,87 +32,72 @@ const verifyIp = (req, res, next) => {
   next();
 };
 
-// POST /timeclock/punch - Clock in or out using PIN
+// Look up person by PIN (checks TimeClockEmployee roster first, then hourly admins)
+const findPersonByPin = async (pin) => {
+  const emp = await TimeClockEmployee.findOne({ pin, active: true });
+  if (emp) return { id: emp._id, name: `${emp.firstName} ${emp.lastName}`, type: 'Employee' };
+
+  const admin = await Admin.findOne({ pin });
+  if (admin) return { id: admin._id, name: `${admin.firstName} ${admin.lastName || ''}`, type: 'Admin' };
+
+  return null;
+};
+
+// POST /timeclock/punch
 router.post('/punch', verifyIp, async (req, res) => {
   try {
     const { pin } = req.body;
     if (!pin) return res.status(400).json({ message: 'PIN is required' });
 
-    // Check employees first, then admins
-    let person = await Employee.findOne({ pin, active: true });
-    let personName;
-    let personId;
-
-    if (person) {
-      personName = `${person.firstName} ${person.lastName}`;
-      personId = person._id;
-    } else {
-      const admin = await Admin.findOne({ pin });
-      if (!admin) return res.status(401).json({ message: 'Invalid PIN' });
-      personName = `${admin.firstName} ${admin.lastName || ''}`;
-      personId = admin._id;
-    }
+    const person = await findPersonByPin(pin);
+    if (!person) return res.status(401).json({ message: 'Invalid PIN' });
 
     // Check for unacknowledged disciplines
     const pendingDisciplines = await Discipline.find({
-      linkedPersonId: personId,
+      linkedPersonId: person.id,
       acknowledged: false
     }).sort({ createdAt: -1 });
 
-    // Also check by name match if no linkedPersonId set
     const pendingByName = await Discipline.find({
-      employeeName: { $regex: new RegExp(`^${personName.trim()}$`, 'i') },
+      employeeName: { $regex: new RegExp(`^${person.name.trim()}$`, 'i') },
       linkedPersonId: { $exists: false },
       acknowledged: false
     }).sort({ createdAt: -1 });
 
     const allPending = [...pendingDisciplines, ...pendingByName];
 
-    // Check if already clocked in
-    const openEntry = await TimeClock.findOne({ employeeId: personId, clockOut: null });
+    const openEntry = await TimeClock.findOne({ employeeId: person.id, clockOut: null });
 
     if (openEntry) {
-      // Trying to clock OUT - block if unacknowledged disciplines exist
       if (allPending.length > 0) {
         return res.status(403).json({
           message: 'You must review and acknowledge your disciplinary action(s) before clocking out.',
           action: 'discipline_required',
           disciplines: allPending,
-          personId,
-          personName
+          personId: person.id,
+          personName: person.name
         });
       }
-      // Clock OUT
       openEntry.clockOut = new Date();
       await openEntry.save();
-      return res.json({
-        action: 'clocked_out',
-        message: `${personName} clocked out.`,
-        record: openEntry
-      });
+      return res.json({ action: 'clocked_out', message: `${person.name} clocked out.`, record: openEntry });
     } else {
-      // Trying to clock IN - if pending disciplines, require acknowledgment first
       if (allPending.length > 0) {
         return res.status(403).json({
           message: 'You must review and acknowledge your disciplinary action(s) before clocking in.',
           action: 'discipline_required',
           disciplines: allPending,
-          personId,
-          personName
+          personId: person.id,
+          personName: person.name
         });
       }
-      // Clock IN
       const entry = await TimeClock.create({
-        employeeId: personId,
-        employeeName: personName,
+        employeeId: person.id,
+        employeeName: person.name,
         clockIn: new Date(),
         ip: req.clientIp
       });
-      return res.json({
-        action: 'clocked_in',
-        message: `${personName} clocked in.`,
-        record: entry
-      });
+      return res.json({ action: 'clocked_in', message: `${person.name} clocked in.`, record: entry });
     }
   } catch (e) {
     console.error('TimeClock punch error:', e);
@@ -120,7 +105,7 @@ router.post('/punch', verifyIp, async (req, res) => {
   }
 });
 
-// POST /timeclock/acknowledge-discipline - Employee acknowledges discipline by typing their name
+// POST /timeclock/acknowledge-discipline
 router.post('/acknowledge-discipline', verifyIp, async (req, res) => {
   try {
     const { pin, disciplineId, typedName } = req.body;
@@ -128,25 +113,13 @@ router.post('/acknowledge-discipline', verifyIp, async (req, res) => {
       return res.status(400).json({ message: 'PIN, disciplineId, and typed name are required' });
     }
 
-    // Verify PIN
-    let person = await Employee.findOne({ pin, active: true });
-    let personName, personId;
-    if (person) {
-      personName = `${person.firstName} ${person.lastName}`;
-      personId = person._id;
-    } else {
-      const admin = await Admin.findOne({ pin });
-      if (!admin) return res.status(401).json({ message: 'Invalid PIN' });
-      personName = `${admin.firstName} ${admin.lastName || ''}`;
-      personId = admin._id;
-    }
+    const person = await findPersonByPin(pin);
+    if (!person) return res.status(401).json({ message: 'Invalid PIN' });
 
-    // Verify typed name matches (case-insensitive)
-    if (typedName.trim().toLowerCase() !== personName.trim().toLowerCase()) {
+    if (typedName.trim().toLowerCase() !== person.name.trim().toLowerCase()) {
       return res.status(400).json({ message: 'Typed name does not match your name on file. Please type your full name exactly.' });
     }
 
-    // Acknowledge the discipline
     const discipline = await Discipline.findById(disciplineId);
     if (!discipline) return res.status(404).json({ message: 'Discipline record not found' });
 
@@ -154,31 +127,26 @@ router.post('/acknowledge-discipline', verifyIp, async (req, res) => {
     discipline.acknowledgedAt = new Date();
     discipline.acknowledgedName = typedName.trim();
     if (!discipline.linkedPersonId) {
-      discipline.linkedPersonId = personId;
-      discipline.linkedPersonType = person ? 'Employee' : 'Admin';
+      discipline.linkedPersonId = person.id;
+      discipline.linkedPersonType = person.type;
     }
     await discipline.save();
 
-    // Check if more pending
     const remaining = await Discipline.find({
       $or: [
-        { linkedPersonId: personId, acknowledged: false },
-        { employeeName: { $regex: new RegExp(`^${personName.trim()}$`, 'i') }, linkedPersonId: { $exists: false }, acknowledged: false }
+        { linkedPersonId: person.id, acknowledged: false },
+        { employeeName: { $regex: new RegExp(`^${person.name.trim()}$`, 'i') }, linkedPersonId: { $exists: false }, acknowledged: false }
       ]
     });
 
-    return res.json({
-      message: 'Disciplinary action acknowledged.',
-      remainingCount: remaining.length,
-      remaining
-    });
+    return res.json({ message: 'Disciplinary action acknowledged.', remainingCount: remaining.length, remaining });
   } catch (e) {
     console.error('Acknowledge discipline error:', e);
     return res.status(500).json({ message: 'Server error' });
   }
 });
 
-// GET /timeclock/status - Admin only: who's currently clocked in
+// GET /timeclock/status - who's currently clocked in
 router.get('/status', async (req, res) => {
   try {
     const clockedIn = await TimeClock.find({ clockOut: null }).sort({ clockIn: -1 });
@@ -188,7 +156,7 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// GET /timeclock/history?date=YYYY-MM-DD - Admin: day's records
+// GET /timeclock/history?date=YYYY-MM-DD
 router.get('/history', async (req, res) => {
   try {
     const { date } = req.query;
@@ -203,40 +171,14 @@ router.get('/history', async (req, res) => {
   }
 });
 
-// POST /timeclock/set-pin - Set/update employee or admin PIN (admin use)
-router.post('/set-pin', async (req, res) => {
-  try {
-    const { employeeId, adminId, pin } = req.body;
-    if ((!employeeId && !adminId) || !pin) return res.status(400).json({ message: 'id and pin required' });
-    if (pin.length < 4) return res.status(400).json({ message: 'PIN must be at least 4 digits' });
-
-    // Check uniqueness across both collections
-    const existingEmp = await Employee.findOne({ pin, _id: { $ne: employeeId || null } });
-    const existingAdmin = await Admin.findOne({ pin, _id: { $ne: adminId || null } });
-    if (existingEmp || existingAdmin) return res.status(409).json({ message: 'PIN already in use' });
-
-    if (employeeId) {
-      const emp = await Employee.findByIdAndUpdate(employeeId, { pin }, { new: true });
-      if (!emp) return res.status(404).json({ message: 'Employee not found' });
-      return res.json({ message: `PIN set for ${emp.firstName} ${emp.lastName}` });
-    } else {
-      const adm = await Admin.findByIdAndUpdate(adminId, { pin }, { new: true });
-      if (!adm) return res.status(404).json({ message: 'Admin not found' });
-      return res.json({ message: `PIN set for ${adm.firstName} ${adm.lastName || ''}` });
-    }
-  } catch (e) {
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// GET /timeclock/employees - List all employees and hourly admins with PIN status
+// GET /timeclock/employees - List all time clock employees and hourly admins
 router.get('/employees', async (req, res) => {
   try {
-    const employees = await Employee.find({ active: true }).select('firstName lastName email pin').sort({ firstName: 1 });
+    const employees = await TimeClockEmployee.find({ active: true }).select('firstName lastName pin').sort({ firstName: 1 });
     const hourlyAdminEmails = ['tbsolutions77@gmail.com', 'tbsolutions14@gmail.com', 'tbsolutions66@gmail.com'];
     const hourlyAdmins = await Admin.find({ email: { $in: hourlyAdminEmails } }).select('firstName lastName email pin').sort({ firstName: 1 });
     return res.json({
-      employees: employees.map(e => ({ _id: e._id, name: `${e.firstName} ${e.lastName}`, email: e.email, pin: e.pin || null, type: 'Employee' })),
+      employees: employees.map(e => ({ _id: e._id, name: `${e.firstName} ${e.lastName}`, pin: e.pin, type: 'Employee' })),
       hourlyAdmins: hourlyAdmins.map(a => ({ _id: a._id, name: `${a.firstName} ${a.lastName || ''}`, email: a.email, pin: a.pin || null, type: 'Admin' }))
     });
   } catch (e) {
@@ -244,7 +186,7 @@ router.get('/employees', async (req, res) => {
   }
 });
 
-// POST /timeclock/add-employee - Salary admin adds a new employee to the time clock roster
+// POST /timeclock/add-employee - Add a new employee to the time clock roster
 router.post('/add-employee', async (req, res) => {
   try {
     const { firstName, lastName, pin } = req.body;
@@ -255,81 +197,61 @@ router.post('/add-employee', async (req, res) => {
       return res.status(400).json({ message: 'PIN must be at least 4 digits' });
     }
 
-    // Check if employee with this name already exists
-    const existing = await Employee.findOne({
-      firstName: { $regex: new RegExp(`^${firstName.trim()}$`, 'i') },
-      lastName: { $regex: new RegExp(`^${lastName.trim()}$`, 'i') },
-      active: true
-    });
-    if (existing) return res.status(409).json({ message: `${firstName} ${lastName} already exists` });
-
-    // Check PIN uniqueness across both collections
-    const existsEmp = await Employee.findOne({ pin });
+    // Check PIN uniqueness
+    const existsEmp = await TimeClockEmployee.findOne({ pin });
     const existsAdmin = await Admin.findOne({ pin });
     if (existsEmp || existsAdmin) return res.status(409).json({ message: 'That PIN is already in use. Choose a different one.' });
 
-    const uniqueEmail = `${firstName.trim().toLowerCase()}.${lastName.trim().toLowerCase()}@tbs-employee.internal`;
-    const bcrypt = require('bcryptjs');
-    const placeholderHash = await bcrypt.hash('shared-login-only', 12);
-
-    const emp = await Employee.create({
+    const emp = await TimeClockEmployee.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: uniqueEmail,
-      passwordHash: placeholderHash,
-      pin,
-      active: true
+      pin
     });
+
+    // Also add to DisciplineEmployee roster so they appear on the disciplinary action page
+    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    const existingDisciplineEmp = await DisciplineEmployee.findOne({ name: { $regex: new RegExp(`^${fullName}$`, 'i') } });
+    if (!existingDisciplineEmp) {
+      await DisciplineEmployee.create({ name: fullName, position: '', totalPoints: 0 });
+    }
 
     return res.status(201).json({
       message: `${firstName} ${lastName} added with PIN: ${pin}`,
-      employee: { _id: emp._id, name: `${emp.firstName} ${emp.lastName}`, pin, type: 'Employee' }
+      employee: { _id: emp._id, name: fullName, pin, type: 'Employee' }
     });
   } catch (e) {
-    if (e.code === 11000) return res.status(409).json({ message: 'Employee or PIN already exists' });
+    if (e.code === 11000) return res.status(409).json({ message: 'That PIN is already in use' });
     console.error('Add employee error:', e);
     return res.status(500).json({ message: 'Server error' });
   }
 });
 
-// DELETE /timeclock/remove-employee/:id - Deactivate an employee from time clock
-router.delete('/remove-employee/:id', async (req, res) => {
-  try {
-    const emp = await Employee.findByIdAndUpdate(req.params.id, { active: false, pin: null }, { new: true });
-    if (!emp) return res.status(404).json({ message: 'Employee not found' });
-    return res.json({ message: `${emp.firstName} ${emp.lastName} removed from time clock` });
-  } catch (e) {
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// POST /timeclock/generate-pin - Manually set a PIN for an employee/admin
-router.post('/generate-pin', async (req, res) => {
+// PUT /timeclock/update-pin - Change PIN for an employee or hourly admin
+router.put('/update-pin', async (req, res) => {
   try {
     const { employeeId, adminId, pin } = req.body;
-    if (!employeeId && !adminId) return res.status(400).json({ message: 'id required' });
-    if (!pin || pin.length < 4) return res.status(400).json({ message: 'PIN must be at least 4 digits' });
+    if ((!employeeId && !adminId) || !pin) return res.status(400).json({ message: 'id and pin required' });
+    if (pin.length < 4) return res.status(400).json({ message: 'PIN must be at least 4 digits' });
 
-    // Check uniqueness across both collections
-    const existsEmp = await Employee.findOne({ pin, _id: { $ne: employeeId || null } });
+    const existsEmp = await TimeClockEmployee.findOne({ pin, _id: { $ne: employeeId || null } });
     const existsAdmin = await Admin.findOne({ pin, _id: { $ne: adminId || null } });
     if (existsEmp || existsAdmin) return res.status(409).json({ message: 'That PIN is already in use' });
 
     if (employeeId) {
-      const emp = await Employee.findByIdAndUpdate(employeeId, { pin }, { new: true });
+      const emp = await TimeClockEmployee.findByIdAndUpdate(employeeId, { pin }, { new: true });
       if (!emp) return res.status(404).json({ message: 'Employee not found' });
-      return res.json({ message: `PIN set for ${emp.firstName} ${emp.lastName}`, pin, name: `${emp.firstName} ${emp.lastName}` });
+      return res.json({ message: `PIN updated for ${emp.firstName} ${emp.lastName}`, pin, name: `${emp.firstName} ${emp.lastName}` });
     } else {
       const adm = await Admin.findByIdAndUpdate(adminId, { pin }, { new: true });
       if (!adm) return res.status(404).json({ message: 'Admin not found' });
-      return res.json({ message: `PIN set for ${adm.firstName} ${adm.lastName || ''}`, pin, name: `${adm.firstName} ${adm.lastName || ''}` });
+      return res.json({ message: `PIN updated for ${adm.firstName} ${adm.lastName || ''}`, pin, name: `${adm.firstName} ${adm.lastName || ''}` });
     }
   } catch (e) {
     return res.status(500).json({ message: 'Server error' });
   }
 });
 
-// GET /timeclock/check-ip - Check if current IP is allowed (for frontend UI)
+// GET /timeclock/check-ip
 router.get('/check-ip', (req, res) => {
   const clientIp = getClientIp(req);
   const allowed = ALLOWED_IPS.some(ip => clientIp === ip) ||
