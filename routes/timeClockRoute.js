@@ -171,16 +171,27 @@ router.get('/history', async (req, res) => {
   }
 });
 
-// GET /timeclock/employees - List all time clock employees and hourly admins
+// GET /timeclock/employees - List all time clock employees and hourly admins with points
 router.get('/employees', async (req, res) => {
   try {
     const employees = await TimeClockEmployee.find({ active: true }).select('firstName lastName position pin').sort({ firstName: 1 });
     const hourlyAdminEmails = ['tbsolutions77@gmail.com', 'tbsolutions14@gmail.com', 'tbsolutions66@gmail.com'];
     const hourlyAdmins = await Admin.find({ email: { $in: hourlyAdminEmails } }).select('firstName lastName email pin').sort({ firstName: 1 });
-    return res.json({
-      employees: employees.map(e => ({ _id: e._id, name: `${e.firstName} ${e.lastName}`, position: e.position, pin: e.pin, type: 'Employee' })),
-      hourlyAdmins: hourlyAdmins.map(a => ({ _id: a._id, name: `${a.firstName} ${a.lastName || ''}`, email: a.email, pin: a.pin || null, type: 'Admin' }))
-    });
+
+    // Get discipline points for each employee
+    const empList = await Promise.all(employees.map(async (e) => {
+      const fullName = `${e.firstName} ${e.lastName}`;
+      const discEmp = await DisciplineEmployee.findOne({ name: { $regex: new RegExp(`^${fullName}$`, 'i') } });
+      return { _id: e._id, name: fullName, position: e.position, pin: e.pin, type: 'Employee', points: discEmp?.totalPoints || 0, terminated: discEmp?.terminated || false };
+    }));
+
+    const admList = await Promise.all(hourlyAdmins.map(async (a) => {
+      const fullName = `${a.firstName} ${a.lastName || ''}`;
+      const discEmp = await DisciplineEmployee.findOne({ name: { $regex: new RegExp(`^${fullName.trim()}$`, 'i') } });
+      return { _id: a._id, name: fullName, email: a.email, pin: a.pin || null, type: 'Admin', points: discEmp?.totalPoints || 0 };
+    }));
+
+    return res.json({ employees: empList, hourlyAdmins: admList });
   } catch (e) {
     return res.status(500).json({ message: 'Server error' });
   }
@@ -230,6 +241,23 @@ router.post('/add-employee', async (req, res) => {
   }
 });
 
+// DELETE /timeclock/remove-employee/:id - Terminate/deactivate an employee
+router.delete('/remove-employee/:id', async (req, res) => {
+  try {
+    const emp = await TimeClockEmployee.findByIdAndUpdate(req.params.id, { active: false }, { new: true });
+    if (!emp) return res.status(404).json({ message: 'Employee not found' });
+    // Also mark as terminated in discipline roster
+    const fullName = `${emp.firstName} ${emp.lastName}`;
+    await DisciplineEmployee.findOneAndUpdate(
+      { name: { $regex: new RegExp(`^${fullName}$`, 'i') } },
+      { terminated: true }
+    );
+    return res.json({ message: `${fullName} has been terminated and removed from time clock.` });
+  } catch (e) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // PUT /timeclock/update-pin - Change PIN for an employee or hourly admin
 router.put('/update-pin', async (req, res) => {
   try {
@@ -251,6 +279,45 @@ router.put('/update-pin', async (req, res) => {
       return res.json({ message: `PIN updated for ${adm.firstName} ${adm.lastName || ''}`, pin, name: `${adm.firstName} ${adm.lastName || ''}` });
     }
   } catch (e) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /timeclock/admin-punch - Admin clocks in/out an employee by ID
+router.post('/admin-punch', async (req, res) => {
+  try {
+    const { employeeId } = req.body;
+    if (!employeeId) return res.status(400).json({ message: 'employeeId required' });
+
+    // Find the person
+    let personName;
+    let person = await TimeClockEmployee.findById(employeeId);
+    if (person) {
+      personName = `${person.firstName} ${person.lastName}`;
+    } else {
+      const admin = await Admin.findById(employeeId);
+      if (!admin) return res.status(404).json({ message: 'Employee not found' });
+      personName = `${admin.firstName} ${admin.lastName || ''}`;
+      person = admin;
+    }
+
+    const openEntry = await TimeClock.findOne({ employeeId: person._id, clockOut: null });
+
+    if (openEntry) {
+      openEntry.clockOut = new Date();
+      await openEntry.save();
+      return res.json({ action: 'clocked_out', message: `${personName} clocked out by admin.`, record: openEntry });
+    } else {
+      const entry = await TimeClock.create({
+        employeeId: person._id,
+        employeeName: personName,
+        clockIn: new Date(),
+        ip: 'admin-manual'
+      });
+      return res.json({ action: 'clocked_in', message: `${personName} clocked in by admin.`, record: entry });
+    }
+  } catch (e) {
+    console.error('Admin punch error:', e);
     return res.status(500).json({ message: 'Server error' });
   }
 });
