@@ -108,7 +108,7 @@ router.post('/punch', verifyIp, async (req, res) => {
 // POST /timeclock/acknowledge-discipline
 router.post('/acknowledge-discipline', verifyIp, async (req, res) => {
   try {
-    const { pin, disciplineId, typedName } = req.body;
+    const { pin, disciplineId, typedName, employeeStatement } = req.body;
     if (!pin || !disciplineId || !typedName) {
       return res.status(400).json({ message: 'PIN, disciplineId, and typed name are required' });
     }
@@ -126,6 +126,7 @@ router.post('/acknowledge-discipline', verifyIp, async (req, res) => {
     discipline.acknowledged = true;
     discipline.acknowledgedAt = new Date();
     discipline.acknowledgedName = typedName.trim();
+    if (employeeStatement) discipline.employeeStatement = employeeStatement;
     if (!discipline.linkedPersonId) {
       discipline.linkedPersonId = person.id;
       discipline.linkedPersonType = person.type;
@@ -369,7 +370,7 @@ router.post('/admin-self-punch', verifyIp, async (req, res) => {
 // POST /timeclock/admin-self-acknowledge - Hourly admin acknowledges discipline (no PIN)
 router.post('/admin-self-acknowledge', verifyIp, async (req, res) => {
   try {
-    const { adminId, disciplineId, typedName } = req.body;
+    const { adminId, disciplineId, typedName, employeeStatement } = req.body;
     if (!adminId || !disciplineId || !typedName) {
       return res.status(400).json({ message: 'adminId, disciplineId, and typed name are required' });
     }
@@ -388,6 +389,7 @@ router.post('/admin-self-acknowledge', verifyIp, async (req, res) => {
     discipline.acknowledged = true;
     discipline.acknowledgedAt = new Date();
     discipline.acknowledgedName = typedName.trim();
+    if (employeeStatement) discipline.employeeStatement = employeeStatement;
     if (!discipline.linkedPersonId) {
       discipline.linkedPersonId = admin._id;
       discipline.linkedPersonType = 'Admin';
