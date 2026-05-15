@@ -65,7 +65,7 @@ router.post('/admin/login', async (req, res) => {
     console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
     const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
     
-    res.status(200).json({ token, email: admin.email, firstName: admin.firstName });
+    res.status(200).json({ token, email: admin.email, firstName: admin.firstName, _id: admin._id });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ message: 'Server error' });
