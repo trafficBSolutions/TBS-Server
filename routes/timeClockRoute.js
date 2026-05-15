@@ -208,6 +208,15 @@ router.get('/employees', async (req, res) => {
     const hourlyAdminEmails = ['tbsolutions77@gmail.com', 'tbsolutions14@gmail.com', 'tbsolutions66@gmail.com'];
     const hourlyAdmins = await Admin.find({ email: { $in: hourlyAdminEmails } }).select('firstName lastName email pin').sort({ firstName: 1 });
 
+    // Ensure hourly admins exist in DisciplineEmployee roster
+    for (const a of hourlyAdmins) {
+      const fullName = `${a.firstName} ${a.lastName || ''}`.trim();
+      const exists = await DisciplineEmployee.findOne({ name: { $regex: new RegExp(`^${fullName}$`, 'i') } });
+      if (!exists) {
+        await DisciplineEmployee.create({ name: fullName, position: 'Foreman', totalPoints: 0 });
+      }
+    }
+
     // Get discipline points for each employee
     const empList = await Promise.all(employees.map(async (e) => {
       const fullName = `${e.firstName} ${e.lastName}`;
@@ -216,8 +225,8 @@ router.get('/employees', async (req, res) => {
     }));
 
     const admList = await Promise.all(hourlyAdmins.map(async (a) => {
-      const fullName = `${a.firstName} ${a.lastName || ''}`;
-      const discEmp = await DisciplineEmployee.findOne({ name: { $regex: new RegExp(`^${fullName.trim()}$`, 'i') } });
+      const fullName = `${a.firstName} ${a.lastName || ''}`.trim();
+      const discEmp = await DisciplineEmployee.findOne({ name: { $regex: new RegExp(`^${fullName}$`, 'i') } });
       return { _id: a._id, name: fullName, email: a.email, pin: a.pin || null, type: 'Admin', points: discEmp?.totalPoints || 0 };
     }));
 
