@@ -601,6 +601,61 @@ router.post('/manual-entry', async (req, res) => {
   }
 });
 
+// GET /timeclock/my-week?pin=XXXX - Employee sees their current week hours (Sun-Sat)
+router.get('/my-week', async (req, res) => {
+  try {
+    const { pin } = req.query;
+    if (!pin) return res.status(400).json({ message: 'PIN required' });
+
+    const person = await findPersonByPin(pin);
+    if (!person) return res.status(401).json({ message: 'Invalid PIN' });
+
+    // Calculate current week Sunday-Saturday
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sunday
+    const sunday = new Date(now);
+    sunday.setDate(now.getDate() - dayOfWeek);
+    sunday.setHours(0, 0, 0, 0);
+    const saturday = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 7);
+
+    const records = await TimeClock.find({
+      employeeId: person.id,
+      clockIn: { $gte: sunday, $lt: saturday }
+    }).sort({ clockIn: 1 });
+
+    let totalMinutes = 0;
+    const days = {};
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    records.forEach(r => {
+      const clockOut = r.clockOut || new Date();
+      const mins = Math.round((new Date(clockOut) - new Date(r.clockIn)) / 60000);
+      totalMinutes += mins;
+      const dayIdx = new Date(r.clockIn).getDay();
+      const dayName = dayNames[dayIdx];
+      if (!days[dayName]) days[dayName] = { minutes: 0, records: [] };
+      days[dayName].minutes += mins;
+      days[dayName].records.push({
+        clockIn: r.clockIn,
+        clockOut: r.clockOut,
+        minutes: mins
+      });
+    });
+
+    return res.json({
+      name: person.name,
+      weekStart: sunday.toISOString().split('T')[0],
+      weekEnd: new Date(saturday.getTime() - 86400000).toISOString().split('T')[0],
+      totalMinutes,
+      totalHours: (totalMinutes / 60).toFixed(2),
+      days
+    });
+  } catch (e) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /timeclock/check-ip
 router.get('/check-ip', (req, res) => {
   const clientIp = getClientIp(req);
