@@ -10,14 +10,16 @@ const { generateDisciplinePdf } = require('../services/disciplinePDF');
 
 const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com'];
 
-// Allowed IPs - only this location can clock in/out
+// Allowed IPs from environment variables
 const ALLOWED_IPS = [
-  '73.82.211.177',
-  '2603:3001:3502:8200:8cad:404c:a3de:4443',
-  '::ffff:73.82.211.177',
+  process.env.TIMECLOCK_IPV4,
+  process.env.TIMECLOCK_IPV6,
+  process.env.TIMECLOCK_IPV4 ? `::ffff:${process.env.TIMECLOCK_IPV4}` : null,
   '127.0.0.1',
   '::1'
-];
+].filter(Boolean);
+
+const IPV6_PREFIX = process.env.TIMECLOCK_IPV6_PREFIX || '';
 
 const getClientIp = (req) => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -28,7 +30,7 @@ const getClientIp = (req) => {
 const verifyIp = (req, res, next) => {
   const clientIp = getClientIp(req);
   const allowed = ALLOWED_IPS.some(ip => clientIp === ip) ||
-    clientIp.startsWith('2603:3001:3502:8200:');
+    (IPV6_PREFIX && clientIp.startsWith(IPV6_PREFIX));
   if (!allowed) {
     return res.status(403).json({ message: 'Clock-in/out is only allowed from the designated work location.', ip: clientIp });
   }
@@ -603,7 +605,7 @@ router.post('/manual-entry', async (req, res) => {
 router.get('/check-ip', (req, res) => {
   const clientIp = getClientIp(req);
   const allowed = ALLOWED_IPS.some(ip => clientIp === ip) ||
-    clientIp.startsWith('2603:3001:3502:8200:');
+    (IPV6_PREFIX && clientIp.startsWith(IPV6_PREFIX));
   return res.json({ allowed, ip: clientIp });
 });
 
