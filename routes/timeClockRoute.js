@@ -601,6 +601,49 @@ router.post('/manual-entry', async (req, res) => {
   }
 });
 
+// POST /timeclock/deduct-time - Salary admin deducts time from an employee's record
+router.post('/deduct-time', async (req, res) => {
+  try {
+    const { employeeId, date, minutes, reason } = req.body;
+    if (!employeeId || !date || !minutes) {
+      return res.status(400).json({ message: 'employeeId, date, and minutes are required' });
+    }
+
+    const mins = parseInt(minutes);
+    if (mins <= 0) return res.status(400).json({ message: 'Minutes must be greater than 0' });
+
+    // Find the person
+    let personName;
+    let person = await TimeClockEmployee.findById(employeeId);
+    if (person) {
+      personName = `${person.firstName} ${person.lastName}`;
+    } else {
+      const admin = await Admin.findById(employeeId);
+      if (!admin) return res.status(404).json({ message: 'Employee not found' });
+      personName = `${admin.firstName} ${admin.lastName || ''}`;
+      person = admin;
+    }
+
+    // Create a negative time entry (deduction)
+    const deductDate = new Date(`${date}T12:00:00`);
+    const entry = await TimeClock.create({
+      employeeId: person._id,
+      employeeName: personName,
+      clockIn: deductDate,
+      clockOut: new Date(deductDate.getTime() - mins * 60000),
+      ip: `admin-deduction${reason ? ': ' + reason : ''}`
+    });
+
+    return res.json({
+      message: `${mins} min deducted from ${personName} on ${date}${reason ? ' (' + reason + ')' : ''}`,
+      record: entry
+    });
+  } catch (e) {
+    console.error('Deduct time error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /timeclock/my-week?pin=XXXX - Employee sees their current week hours (Sun-Sat)
 router.get('/my-week', async (req, res) => {
   try {
