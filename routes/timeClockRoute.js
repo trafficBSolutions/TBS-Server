@@ -514,7 +514,7 @@ router.post('/admin-punch', async (req, res) => {
   }
 });
 
-// GET /timeclock/time-worked?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD - Total time worked per employee
+// GET /timeclock/time-worked?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD - Total time worked per employee with punch times
 router.get('/time-worked', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -524,23 +524,27 @@ router.get('/time-worked', async (req, res) => {
     end.setDate(end.getDate() + 1);
 
     const records = await TimeClock.find({
-      clockIn: { $gte: start, $lt: end },
-      clockOut: { $ne: null }
+      clockIn: { $gte: start, $lt: end }
     }).sort({ clockIn: 1 });
 
-    // Group by employee and calculate total minutes
+    // Group by employee
     const summary = {};
     records.forEach(r => {
       const name = r.employeeName;
       if (!summary[name]) summary[name] = { totalMinutes: 0, days: {} };
-      const mins = Math.round((new Date(r.clockOut) - new Date(r.clockIn)) / 60000);
-      summary[name].totalMinutes += mins;
+      const clockOut = r.clockOut;
+      const mins = clockOut ? Math.round((new Date(clockOut) - new Date(r.clockIn)) / 60000) : 0;
+      if (mins > 0) summary[name].totalMinutes += mins;
       const dayKey = new Date(r.clockIn).toISOString().split('T')[0];
-      if (!summary[name].days[dayKey]) summary[name].days[dayKey] = 0;
-      summary[name].days[dayKey] += mins;
+      if (!summary[name].days[dayKey]) summary[name].days[dayKey] = { minutes: 0, records: [] };
+      if (mins > 0) summary[name].days[dayKey].minutes += mins;
+      summary[name].days[dayKey].records.push({
+        clockIn: r.clockIn,
+        clockOut: r.clockOut,
+        minutes: mins
+      });
     });
 
-    // Convert to array
     const result = Object.entries(summary).map(([name, data]) => ({
       name,
       totalMinutes: data.totalMinutes,
