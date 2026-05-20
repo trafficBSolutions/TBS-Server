@@ -534,14 +534,16 @@ router.get('/time-worked', async (req, res) => {
       if (!summary[name]) summary[name] = { totalMinutes: 0, days: {} };
       const clockOut = r.clockOut;
       const mins = clockOut ? Math.round((new Date(clockOut) - new Date(r.clockIn)) / 60000) : 0;
-      if (mins > 0) summary[name].totalMinutes += mins;
+      // Only count positive time (skip deductions where clockOut < clockIn)
+      const validMins = Math.max(mins, 0);
+      summary[name].totalMinutes += validMins;
       const dayKey = new Date(r.clockIn).toISOString().split('T')[0];
       if (!summary[name].days[dayKey]) summary[name].days[dayKey] = { minutes: 0, records: [] };
-      if (mins > 0) summary[name].days[dayKey].minutes += mins;
+      summary[name].days[dayKey].minutes += validMins;
       summary[name].days[dayKey].records.push({
         clockIn: r.clockIn,
         clockOut: r.clockOut,
-        minutes: mins
+        minutes: validMins
       });
     });
 
