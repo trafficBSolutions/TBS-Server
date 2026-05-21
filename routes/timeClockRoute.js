@@ -52,7 +52,7 @@ const findPersonByPin = async (pin) => {
 // POST /timeclock/punch
 router.post('/punch', verifyIp, async (req, res) => {
   try {
-    const { pin } = req.body;
+    const { pin, purpose } = req.body;
     if (!pin) return res.status(400).json({ message: 'PIN is required' });
 
     const person = await findPersonByPin(pin);
@@ -101,6 +101,7 @@ router.post('/punch', verifyIp, async (req, res) => {
         employeeId: person.id,
         employeeName: person.name,
         clockIn: new Date(),
+        purpose: purpose || null,
         ip: req.clientIp
       });
       return res.json({ action: 'clocked_in', message: `${person.name} clocked in.`, record: entry });
@@ -543,7 +544,8 @@ router.get('/time-worked', async (req, res) => {
       summary[name].days[dayKey].records.push({
         clockIn: r.clockIn,
         clockOut: r.clockOut,
-        minutes: validMins
+        minutes: validMins,
+        purpose: r.purpose || null
       });
     });
 
@@ -650,7 +652,7 @@ router.post('/deduct-time', async (req, res) => {
   }
 });
 
-// GET /timeclock/my-week?pin=XXXX - Employee sees their current week hours (Sun-Sat)
+// GET /timeclock/my-week?pin=XXXX - Employee sees their current week hours (Sat-Fri)
 router.get('/my-week', async (req, res) => {
   try {
     const { pin } = req.query;
@@ -659,18 +661,18 @@ router.get('/my-week', async (req, res) => {
     const person = await findPersonByPin(pin);
     if (!person) return res.status(401).json({ message: 'Invalid PIN' });
 
-    // Calculate current week Sunday-Saturday
+    // Calculate current week Saturday-Friday
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0=Sunday
-    const sunday = new Date(now);
-    sunday.setDate(now.getDate() - dayOfWeek);
-    sunday.setHours(0, 0, 0, 0);
-    const saturday = new Date(sunday);
-    saturday.setDate(sunday.getDate() + 7);
+    const saturday = new Date(now);
+    saturday.setDate(now.getDate() - ((dayOfWeek + 1) % 7));
+    saturday.setHours(0, 0, 0, 0);
+    const friday = new Date(saturday);
+    friday.setDate(saturday.getDate() + 7);
 
     const records = await TimeClock.find({
       employeeId: person.id,
-      clockIn: { $gte: sunday, $lt: saturday }
+      clockIn: { $gte: saturday, $lt: friday }
     }).sort({ clockIn: 1 });
 
     let totalMinutes = 0;
@@ -688,14 +690,15 @@ router.get('/my-week', async (req, res) => {
       days[dayName].records.push({
         clockIn: r.clockIn,
         clockOut: r.clockOut,
-        minutes: mins
+        minutes: mins,
+        purpose: r.purpose || null
       });
     });
 
     return res.json({
       name: person.name,
-      weekStart: sunday.toISOString().split('T')[0],
-      weekEnd: new Date(saturday.getTime() - 86400000).toISOString().split('T')[0],
+      weekStart: saturday.toISOString().split('T')[0],
+      weekEnd: new Date(friday.getTime() - 86400000).toISOString().split('T')[0],
       totalMinutes,
       totalHours: (totalMinutes / 60).toFixed(2),
       days
