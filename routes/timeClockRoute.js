@@ -532,12 +532,13 @@ router.get('/time-worked', async (req, res) => {
     const summary = {};
     records.forEach(r => {
       const name = r.employeeName;
-      if (!summary[name]) summary[name] = { totalMinutes: 0, days: {} };
+      if (!summary[name]) summary[name] = { totalMinutes: 0, days: {}, purpose: null };
       const clockOut = r.clockOut;
       const mins = clockOut ? Math.round((new Date(clockOut) - new Date(r.clockIn)) / 60000) : 0;
       // Only count positive time (skip deductions where clockOut < clockIn)
       const validMins = Math.max(mins, 0);
       summary[name].totalMinutes += validMins;
+      if (r.purpose && !summary[name].purpose) summary[name].purpose = r.purpose;
       const dayKey = new Date(r.clockIn).toISOString().split('T')[0];
       if (!summary[name].days[dayKey]) summary[name].days[dayKey] = { minutes: 0, records: [] };
       summary[name].days[dayKey].minutes += validMins;
@@ -549,8 +550,14 @@ router.get('/time-worked', async (req, res) => {
       });
     });
 
+    // Look up positions
+    const allEmployees = await TimeClockEmployee.find({ active: true }).select('firstName lastName position');
+    const positionMap = {};
+    allEmployees.forEach(e => { positionMap[`${e.firstName} ${e.lastName}`] = e.position; });
+
     const result = Object.entries(summary).map(([name, data]) => ({
       name,
+      position: positionMap[name] || '',
       totalMinutes: data.totalMinutes,
       totalHours: (data.totalMinutes / 60).toFixed(2),
       days: data.days
