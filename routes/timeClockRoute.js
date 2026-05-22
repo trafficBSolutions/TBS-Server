@@ -715,6 +715,48 @@ router.get('/my-week', async (req, res) => {
   }
 });
 
+// POST /timeclock/punch-offline - Process a queued offline punch
+router.post('/punch-offline', async (req, res) => {
+  try {
+    const { pin, purpose, timestamp } = req.body;
+    if (!pin) return res.status(400).json({ message: 'PIN is required' });
+
+    const person = await findPersonByPin(pin);
+    if (!person) return res.status(401).json({ message: 'Invalid PIN' });
+
+    const punchTime = timestamp ? new Date(timestamp) : new Date();
+
+    // Check if this punch was already processed (dedup by time window)
+    const windowStart = new Date(punchTime.getTime() - 60000); // 1 min window
+    const windowEnd = new Date(punchTime.getTime() + 60000);
+    const duplicate = await TimeClock.findOne({
+      employeeId: person.id,
+      clockIn: { $gte: windowStart, $lte: windowEnd }
+    });
+    if (duplicate) return res.status(409).json({ message: 'Already processed' });
+
+    const openEntry = await TimeClock.findOne({ employeeId: person.id, clockOut: null });
+
+    if (openEntry) {
+      openEntry.clockOut = punchTime;
+      await openEntry.save();
+      return res.json({ action: 'clocked_out', message: `${person.name} clocked out (synced).` });
+    } else {
+      await TimeClock.create({
+        employeeId: person.id,
+        employeeName: person.name,
+        clockIn: punchTime,
+        purpose: purpose || null,
+        ip: 'offline-sync'
+      });
+      return res.json({ action: 'clocked_in', message: `${person.name} clocked in (synced).` });
+    }
+  } catch (e) {
+    console.error('Offline punch error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /timeclock/check-ip
 router.get('/check-ip', (req, res) => {
   const clientIp = getClientIp(req);
