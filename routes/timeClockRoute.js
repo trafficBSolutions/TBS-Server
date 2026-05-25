@@ -704,8 +704,8 @@ router.get('/my-week', async (req, res) => {
 
     return res.json({
       name: person.name,
-      weekStart: saturday.toISOString().split('T')[0],
-      weekEnd: new Date(friday.getTime() - 86400000).toISOString().split('T')[0],
+      weekStart: `${saturday.getFullYear()}-${String(saturday.getMonth()+1).padStart(2,'0')}-${String(saturday.getDate()).padStart(2,'0')}`,
+      weekEnd: (() => { const fe = new Date(friday.getTime() - 86400000); return `${fe.getFullYear()}-${String(fe.getMonth()+1).padStart(2,'0')}-${String(fe.getDate()).padStart(2,'0')}`; })(),
       totalMinutes,
       totalHours: (totalMinutes / 60).toFixed(2),
       days
