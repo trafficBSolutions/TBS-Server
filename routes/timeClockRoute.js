@@ -528,14 +528,35 @@ router.get('/time-worked', async (req, res) => {
       clockIn: { $gte: start, $lt: end }
     }).sort({ clockIn: 1 });
 
-    // Group by employee
+    // Get all active employees so we can show those with 0 hours too
+    const allEmployees = await TimeClockEmployee.find({ active: true }).select('firstName lastName position');
+    const hourlyAdminEmails = ['tbsolutions77@gmail.com', 'tbsolutions14@gmail.com', 'tbsolutions66@gmail.com'];
+    const hourlyAdmins = await Admin.find({ email: { $in: hourlyAdminEmails } }).select('firstName lastName email');
+
+    // Build position map and initialize summary with all employees
+    const positionMap = {};
     const summary = {};
+
+    allEmployees.forEach(e => {
+      const name = `${e.firstName} ${e.lastName}`;
+      positionMap[name] = e.position;
+      summary[name] = { totalMinutes: 0, days: {}, purpose: null };
+    });
+
+    hourlyAdmins.forEach(a => {
+      const name = `${a.firstName} ${a.lastName || ''}`.trim();
+      if (!summary[name]) {
+        summary[name] = { totalMinutes: 0, days: {}, purpose: null };
+        positionMap[name] = 'Foreman';
+      }
+    });
+
+    // Fill in actual hours from records
     records.forEach(r => {
       const name = r.employeeName;
       if (!summary[name]) summary[name] = { totalMinutes: 0, days: {}, purpose: null };
       const clockOut = r.clockOut;
       const mins = clockOut ? Math.round((new Date(clockOut) - new Date(r.clockIn)) / 60000) : 0;
-      // Only count positive time (skip deductions where clockOut < clockIn)
       const validMins = Math.max(mins, 0);
       summary[name].totalMinutes += validMins;
       if (r.purpose && !summary[name].purpose) summary[name].purpose = r.purpose;
@@ -549,11 +570,6 @@ router.get('/time-worked', async (req, res) => {
         purpose: r.purpose || null
       });
     });
-
-    // Look up positions
-    const allEmployees = await TimeClockEmployee.find({ active: true }).select('firstName lastName position');
-    const positionMap = {};
-    allEmployees.forEach(e => { positionMap[`${e.firstName} ${e.lastName}`] = e.position; });
 
     const result = Object.entries(summary).map(([name, data]) => ({
       name,
@@ -704,8 +720,8 @@ router.get('/my-week', async (req, res) => {
 
     return res.json({
       name: person.name,
-      weekStart: `${saturday.getFullYear()}-${String(saturday.getMonth()+1).padStart(2,'0')}-${String(saturday.getDate()).padStart(2,'0')}`,
-      weekEnd: (() => { const fe = new Date(friday.getTime() - 86400000); return `${fe.getFullYear()}-${String(fe.getMonth()+1).padStart(2,'0')}-${String(fe.getDate()).padStart(2,'0')}`; })(),
+      weekStart: saturday.toISOString().split('T')[0],
+      weekEnd: new Date(friday.getTime() - 86400000).toISOString().split('T')[0],
       totalMinutes,
       totalHours: (totalMinutes / 60).toFixed(2),
       days
