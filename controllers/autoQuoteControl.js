@@ -29,6 +29,7 @@ const submitQuote = async (req, res) => {
                 { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
                 { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
                 { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' },
+                { name: 'Dasia Diskey', address: 'materialworx2@gmail.com' },
             ],
             subject: `Quote for ${customer} - ${company}`,
             html: `
@@ -132,7 +133,8 @@ const resendQuote = async (req, res) => {
                 { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
                 { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
                 { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
-                { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' }
+                { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' },
+                { name: 'Dasia Diskey', address: 'materialworx2@gmail.com' }
             ],
             subject: `Quote for ${quote.customer} - ${quote.company}`,
             html: `
@@ -207,6 +209,7 @@ const submitInvoice = async (req, res) => {
                 { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
                 { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
                 { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' },
+                { name: 'Dasia Diskey', address: 'materialworx2@gmail.com' },
             ],
             subject: `Invoice #${invoiceNumber} for ${customer} - ${company}`,
             html: `
