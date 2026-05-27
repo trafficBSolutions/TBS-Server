@@ -232,6 +232,17 @@ function renderWorkOrderHTML(wo, assets) {
       <p><strong>${formatName(wo.policeOfficer.name)}</strong></p>
     </div>
   </div>` : ''}
+
+  ${wo.jobAddresses && wo.jobAddresses.length > 0 ? `
+  <div class="section">
+    <h3>Job Addresses</h3>
+    <table>
+      <thead><tr><th>#</th><th>Address</th><th>City/State/Zip</th><th>Project/Task</th><th>Time Spent</th></tr></thead>
+      <tbody>
+        ${wo.jobAddresses.map((a, i) => `<tr><td>${i+1}</td><td>${a.address || ''}</td><td>${a.city || ''}, ${a.state || ''} ${a.zip || ''}</td><td>${a.project || ''}</td><td>${a.timeSpent || ''}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  </div>` : ''}
 </body>
 </html>`;
 }
@@ -410,7 +421,8 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       tbs,
       mismatch,
       foremanSignature,
-      policeOfficer
+      policeOfficer,
+      jobAddresses
     } = req.body;
 
     // Parse JSON fields if they're strings (from FormData)
@@ -437,6 +449,15 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
         policeOfficer = { used: false, name: '', signature: '' };
       }
     }
+
+    if (typeof jobAddresses === 'string') {
+      try {
+        jobAddresses = JSON.parse(jobAddresses);
+      } catch (e) {
+        jobAddresses = [];
+      }
+    }
+    if (!Array.isArray(jobAddresses)) jobAddresses = [];
 
     const photos = req.files ? req.files.map(file => file.filename) : [];
 
@@ -496,6 +517,7 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
         name: (policeOfficer.name || '').trim(),
         signature: policeOfficer.signature || '',
       } : { used: false, name: '', signature: '' },
+      ...(jobAddresses.length > 0 ? { jobAddresses } : {}),
     });
 
     console.log('Work order created successfully:', created._id);
@@ -578,6 +600,14 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
             <li><strong>Officer Name:</strong> ${formatName(created.policeOfficer.name)}</li>
             <li><strong>Officer Signature:</strong> Captured (See attached PDF)</li>
           </ul>
+          ` : ''}
+
+          ${created.jobAddresses && created.jobAddresses.length > 0 ? `
+          <h3>Job Addresses:</h3>
+          <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+            <tr style="background: #f2f2f2;"><th style="border: 1px solid #ddd; padding: 8px;">#</th><th style="border: 1px solid #ddd; padding: 8px;">Address</th><th style="border: 1px solid #ddd; padding: 8px;">Project/Task</th><th style="border: 1px solid #ddd; padding: 8px;">Time Spent</th></tr>
+            ${created.jobAddresses.map((a, i) => `<tr><td style="border: 1px solid #ddd; padding: 8px;">${i+1}</td><td style="border: 1px solid #ddd; padding: 8px;">${a.address || ''}, ${a.city || ''}, ${a.state || ''} ${a.zip || ''}</td><td style="border: 1px solid #ddd; padding: 8px;">${a.project || ''}</td><td style="border: 1px solid #ddd; padding: 8px;">${a.timeSpent || ''}</td></tr>`).join('')}
+          </table>
           ` : ''}
 
           ${basic.notes ? `<h3>Additional Notes:</h3><p>${basic.notes}</p>` : ''}
