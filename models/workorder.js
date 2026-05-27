@@ -30,6 +30,15 @@ equipmentLeftReason: { type: String, trim: true, default: '' }, // <-- add this
 }, { _id: false });
 
 
+const JobAddressSchema = new mongoose.Schema({
+  address: { type: String, trim: true },
+  city: { type: String, trim: true },
+  state: { type: String, trim: true },
+  zip: { type: String, trim: true },
+  project: { type: String, trim: true },
+  timeSpent: { type: String, trim: true },
+}, { _id: false });
+
 const WorkOrderSchema = new mongoose.Schema({
   job: { type: mongoose.Schema.Types.ObjectId, ref: 'ControlUser' }, // <-- NOT required
   scheduledDate: { type: Date, required: true },
@@ -80,6 +89,8 @@ const WorkOrderSchema = new mongoose.Schema({
     name: { type: String, trim: true, default: '' },
     signature: { type: String, default: '' },
   },
+
+  jobAddresses: [JobAddressSchema],
 }, { timestamps: true });
 
 
