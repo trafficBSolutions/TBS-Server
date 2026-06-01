@@ -479,7 +479,7 @@ router.post('/admin-self-acknowledge', verifyIp, async (req, res) => {
 // POST /timeclock/admin-punch - Admin clocks in/out an employee by ID
 router.post('/admin-punch', async (req, res) => {
   try {
-    const { employeeId } = req.body;
+    const { employeeId, purpose } = req.body;
     if (!employeeId) return res.status(400).json({ message: 'employeeId required' });
 
     // Find the person
@@ -505,6 +505,7 @@ router.post('/admin-punch', async (req, res) => {
         employeeId: person._id,
         employeeName: personName,
         clockIn: new Date(),
+        purpose: purpose || null,
         ip: 'admin-manual'
       });
       return res.json({ action: 'clocked_in', message: `${personName} clocked in by admin.`, record: entry });
@@ -588,7 +589,7 @@ router.get('/time-worked', async (req, res) => {
 // POST /timeclock/manual-entry - Salary admin manually adds hours for an employee
 router.post('/manual-entry', async (req, res) => {
   try {
-    const { employeeId, date, clockIn, clockOut, reason } = req.body;
+    const { employeeId, date, clockIn, clockOut, reason, purpose } = req.body;
     if (!employeeId || !date || !clockIn || !clockOut) {
       return res.status(400).json({ message: 'employeeId, date, clockIn, clockOut are required' });
     }
@@ -618,6 +619,7 @@ router.post('/manual-entry', async (req, res) => {
       employeeName: personName,
       clockIn: clockInDate,
       clockOut: clockOutDate,
+      purpose: purpose || null,
       ip: `admin-manual${reason ? ': ' + reason : ''}`
     });
 
