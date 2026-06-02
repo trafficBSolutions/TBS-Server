@@ -5,6 +5,10 @@ const TimeClockSchema = new mongoose.Schema({
   employeeName: { type: String, required: true },
   clockIn: { type: Date, required: true },
   clockOut: { type: Date, default: null },
+  originalClockIn: { type: Date, default: null },
+  originalClockOut: { type: Date, default: null },
+  editedByAdmin: { type: Boolean, default: false },
+  autoClockOut: { type: Boolean, default: false },
   purpose: { type: String, default: null },
   ip: { type: String },
 }, { timestamps: true });
