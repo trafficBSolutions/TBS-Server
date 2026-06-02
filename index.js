@@ -80,6 +80,10 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 // ✅ Job cleaner utility (MongoDB cleanup job)
 require('./utils/cleanJob');
 
+// ✅ Auto clock-out at midnight
+const { startAutoClockOut } = require('./services/autoClockOut');
+startAutoClockOut();
+
 
 
 app.use('/', workOrdersRouter);
