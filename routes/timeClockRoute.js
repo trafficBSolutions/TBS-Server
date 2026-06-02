@@ -565,8 +565,13 @@ router.get('/time-worked', async (req, res) => {
       if (!summary[name].days[dayKey]) summary[name].days[dayKey] = { minutes: 0, records: [] };
       summary[name].days[dayKey].minutes += validMins;
       summary[name].days[dayKey].records.push({
+        _id: r._id,
         clockIn: r.clockIn,
         clockOut: r.clockOut,
+        originalClockIn: r.originalClockIn || null,
+        originalClockOut: r.originalClockOut || null,
+        editedByAdmin: r.editedByAdmin || false,
+        autoClockOut: r.autoClockOut || false,
         minutes: validMins,
         purpose: r.purpose || null
       });
@@ -781,6 +786,73 @@ router.get('/check-ip', (req, res) => {
   const allowed = ALLOWED_IPS.some(ip => clientIp === ip) ||
     (IPV6_PREFIX && clientIp.startsWith(IPV6_PREFIX));
   return res.json({ allowed, ip: clientIp });
+});
+
+// PUT /timeclock/edit-punch/:id - Admin edits clock in/out times on a record
+router.put('/edit-punch/:id', async (req, res) => {
+  try {
+    const { clockIn, clockOut } = req.body;
+    if (!clockIn && !clockOut) return res.status(400).json({ message: 'clockIn or clockOut required' });
+
+    const record = await TimeClock.findById(req.params.id);
+    if (!record) return res.status(404).json({ message: 'Record not found' });
+
+    // Store originals if not already stored
+    if (!record.originalClockIn) record.originalClockIn = record.clockIn;
+    if (!record.originalClockOut && record.clockOut) record.originalClockOut = record.clockOut;
+
+    if (clockIn) record.clockIn = new Date(clockIn);
+    if (clockOut) record.clockOut = new Date(clockOut);
+    record.editedByAdmin = true;
+    await record.save();
+
+    const mins = record.clockOut ? Math.round((new Date(record.clockOut) - new Date(record.clockIn)) / 60000) : 0;
+    return res.json({ message: `Updated ${record.employeeName}: ${(mins/60).toFixed(2)} hrs`, record });
+  } catch (e) {
+    console.error('Edit punch error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /timeclock/add-punch - Admin adds a new punch line for an employee on a specific day
+router.post('/add-punch', async (req, res) => {
+  try {
+    const { employeeId, date, clockIn, clockOut, purpose } = req.body;
+    if (!employeeId || !date || !clockIn || !clockOut) {
+      return res.status(400).json({ message: 'employeeId, date, clockIn, clockOut required' });
+    }
+
+    let personName;
+    let person = await TimeClockEmployee.findById(employeeId);
+    if (person) {
+      personName = `${person.firstName} ${person.lastName}`;
+    } else {
+      const admin = await Admin.findById(employeeId);
+      if (!admin) return res.status(404).json({ message: 'Employee not found' });
+      personName = `${admin.firstName} ${admin.lastName || ''}`;
+      person = admin;
+    }
+
+    const clockInDate = new Date(`${date}T${clockIn}:00`);
+    const clockOutDate = new Date(`${date}T${clockOut}:00`);
+    if (clockOutDate <= clockInDate) return res.status(400).json({ message: 'Clock out must be after clock in' });
+
+    const entry = await TimeClock.create({
+      employeeId: person._id,
+      employeeName: personName,
+      clockIn: clockInDate,
+      clockOut: clockOutDate,
+      purpose: purpose || null,
+      ip: 'admin-added',
+      editedByAdmin: true
+    });
+
+    const mins = Math.round((clockOutDate - clockInDate) / 60000);
+    return res.json({ message: `Added ${(mins/60).toFixed(2)} hrs for ${personName}`, record: entry });
+  } catch (e) {
+    console.error('Add punch error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
 });
 
 module.exports = router;
