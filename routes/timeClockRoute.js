@@ -788,6 +788,18 @@ router.get('/check-ip', (req, res) => {
   return res.json({ allowed, ip: clientIp });
 });
 
+// DELETE /timeclock/delete-punch/:id - Admin deletes a punch record
+router.delete('/delete-punch/:id', async (req, res) => {
+  try {
+    const record = await TimeClock.findByIdAndDelete(req.params.id);
+    if (!record) return res.status(404).json({ message: 'Record not found' });
+    return res.json({ message: `Deleted punch for ${record.employeeName}` });
+  } catch (e) {
+    console.error('Delete punch error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // PUT /timeclock/edit-punch/:id - Admin edits clock in/out times on a record
 router.put('/edit-punch/:id', async (req, res) => {
   try {
