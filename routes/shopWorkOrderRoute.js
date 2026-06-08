@@ -263,6 +263,64 @@ router.get('/shop-work-order/disapprove/:id', async (req, res) => {
   }
 });
 
+// Approve from admin dashboard (JSON API)
+router.post('/shop-work-order/:id/dashboard-approve', express.json(), async (req, res) => {
+  try {
+    const { approver } = req.body;
+    if (!approver || !ALLOWED_APPROVERS.has(approver)) {
+      return res.status(403).json({ error: 'Unauthorized approver.' });
+    }
+    const wo = await ShopWorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ error: 'Work order not found.' });
+    if (wo.status !== 'pending') return res.status(400).json({ error: `Already ${wo.status}` });
+
+    const approverInfo = SUPERVISORS.find(s => s.email === approver);
+    wo.status = 'approved';
+    wo.approvedBy = approverInfo.name;
+    wo.approvedAt = new Date();
+    await wo.save();
+
+    // Email notification
+    transporter.sendMail({
+      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+      to: SUPERVISORS.map(s => s.email),
+      subject: `✅ APPROVED – Shop Work Order – ${wo.employeeNames} – ${wo.date}`,
+      html: `<div style="font-family:Arial;padding:20px;"><h2 style="color:#4CAF50;">✅ Shop Work Order Approved</h2><p>Approved by: <strong>${approverInfo.name}</strong></p><p>Employee: ${wo.employeeNames}</p><p>Date: ${wo.date}</p><p>Location: ${wo.location}</p></div>`,
+    }, () => {});
+
+    res.json({ message: 'Approved', wo });
+  } catch (e) {
+    res.status(500).json({ error: 'Error processing approval.' });
+  }
+});
+
+// Disapprove from admin dashboard (JSON API)
+router.post('/shop-work-order/:id/dashboard-disapprove', express.json(), async (req, res) => {
+  try {
+    const { approver } = req.body;
+    if (!approver || !ALLOWED_APPROVERS.has(approver)) {
+      return res.status(403).json({ error: 'Unauthorized.' });
+    }
+    const wo = await ShopWorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ error: 'Work order not found.' });
+    if (wo.status !== 'pending') return res.status(400).json({ error: `Already ${wo.status}` });
+
+    wo.status = 'disapproved';
+    await wo.save();
+
+    transporter.sendMail({
+      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+      to: SUPERVISORS.map(s => s.email),
+      subject: `❌ DISAPPROVED – Shop Work Order – ${wo.employeeNames} – ${wo.date}`,
+      html: `<div style="font-family:Arial;padding:20px;"><h2 style="color:#f44336;">❌ Shop Work Order Disapproved (VOID)</h2><p>Employee: ${wo.employeeNames}</p><p>Date: ${wo.date}</p></div>`,
+    }, () => {});
+
+    res.json({ message: 'Disapproved', wo });
+  } catch (e) {
+    res.status(500).json({ error: 'Error processing disapproval.' });
+  }
+});
+
 // Get all shop work orders (for admin dashboard)
 router.get('/shop-work-orders', async (req, res) => {
   try {
