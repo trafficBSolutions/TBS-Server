@@ -5,6 +5,8 @@ const TimeClockEmployee = require('../models/timeClockEmployee');
 const DisciplineEmployee = require('../models/disciplineEmployee');
 const Admin = require('../models/Admin');
 const Discipline = require('../models/discipline');
+const ShopWorkOrder = require('../models/shopWorkOrder');
+const WorkOrder = require('../models/workorder');
 const { transporter } = require('../utils/emailConfig');
 const { generateDisciplinePdf } = require('../services/disciplinePDF');
 
@@ -786,6 +788,82 @@ router.get('/check-ip', (req, res) => {
   const allowed = ALLOWED_IPS.some(ip => clientIp === ip) ||
     (IPV6_PREFIX && clientIp.startsWith(IPV6_PREFIX));
   return res.json({ allowed, ip: clientIp });
+});
+
+// GET /timeclock/clockout-check/:employeeId - Check if employee needs to fill out a work order before clocking out
+router.get('/clockout-check/:employeeId', async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    // Find the open clock entry to get the purpose
+    const openEntry = await TimeClock.findOne({ employeeId, clockOut: null });
+    if (!openEntry) return res.json({ allowed: true });
+
+    const purpose = (openEntry.purpose || '').trim();
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // Determine employee name and position
+    let empName = openEntry.employeeName || '';
+    let position = '';
+    const emp = await TimeClockEmployee.findById(employeeId);
+    if (emp) {
+      position = emp.position;
+      empName = `${emp.firstName} ${emp.lastName}`;
+    } else {
+      const admin = await Admin.findById(employeeId);
+      if (admin) {
+        empName = `${admin.firstName} ${admin.lastName || ''}`.trim();
+        position = 'Foreman'; // hourly admins are treated as foremen
+      }
+    }
+
+    // Check 1: Shop Work / Standby requires a shop work order
+    if (purpose === 'Shop Work' || purpose === 'Standby') {
+      const shopWo = await ShopWorkOrder.findOne({
+        date: today,
+        employeeNames: { $regex: new RegExp(empName.trim(), 'i') }
+      });
+      if (!shopWo) {
+        return res.json({
+          allowed: false,
+          reason: 'shop_work_order_required',
+          message: `You must complete a Shop Work Order before clocking out. Your clock-in purpose was "${purpose}".`,
+          employeeName: empName
+        });
+      }
+    }
+
+    // Check 2: Foreman/Driver (non-Shop Work/Standby) requires a regular work order
+    if ((position === 'Foreman' || position === 'Driver') && purpose !== 'Shop Work' && purpose !== 'Standby') {
+      const startOfDay = new Date(`${today}T00:00:00`);
+      const endOfDay = new Date(`${today}T23:59:59`);
+      // Check if any work order for today mentions this employee by name
+      const wo = await WorkOrder.findOne({
+        scheduledDate: { $gte: startOfDay, $lte: endOfDay },
+        $or: [
+          { 'basic.foremanName': { $regex: new RegExp(empName.trim(), 'i') } },
+          { 'tbs.flagger1': { $regex: new RegExp(empName.trim(), 'i') } },
+          { 'tbs.flagger2': { $regex: new RegExp(empName.trim(), 'i') } },
+          { 'tbs.flagger3': { $regex: new RegExp(empName.trim(), 'i') } },
+          { 'tbs.flagger4': { $regex: new RegExp(empName.trim(), 'i') } },
+          { 'tbs.flagger5': { $regex: new RegExp(empName.trim(), 'i') } },
+        ]
+      });
+      if (!wo) {
+        return res.json({
+          allowed: false,
+          reason: 'work_order_required',
+          message: `You must complete a Work Order before clocking out. All Foremen/Drivers must submit a work order for the day.`,
+          employeeName: empName
+        });
+      }
+    }
+
+    return res.json({ allowed: true });
+  } catch (e) {
+    console.error('Clockout check error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
 });
 
 // DELETE /timeclock/delete-punch/:id - Admin deletes a punch record
