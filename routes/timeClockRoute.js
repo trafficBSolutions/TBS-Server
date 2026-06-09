@@ -800,7 +800,9 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
     if (!openEntry) return res.json({ allowed: true });
 
     const purpose = (openEntry.purpose || '').trim();
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    // Use server local date
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
     // Determine employee name and position
     let empName = openEntry.employeeName || '';
@@ -813,9 +815,11 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
       const admin = await Admin.findById(employeeId);
       if (admin) {
         empName = `${admin.firstName} ${admin.lastName || ''}`.trim();
-        position = 'Foreman'; // hourly admins are treated as foremen
+        position = 'Foreman';
       }
     }
+
+    console.log(`[clockout-check] Employee: ${empName}, Position: ${position}, Purpose: ${purpose}, Date: ${today}`);
 
     // Check 1: Shop Work / Standby requires a shop work order
     if (purpose === 'Shop Work' || purpose === 'Standby') {
@@ -823,6 +827,7 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
         date: today,
         employeeNames: { $regex: new RegExp(empName.trim(), 'i') }
       });
+      console.log(`[clockout-check] Shop WO found:`, !!shopWo);
       if (!shopWo) {
         return res.json({
           allowed: false,
@@ -835,9 +840,8 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
 
     // Check 2: Foreman/Driver (non-Shop Work/Standby) requires a regular work order
     if ((position === 'Foreman' || position === 'Driver') && purpose !== 'Shop Work' && purpose !== 'Standby') {
-      const startOfDay = new Date(`${today}T00:00:00`);
-      const endOfDay = new Date(`${today}T23:59:59`);
-      // Check if any work order for today mentions this employee by name
+      const startOfDay = new Date(today + 'T00:00:00');
+      const endOfDay = new Date(today + 'T23:59:59');
       const wo = await WorkOrder.findOne({
         scheduledDate: { $gte: startOfDay, $lte: endOfDay },
         $or: [
@@ -849,6 +853,7 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
           { 'tbs.flagger5': { $regex: new RegExp(empName.trim(), 'i') } },
         ]
       });
+      console.log(`[clockout-check] Work Order found:`, !!wo);
       if (!wo) {
         return res.json({
           allowed: false,
