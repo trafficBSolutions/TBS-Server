@@ -821,8 +821,8 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
 
     console.log(`[clockout-check] Employee: ${empName}, Position: ${position}, Purpose: ${purpose}, Date: ${today}`);
 
-    // Check 1: Shop Work / Standby requires a shop work order
-    if (purpose === 'Shop Work' || purpose === 'Standby') {
+    // Check 1: Standby requires a shop work order (Shop Work does NOT block - they may clock out for lunch)
+    if (purpose === 'Standby') {
       const shopWo = await ShopWorkOrder.findOne({
         date: today,
         employeeNames: { $regex: new RegExp(empName.trim(), 'i') }
@@ -832,7 +832,7 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
         return res.json({
           allowed: false,
           reason: 'shop_work_order_required',
-          message: `You must complete a Shop Work Order before clocking out. Your clock-in purpose was "${purpose}".`,
+          message: `You must complete a Shop Work Order before clocking out. Your clock-in purpose was "Standby".`,
           employeeName: empName
         });
       }
