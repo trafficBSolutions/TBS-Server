@@ -13,6 +13,7 @@ const ShopWorkOrderSchema = new mongoose.Schema({
   approvedBy: { type: String, default: '' },
   approvedAt: { type: Date },
   submittedBy: { type: String, default: '' },
+  submittedByEmployeeId: { type: mongoose.Schema.Types.ObjectId, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('ShopWorkOrder', ShopWorkOrderSchema);
