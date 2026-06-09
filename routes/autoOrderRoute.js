@@ -764,5 +764,59 @@ router.get('/auth/debug', (req, res) => {
     hasLegacyToken: !!req.cookies?.token,
   });
 });
+
+// Work Order Approval - Approvers: Bryson, Carson, William
+const WO_APPROVERS = [
+  { name: 'Bryson Davis', email: 'tbsolutions9@gmail.com' },
+  { name: 'Carson Speer', email: 'tbsolutions4@gmail.com' },
+  { name: 'William Rowell', email: 'tbsolutions1999@gmail.com' },
+];
+const WO_APPROVER_EMAILS = new Set(WO_APPROVERS.map(a => a.email));
+
+// POST /work-order/:id/approve - Approve a work order
+router.post('/work-order/:id/approve', async (req, res) => {
+  try {
+    const { approver } = req.body;
+    if (!approver || !WO_APPROVER_EMAILS.has(approver)) {
+      return res.status(403).json({ error: 'Unauthorized approver.' });
+    }
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ error: 'Work order not found.' });
+    if (wo.status === 'approved') return res.status(400).json({ error: 'Already approved.' });
+
+    const approverInfo = WO_APPROVERS.find(a => a.email === approver);
+    wo.status = 'approved';
+    wo.approvedBy = approverInfo.name;
+    wo.approvedAt = new Date();
+    await wo.save();
+
+    res.json({ message: 'Work order approved.', wo });
+  } catch (e) {
+    console.error('WO approve error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /work-order/:id/disapprove - Disapprove a work order
+router.post('/work-order/:id/disapprove', async (req, res) => {
+  try {
+    const { approver } = req.body;
+    if (!approver || !WO_APPROVER_EMAILS.has(approver)) {
+      return res.status(403).json({ error: 'Unauthorized approver.' });
+    }
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ error: 'Work order not found.' });
+    if (wo.status !== 'pending') return res.status(400).json({ error: `Already ${wo.status}.` });
+
+    wo.status = 'disapproved';
+    await wo.save();
+
+    res.json({ message: 'Work order disapproved.', wo });
+  } catch (e) {
+    console.error('WO disapprove error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
 
