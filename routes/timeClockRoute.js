@@ -800,9 +800,9 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
     if (!openEntry) return res.json({ allowed: true });
 
     const purpose = (openEntry.purpose || '').trim();
-    // Use server local date
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    // Use the clock-IN date for the work order check (handles night/graveyard shifts)
+    const clockInDate = new Date(openEntry.clockIn);
+    const clockInDay = `${clockInDate.getFullYear()}-${String(clockInDate.getMonth()+1).padStart(2,'0')}-${String(clockInDate.getDate()).padStart(2,'0')}`;
 
     // Determine employee name and position
     let empName = openEntry.employeeName || '';
@@ -819,31 +819,52 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
       }
     }
 
-    console.log(`[clockout-check] Employee: ${empName}, Position: ${position}, Purpose: ${purpose}, Date: ${today}`);
+    console.log(`[clockout-check] Employee: ${empName}, Position: ${position}, Purpose: ${purpose}, ClockIn: ${clockInDate.toISOString()}, CheckDate: ${clockInDay}`);
 
-    // Check 1: Standby and Shop Work require a shop work order
+    // Count how many completed clock sessions this employee has TODAY that match the same purpose
+    // Each session needs its own work order
+    const dayStart = new Date(clockInDay + 'T00:00:00');
+    const dayEnd = new Date(clockInDay + 'T23:59:59');
+
+    // Check 1: Standby and Shop Work require a shop work order per session
     if (purpose === 'Standby' || purpose === 'Shop Work') {
-      const shopWo = await ShopWorkOrder.findOne({
-        date: today,
+      // Count completed sessions with same purpose on the clock-in day
+      const completedSessions = await TimeClock.countDocuments({
+        employeeId,
+        purpose: { $in: ['Shop Work', 'Standby'] },
+        clockIn: { $gte: dayStart, $lte: dayEnd },
+        clockOut: { $ne: null }
+      });
+      // Count shop work orders for this employee on that day
+      const shopWoCount = await ShopWorkOrder.countDocuments({
+        date: clockInDay,
         employeeNames: { $regex: new RegExp(empName.trim(), 'i') }
       });
-      console.log(`[clockout-check] Shop WO found:`, !!shopWo);
-      if (!shopWo) {
+      // Current open session means they need (completedSessions + 1) work orders total
+      const needed = completedSessions + 1;
+      console.log(`[clockout-check] Shop/Standby sessions: ${completedSessions} completed + 1 current = ${needed} needed, found ${shopWoCount} shop WOs`);
+      if (shopWoCount < needed) {
         return res.json({
           allowed: false,
           reason: 'shop_work_order_required',
-          message: `You must complete a Shop Work Order before clocking out. Your clock-in purpose was "${purpose}".`,
+          message: `You must complete a Shop Work Order for this session before clocking out. (${shopWoCount}/${needed} filled)`,
           employeeName: empName
         });
       }
     }
 
-    // Check 2: Foreman/Driver (non-Shop Work/Standby) requires a regular work order
+    // Check 2: Foreman/Driver (non-Shop Work/Standby) requires a regular work order per session
     if ((position === 'Foreman' || position === 'Driver') && purpose !== 'Shop Work' && purpose !== 'Standby') {
-      const startOfDay = new Date(today + 'T00:00:00');
-      const endOfDay = new Date(today + 'T23:59:59');
-      const wo = await WorkOrder.findOne({
-        scheduledDate: { $gte: startOfDay, $lte: endOfDay },
+      // Count completed TC sessions on the clock-in day
+      const completedSessions = await TimeClock.countDocuments({
+        employeeId,
+        purpose: { $nin: ['Shop Work', 'Standby', null, ''] },
+        clockIn: { $gte: dayStart, $lte: dayEnd },
+        clockOut: { $ne: null }
+      });
+      // Count work orders for this employee on that day
+      const woCount = await WorkOrder.countDocuments({
+        scheduledDate: { $gte: dayStart, $lte: dayEnd },
         $or: [
           { 'basic.foremanName': { $regex: new RegExp(empName.trim(), 'i') } },
           { 'tbs.flagger1': { $regex: new RegExp(empName.trim(), 'i') } },
@@ -853,12 +874,13 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
           { 'tbs.flagger5': { $regex: new RegExp(empName.trim(), 'i') } },
         ]
       });
-      console.log(`[clockout-check] Work Order found:`, !!wo);
-      if (!wo) {
+      const needed = completedSessions + 1;
+      console.log(`[clockout-check] TC sessions: ${completedSessions} completed + 1 current = ${needed} needed, found ${woCount} work orders`);
+      if (woCount < needed) {
         return res.json({
           allowed: false,
           reason: 'work_order_required',
-          message: `You must complete a Work Order before clocking out. All Foremen/Drivers must submit a work order for the day.`,
+          message: `You must complete a Work Order for this session before clocking out. (${woCount}/${needed} filled)`,
           employeeName: empName
         });
       }
