@@ -813,8 +813,46 @@ router.put('/edit-punch/:id', async (req, res) => {
     if (!record.originalClockIn) record.originalClockIn = record.clockIn;
     if (!record.originalClockOut && record.clockOut) record.originalClockOut = record.clockOut;
 
-    if (clockIn) record.clockIn = new Date(clockIn);
-    if (clockOut) record.clockOut = new Date(clockOut);
+    // Use the original clockIn date to get the correct day with timezone offset
+    const baseDate = record.originalClockIn || record.clockIn;
+    const tzOffset = baseDate.getTimezoneOffset(); // server's offset (usually 0 for UTC)
+    
+    // The times coming in are local times (e.g., "08:45") - we need to figure out what UTC value that corresponds to
+    // Use the original record's date to determine the offset between stored UTC and intended local time
+    const originalLocalHours = record.originalClockIn ? record.originalClockIn.getUTCHours() : record.clockIn.getUTCHours();
+    const dateStr = (record.originalClockIn || record.clockIn).toISOString().split('T')[0];
+
+    if (clockIn) {
+      // clockIn comes as "YYYY-MM-DDTHH:MM:00" or "HH:MM" 
+      // If it's just time, build full date; if full datetime, parse it
+      let newClockIn;
+      if (clockIn.includes('T')) {
+        // Full datetime - treat the time portion as LOCAL time
+        const timePart = clockIn.split('T')[1].substring(0, 5);
+        const [h, m] = timePart.split(':').map(Number);
+        newClockIn = new Date(record.originalClockIn || record.clockIn);
+        newClockIn.setUTCHours(h + 4, m, 0, 0); // EDT offset (+4 to convert local to UTC)
+      } else {
+        const [h, m] = clockIn.split(':').map(Number);
+        newClockIn = new Date(record.originalClockIn || record.clockIn);
+        newClockIn.setUTCHours(h + 4, m, 0, 0);
+      }
+      record.clockIn = newClockIn;
+    }
+    if (clockOut) {
+      let newClockOut;
+      if (clockOut.includes('T')) {
+        const timePart = clockOut.split('T')[1].substring(0, 5);
+        const [h, m] = timePart.split(':').map(Number);
+        newClockOut = new Date(record.originalClockOut || record.originalClockIn || record.clockIn);
+        newClockOut.setUTCHours(h + 4, m, 0, 0);
+      } else {
+        const [h, m] = clockOut.split(':').map(Number);
+        newClockOut = new Date(record.originalClockOut || record.originalClockIn || record.clockIn);
+        newClockOut.setUTCHours(h + 4, m, 0, 0);
+      }
+      record.clockOut = newClockOut;
+    }
     record.editedByAdmin = true;
     await record.save();
 
