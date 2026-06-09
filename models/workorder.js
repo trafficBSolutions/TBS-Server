@@ -66,8 +66,6 @@ const WorkOrderSchema = new mongoose.Schema({
 
   photos: [{ type: String }], // Array of photo filenames
 
-  // ❌ was: required: true
-  // ✅ now optional (or remove the field entirely if you won't use it)
  foremanSignature: { type: String, required: true },
 
   tbs: {
@@ -91,6 +89,11 @@ const WorkOrderSchema = new mongoose.Schema({
   },
 
   jobAddresses: [JobAddressSchema],
+
+  // Approval fields
+  status: { type: String, enum: ['pending', 'approved', 'disapproved'], default: 'pending' },
+  approvedBy: { type: String, default: '' },
+  approvedAt: { type: Date },
 }, { timestamps: true });
 
 
