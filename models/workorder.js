@@ -94,6 +94,20 @@ const WorkOrderSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'approved', 'disapproved'], default: 'pending' },
   approvedBy: { type: String, default: '' },
   approvedAt: { type: Date },
+
+  // Admin corrections (Dasia/admins editing work orders)
+  adminCorrections: [{
+    field: { type: String },
+    oldValue: { type: mongoose.Schema.Types.Mixed },
+    newValue: { type: mongoose.Schema.Types.Mixed },
+    note: { type: String, default: '' },
+    editedBy: { type: String },
+    editedAt: { type: Date, default: Date.now }
+  }],
+  adminNotes: { type: String, default: '' },
+  adminNotesBy: { type: String, default: '' },
+  adminNotesAt: { type: Date },
+  hoursFlag: { type: Boolean, default: false },
 }, { timestamps: true });
 
 
