@@ -14,6 +14,20 @@ const ShopWorkOrderSchema = new mongoose.Schema({
   approvedAt: { type: Date },
   submittedBy: { type: String, default: '' },
   submittedByEmployeeId: { type: mongoose.Schema.Types.ObjectId, default: null },
+
+  // Admin corrections
+  adminCorrections: [{
+    field: { type: String },
+    oldValue: { type: mongoose.Schema.Types.Mixed },
+    newValue: { type: mongoose.Schema.Types.Mixed },
+    note: { type: String, default: '' },
+    editedBy: { type: String },
+    editedAt: { type: Date, default: Date.now }
+  }],
+  adminNotes: { type: String, default: '' },
+  adminNotesBy: { type: String, default: '' },
+  adminNotesAt: { type: Date },
+  hoursFlag: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('ShopWorkOrder', ShopWorkOrderSchema);
