@@ -342,4 +342,70 @@ router.get('/shop-work-orders', async (req, res) => {
   }
 });
 
+// PUT /shop-work-order/:id/admin-edit - Admin edits a shop work order
+const EDIT_ALLOWED_EMAILS = new Set([
+  'tbsolutions9@gmail.com',
+  'tbsolutions4@gmail.com',
+  'tbsolutions1999@gmail.com',
+  'tbsolutions1995@gmail.com',
+  'materialworx2@gmail.com'
+]);
+
+router.put('/shop-work-order/:id/admin-edit', express.json(), async (req, res) => {
+  try {
+    const { edits, adminNotes, editedBy } = req.body;
+    if (!editedBy || !EDIT_ALLOWED_EMAILS.has(editedBy)) {
+      return res.status(403).json({ error: 'Unauthorized to edit work orders.' });
+    }
+
+    const wo = await ShopWorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ error: 'Shop work order not found.' });
+
+    const corrections = [];
+
+    if (edits && typeof edits === 'object') {
+      for (const [field, newValue] of Object.entries(edits)) {
+        const oldValue = wo[field];
+        if (JSON.stringify(oldValue) === JSON.stringify(newValue)) continue;
+
+        corrections.push({
+          field,
+          oldValue,
+          newValue,
+          editedBy,
+          editedAt: new Date()
+        });
+
+        wo[field] = newValue;
+      }
+    }
+
+    if (corrections.length > 0) {
+      wo.adminCorrections = [...(wo.adminCorrections || []), ...corrections];
+    }
+
+    if (adminNotes !== undefined) {
+      wo.adminNotes = adminNotes;
+      wo.adminNotesBy = editedBy;
+      wo.adminNotesAt = new Date();
+    }
+
+    // Check 14+ hour flag
+    if (wo.inTime && wo.outTime) {
+      const [inH, inM] = wo.inTime.split(':').map(Number);
+      const [outH, outM] = wo.outTime.split(':').map(Number);
+      let totalMinutes = (outH * 60 + outM) - (inH * 60 + inM);
+      if (totalMinutes < 0) totalMinutes += 24 * 60;
+      wo.hoursFlag = totalMinutes >= 14 * 60;
+    }
+
+    await wo.save();
+
+    return res.json({ message: `Shop work order updated (${corrections.length} field(s) changed)`, workOrder: wo });
+  } catch (e) {
+    console.error('Admin edit shop work order error:', e);
+    return res.status(500).json({ error: 'Server error', details: e.message });
+  }
+});
+
 module.exports = router;
