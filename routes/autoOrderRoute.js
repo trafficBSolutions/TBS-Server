@@ -818,5 +818,88 @@ router.post('/work-order/:id/disapprove', async (req, res) => {
   }
 });
 
-module.exports = router;
+// PUT /work-order/:id/admin-edit - Admin edits a work order and tracks corrections
+const EDIT_ALLOWED_EMAILS = new Set([
+  'tbsolutions9@gmail.com',
+  'tbsolutions4@gmail.com',
+  'tbsolutions1999@gmail.com',
+  'tbsolutions1995@gmail.com',
+  'materialworx2@gmail.com'
+]);
 
+router.put('/work-order/:id/admin-edit', express.json(), async (req, res) => {
+  try {
+    const { edits, adminNotes, editedBy } = req.body;
+    if (!editedBy || !EDIT_ALLOWED_EMAILS.has(editedBy)) {
+      return res.status(403).json({ error: 'Unauthorized to edit work orders.' });
+    }
+
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ error: 'Work order not found.' });
+
+    const corrections = [];
+
+    // Apply edits - edits is an object of { fieldPath: newValue }
+    if (edits && typeof edits === 'object') {
+      for (const [fieldPath, newValue] of Object.entries(edits)) {
+        // Get old value using dot notation
+        const parts = fieldPath.split('.');
+        let oldValue = wo.toObject();
+        for (const part of parts) {
+          oldValue = oldValue?.[part];
+        }
+
+        // Skip if value hasn't changed
+        if (JSON.stringify(oldValue) === JSON.stringify(newValue)) continue;
+
+        // Record the correction
+        corrections.push({
+          field: fieldPath,
+          oldValue,
+          newValue,
+          editedBy,
+          editedAt: new Date()
+        });
+
+        // Set new value using dot notation
+        let target = wo;
+        for (let i = 0; i < parts.length - 1; i++) {
+          target = target[parts[i]];
+        }
+        target[parts[parts.length - 1]] = newValue;
+      }
+    }
+
+    // Add corrections to history
+    if (corrections.length > 0) {
+      wo.adminCorrections = [...(wo.adminCorrections || []), ...corrections];
+    }
+
+    // Add admin notes (shown in red)
+    if (adminNotes !== undefined) {
+      wo.adminNotes = adminNotes;
+      wo.adminNotesBy = editedBy;
+      wo.adminNotesAt = new Date();
+    }
+
+    // Check 14+ hour flag
+    if (wo.basic?.startTime && wo.basic?.endTime) {
+      const [startH, startM] = wo.basic.startTime.split(':').map(Number);
+      const [endH, endM] = wo.basic.endTime.split(':').map(Number);
+      let totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+      if (totalMinutes < 0) totalMinutes += 24 * 60; // overnight
+      wo.hoursFlag = totalMinutes >= 14 * 60;
+    }
+
+    wo.markModified('basic');
+    wo.markModified('tbs');
+    await wo.save();
+
+    return res.json({ message: `Work order updated (${corrections.length} field(s) changed)`, workOrder: wo });
+  } catch (e) {
+    console.error('Admin edit work order error:', e);
+    return res.status(500).json({ error: 'Server error', details: e.message });
+  }
+});
+
+module.exports = router;
