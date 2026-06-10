@@ -22,22 +22,31 @@ const startAutoClockOut = () => {
         return;
       }
 
-      const midnight = new Date();
-      midnight.setHours(0, 0, 0, 0);
-
+      const now = new Date();
       const forgotNames = [];
 
       for (const entry of openEntries) {
-        entry.clockOut = midnight;
+        // Only auto clock-out if they've been clocked in for more than 14 hours
+        const hoursIn = (now - new Date(entry.clockIn)) / (1000 * 60 * 60);
+        if (hoursIn < 14) {
+          console.log(`[auto-clock-out] Skipping ${entry.employeeName} (only ${hoursIn.toFixed(1)} hrs, likely graveyard shift)`);
+          continue;
+        }
+
+        entry.clockOut = now;
         entry.autoClockOut = true;
         if (!entry.originalClockIn) entry.originalClockIn = entry.clockIn;
         await entry.save();
         forgotNames.push(entry.employeeName);
-        console.log(`[auto-clock-out] Clocked out: ${entry.employeeName}`);
+        console.log(`[auto-clock-out] Clocked out: ${entry.employeeName} (was in ${hoursIn.toFixed(1)} hrs)`);
+      }
+
+      if (forgotNames.length === 0) {
+        console.log('[auto-clock-out] All open entries are under 14 hrs (likely graveyard). No action taken.');
+        return;
       }
 
       // Email admins
-      const nameList = forgotNames.map(n => `• ${n}`).join('\n');
       const htmlList = forgotNames.map(n => `<li><strong>${n}</strong></li>`).join('');
 
       await transporter.sendMail({
@@ -47,7 +56,7 @@ const startAutoClockOut = () => {
         html: `
           <div style="font-family:Arial,sans-serif;padding:20px;max-width:600px;margin:0 auto;">
             <h2 style="color:#d32f2f;">⚠️ Employees Forgot to Clock Out</h2>
-            <p>The following employee(s) were still clocked in at midnight and have been automatically clocked out:</p>
+            <p>The following employee(s) were clocked in for over 14 hours and have been automatically clocked out at midnight:</p>
             <ul style="font-size:16px;line-height:2;">${htmlList}</ul>
             <p style="margin-top:20px;padding:12px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;">
               <strong>Action Required:</strong> Please contact these employees to determine when they actually left and edit their hours in the Time Clock admin panel.
@@ -66,7 +75,7 @@ const startAutoClockOut = () => {
     timezone: 'America/New_York'
   });
 
-  console.log('[auto-clock-out] Cron job scheduled for midnight EST.');
+  console.log('[auto-clock-out] Cron job scheduled for midnight EST (14+ hr threshold).');
 };
 
 module.exports = { startAutoClockOut };
