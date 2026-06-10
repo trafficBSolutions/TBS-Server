@@ -133,7 +133,6 @@ const resendQuote = async (req, res) => {
                 { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
                 { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
                 { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' },
-                { name: 'Dasia Diskey', address: 'materialworx2@gmail.com' }
             ],
             subject: `Quote for ${quote.customer} - ${quote.company}`,
             html: `
