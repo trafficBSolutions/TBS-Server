@@ -4,6 +4,9 @@ const cors = require('cors');
 const multer = require('multer');
 const WorkOrder = require('../models/workorder');
 const ControlUser = require('../models/controluser');
+const TimeClock = require('../models/timeClock');
+const TimeClockEmployee = require('../models/timeClockEmployee');
+const Admin = require('../models/Admin');
 const { transporter } = require('../utils/emailConfig');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
@@ -672,7 +675,7 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       // Don't fail the entire request if email fails
     }
 
-    res.status(201).json({ message: 'Work order created', workOrderId: created._id });
+    res.status(201).json({ message: 'Work order created', workOrderId: created._id, clockedOut: [] });
   } catch (e) {
     console.error('Create work order failed:', e);
     console.error('Error stack:', e.stack);
