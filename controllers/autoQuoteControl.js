@@ -196,6 +196,9 @@ const submitInvoice = async (req, res) => {
         if (!email) return res.status(400).json({ error: "Email is required" });
         if (!invoiceNumber) return res.status(400).json({ error: "Invoice number is required" });
 
+        // Save invoice to database
+        await Quote.create({ ...req.body, invoiceNumber });
+
         const pdfBuffer = await generateInvoicePdf(req.body);
         const emailList = email.split(',').map(e => e.trim()).filter(e => e);
 
