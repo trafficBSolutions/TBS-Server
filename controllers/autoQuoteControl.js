@@ -1,6 +1,7 @@
 const { transporter } = require('../utils/emailConfig');
 const { generateQuotePdf, generateInvoicePdf } = require('../services/quotePDF');
 const Quote = require('../models/quoteuser');
+const ShopInvoice = require('../models/shopinvoice');
 const path = require('path');
 const fs = require('fs');
 
@@ -197,7 +198,7 @@ const submitInvoice = async (req, res) => {
         if (!invoiceNumber) return res.status(400).json({ error: "Invoice number is required" });
 
         // Save invoice to database
-        await Quote.create({ ...req.body, invoiceNumber });
+        await ShopInvoice.create({ invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber });
 
         const pdfBuffer = await generateInvoicePdf(req.body);
         const emailList = email.split(',').map(e => e.trim()).filter(e => e);
