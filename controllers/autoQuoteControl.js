@@ -213,7 +213,7 @@ const submitInvoice = async (req, res) => {
                 { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
                 { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' },
                 { name: 'Dasia Diskey', address: 'materialworx2@gmail.com' },
-                */
+                 */
             ],
             subject: `Invoice #${invoiceNumber} for ${customer} - ${company}`,
             html: `
