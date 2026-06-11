@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 const quoteSchema = new mongoose.Schema({
   date: { type: String, required: true },
-  invoiceNumber: { type: String },
   company: { type: String, required: true },
   customer: { type: String, required: true },
   address: String,
@@ -15,6 +14,12 @@ const quoteSchema = new mongoose.Schema({
   isTaxExempt: Boolean,
   taxExemptNumber: String,
   payMethod: String,
+  payMethod: String,
+  cardType: String,
+  cardLast4: String,
+  checkNumber: String,
+  notes: String,
+  donation: Number,
   rows: [{
     item: String,
     description: String,
