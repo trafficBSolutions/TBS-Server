@@ -10,9 +10,11 @@ const shopInvoiceSchema = new mongoose.Schema({
   isTaxExempt: Boolean,
   taxExemptNumber: String,
   payMethod: { type: String },
-  cardNumber: { type: String },
+  cardType: { type: String },
+  cardLast4: { type: String },
   checkNumber: { type: String },
   notes: { type: String },
+  donation: { type: Number, default: 0 },
   rows: [{
     item: String,
     description: String,
