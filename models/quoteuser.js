@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const quoteSchema = new mongoose.Schema({
   date: { type: String, required: true },
+  invoiceNumber: { type: String },
   company: { type: String, required: true },
   customer: { type: String, required: true },
   address: String,
