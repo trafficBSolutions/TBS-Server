@@ -193,12 +193,12 @@ const resendQuote = async (req, res) => {
 
 const submitInvoice = async (req, res) => {
     try {
-        const { invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber } = req.body;
+        const { invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, payMethod, cardNumber, checkNumber, notes } = req.body;
         if (!email) return res.status(400).json({ error: "Email is required" });
         if (!invoiceNumber) return res.status(400).json({ error: "Invoice number is required" });
 
         // Save invoice to database
-        await ShopInvoice.create({ invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber });
+        await ShopInvoice.create({ invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, payMethod, cardNumber, checkNumber, notes });
 
         const pdfBuffer = await generateInvoicePdf(req.body);
         const emailList = email.split(',').map(e => e.trim()).filter(e => e);
