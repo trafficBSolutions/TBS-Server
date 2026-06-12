@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ShopInvoice = require('../models/shopinvoice');
+const Quote = require('../models/quoteuser');
 
 // Get shop invoices by month
 router.get('/shop-invoices/month', async (req, res) => {
@@ -20,11 +21,14 @@ router.get('/shop-invoices/month', async (req, res) => {
   }
 });
 
-// Update shop invoice
+// Update shop invoice (checks ShopInvoice first, falls back to Quote collection)
 router.put('/shop-invoices/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await ShopInvoice.findByIdAndUpdate(id, { $set: req.body }, { new: true });
+    let updated = await ShopInvoice.findByIdAndUpdate(id, { $set: req.body }, { new: true });
+    if (!updated) {
+      updated = await Quote.findByIdAndUpdate(id, { $set: req.body }, { new: true });
+    }
     if (!updated) return res.status(404).json({ error: 'Invoice not found' });
     res.json(updated);
   } catch (e) {
