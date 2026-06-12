@@ -973,6 +973,22 @@ router.put('/edit-punch/:id', async (req, res) => {
   }
 });
 
+// PUT /timeclock/edit-purpose/:id - Admin edits the purpose of a clock-in record
+router.put('/edit-purpose/:id', async (req, res) => {
+  try {
+    const { purpose } = req.body;
+    if (!purpose) return res.status(400).json({ message: 'purpose is required' });
+    const record = await TimeClock.findById(req.params.id);
+    if (!record) return res.status(404).json({ message: 'Record not found' });
+    record.purpose = purpose;
+    await record.save();
+    return res.json({ message: `Purpose updated to "${purpose}" for ${record.employeeName}`, record });
+  } catch (e) {
+    console.error('Edit purpose error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // POST /timeclock/add-punch - Admin adds a new punch line for an employee on a specific day
 router.post('/add-punch', async (req, res) => {
   try {
