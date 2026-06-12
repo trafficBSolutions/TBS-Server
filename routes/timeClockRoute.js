@@ -12,6 +12,14 @@ const { generateDisciplinePdf } = require('../services/disciplinePDF');
 
 const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com'];
 
+// Helper: get Eastern Time UTC offset in hours (handles DST automatically)
+// Returns positive number (4 for EDT, 5 for EST) to ADD to local time to get UTC
+const getETOffset = (date) => {
+  const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const etDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  return (utcDate - etDate) / (1000 * 60 * 60);
+};
+
 // Allowed IPs from environment variables
 const ALLOWED_IPS = [
   process.env.TIMECLOCK_IPV4,
@@ -918,44 +926,40 @@ router.put('/edit-punch/:id', async (req, res) => {
     if (!record.originalClockIn) record.originalClockIn = record.clockIn;
     if (!record.originalClockOut && record.clockOut) record.originalClockOut = record.clockOut;
 
-    // Use the original clockIn date to get the correct day with timezone offset
+    // Get the date portion from the original clock-in (YYYY-MM-DD in ET)
     const baseDate = record.originalClockIn || record.clockIn;
-    const tzOffset = baseDate.getTimezoneOffset(); // server's offset (usually 0 for UTC)
-    
-    // The times coming in are local times (e.g., "08:45") - we need to figure out what UTC value that corresponds to
-    // Use the original record's date to determine the offset between stored UTC and intended local time
-    const originalLocalHours = record.originalClockIn ? record.originalClockIn.getUTCHours() : record.clockIn.getUTCHours();
-    const dateStr = (record.originalClockIn || record.clockIn).toISOString().split('T')[0];
+    // Convert to Eastern Time to get the correct calendar date
+    const etDateStr = baseDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); // YYYY-MM-DD
 
     if (clockIn) {
-      // clockIn comes as "YYYY-MM-DDTHH:MM:00" or "HH:MM" 
-      // If it's just time, build full date; if full datetime, parse it
-      let newClockIn;
-      if (clockIn.includes('T')) {
-        // Full datetime - treat the time portion as LOCAL time
-        const timePart = clockIn.split('T')[1].substring(0, 5);
-        const [h, m] = timePart.split(':').map(Number);
-        newClockIn = new Date(record.originalClockIn || record.clockIn);
-        newClockIn.setUTCHours(h + 4, m, 0, 0); // EDT offset (+4 to convert local to UTC)
-      } else {
-        const [h, m] = clockIn.split(':').map(Number);
-        newClockIn = new Date(record.originalClockIn || record.clockIn);
-        newClockIn.setUTCHours(h + 4, m, 0, 0);
-      }
+      const time = clockIn.includes('T') ? clockIn.split('T')[1].substring(0, 5) : clockIn;
+      // Build a date string in Eastern Time then let JS parse it
+      const etDateTimeStr = `${etDateStr}T${time}:00`;
+      // Create date as if it's ET by calculating the UTC equivalent
+      const tempDate = new Date(etDateTimeStr + 'Z'); // treat as UTC first
+      // Get ET offset for that specific date/time (handles DST)
+      const etOffset = getETOffset(new Date(etDateTimeStr));
+      const newClockIn = new Date(tempDate.getTime() + etOffset * 60 * 60 * 1000);
       record.clockIn = newClockIn;
     }
     if (clockOut) {
-      let newClockOut;
-      if (clockOut.includes('T')) {
-        const timePart = clockOut.split('T')[1].substring(0, 5);
-        const [h, m] = timePart.split(':').map(Number);
-        newClockOut = new Date(record.originalClockOut || record.originalClockIn || record.clockIn);
-        newClockOut.setUTCHours(h + 4, m, 0, 0);
-      } else {
-        const [h, m] = clockOut.split(':').map(Number);
-        newClockOut = new Date(record.originalClockOut || record.originalClockIn || record.clockIn);
-        newClockOut.setUTCHours(h + 4, m, 0, 0);
+      const time = clockOut.includes('T') ? clockOut.split('T')[1].substring(0, 5) : clockOut;
+      // For clock-out, use the same base date unless clock-out time is before clock-in time (overnight)
+      let outDateStr = etDateStr;
+      if (clockIn || record.clockIn) {
+        const inTime = clockIn ? (clockIn.includes('T') ? clockIn.split('T')[1].substring(0, 5) : clockIn) : null;
+        const inHM = inTime || (() => { const d = new Date((record.originalClockIn || record.clockIn).toLocaleString('en-US', { timeZone: 'America/New_York' })); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; })();
+        if (time < inHM) {
+          // Overnight: clock-out is next day
+          const nextDay = new Date(etDateStr + 'T12:00:00');
+          nextDay.setDate(nextDay.getDate() + 1);
+          outDateStr = nextDay.toISOString().split('T')[0];
+        }
       }
+      const etDateTimeStr = `${outDateStr}T${time}:00`;
+      const tempDate = new Date(etDateTimeStr + 'Z');
+      const etOffset = getETOffset(new Date(etDateTimeStr));
+      const newClockOut = new Date(tempDate.getTime() + etOffset * 60 * 60 * 1000);
       record.clockOut = newClockOut;
     }
     record.editedByAdmin = true;
