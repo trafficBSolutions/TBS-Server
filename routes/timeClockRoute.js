@@ -834,12 +834,12 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
     const dayStart = new Date(clockInDay + 'T00:00:00');
     const dayEnd = new Date(clockInDay + 'T23:59:59');
 
-    // Check 1: Standby and Shop Work require a shop work order per session
-    if (purpose === 'Standby' || purpose === 'Shop Work') {
+    // Check 1: Standby, Shop Work, and 1 Man Job require a shop work order per session
+    if (purpose === 'Standby' || purpose === 'Shop Work' || purpose === '1 Man Job') {
       // Count completed sessions with same purpose on the clock-in day
       const completedSessions = await TimeClock.countDocuments({
         employeeId,
-        purpose: { $in: ['Shop Work', 'Standby'] },
+        purpose: { $in: ['Shop Work', 'Standby', '1 Man Job'] },
         clockIn: { $gte: dayStart, $lte: dayEnd },
         clockOut: { $ne: null }
       });
@@ -861,12 +861,12 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
       }
     }
 
-    // Check 2: Foreman/Driver (non-Shop Work/Standby) requires a regular work order per session
-    if ((position === 'Foreman' || position === 'Driver') && purpose !== 'Shop Work' && purpose !== 'Standby') {
+    // Check 2: Foreman/Driver (non-Shop Work/Standby/1 Man Job) requires a regular work order per session
+    if ((position === 'Foreman' || position === 'Driver') && purpose !== 'Shop Work' && purpose !== 'Standby' && purpose !== '1 Man Job') {
       // Count completed TC sessions on the clock-in day
       const completedSessions = await TimeClock.countDocuments({
         employeeId,
-        purpose: { $nin: ['Shop Work', 'Standby', null, ''] },
+        purpose: { $nin: ['Shop Work', 'Standby', '1 Man Job', null, ''] },
         clockIn: { $gte: dayStart, $lte: dayEnd },
         clockOut: { $ne: null }
       });
