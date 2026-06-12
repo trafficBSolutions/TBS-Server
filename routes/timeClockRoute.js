@@ -94,8 +94,44 @@ router.post('/punch', verifyIp, async (req, res) => {
           personName: person.name
         });
       }
-      openEntry.clockOut = new Date();
+      const clockOutTime = new Date();
+      openEntry.clockOut = clockOutTime;
       await openEntry.save();
+
+      // Split punch if it crosses Friday midnight (pay period boundary: Sat-Fri)
+      const clockInTime = new Date(openEntry.clockIn);
+      const clockInDay = clockInTime.getDay(); // 0=Sun...5=Fri,6=Sat
+      const clockOutDay = clockOutTime.getDay();
+      // Friday = 5, Saturday = 6. If clocked in on Friday (or earlier in week) and clocked out on Saturday (or later)
+      // Find if midnight Saturday falls between clockIn and clockOut
+      if (clockInDay !== 6 && clockOutDay === 6 || (clockInTime.toDateString() !== clockOutTime.toDateString() && clockInDay === 5)) {
+        // Calculate the Saturday midnight boundary
+        const satMidnight = new Date(clockInTime);
+        // Move to next Saturday midnight
+        const daysUntilSat = (6 - clockInDay + 7) % 7 || 7;
+        satMidnight.setDate(clockInTime.getDate() + daysUntilSat);
+        satMidnight.setHours(0, 0, 0, 0);
+
+        // Only split if Saturday midnight actually falls between clockIn and clockOut
+        if (satMidnight > clockInTime && satMidnight < clockOutTime) {
+          // Trim original record to end at Saturday midnight
+          openEntry.clockOut = satMidnight;
+          await openEntry.save();
+
+          // Create new record for Saturday onward (new pay period)
+          await TimeClock.create({
+            employeeId: person.id,
+            employeeName: person.name,
+            clockIn: satMidnight,
+            clockOut: clockOutTime,
+            purpose: openEntry.purpose || null,
+            ip: req.clientIp + ' (split)'
+          });
+
+          return res.json({ action: 'clocked_out', message: `${person.name} clocked out. Shift split at midnight (pay period boundary).`, record: openEntry });
+        }
+      }
+
       return res.json({ action: 'clocked_out', message: `${person.name} clocked out.`, record: openEntry });
     } else {
       if (allPending.length > 0) {
@@ -507,8 +543,34 @@ router.post('/admin-punch', async (req, res) => {
     const openEntry = await TimeClock.findOne({ employeeId: person._id, clockOut: null });
 
     if (openEntry) {
-      openEntry.clockOut = new Date();
+      const clockOutTime = new Date();
+      openEntry.clockOut = clockOutTime;
       await openEntry.save();
+
+      // Split if crosses Friday→Saturday midnight
+      const clockInTime = new Date(openEntry.clockIn);
+      const clockInDay = clockInTime.getDay();
+      const clockOutDay = clockOutTime.getDay();
+      if (clockInDay !== 6 && (clockOutDay === 6 || (clockInTime.toDateString() !== clockOutTime.toDateString() && clockInDay === 5))) {
+        const satMidnight = new Date(clockInTime);
+        const daysUntilSat = (6 - clockInDay + 7) % 7 || 7;
+        satMidnight.setDate(clockInTime.getDate() + daysUntilSat);
+        satMidnight.setHours(0, 0, 0, 0);
+        if (satMidnight > clockInTime && satMidnight < clockOutTime) {
+          openEntry.clockOut = satMidnight;
+          await openEntry.save();
+          await TimeClock.create({
+            employeeId: person._id,
+            employeeName: personName,
+            clockIn: satMidnight,
+            clockOut: clockOutTime,
+            purpose: openEntry.purpose || null,
+            ip: 'admin-manual (split)'
+          });
+          return res.json({ action: 'clocked_out', message: `${personName} clocked out by admin. Shift split at pay period boundary.`, record: openEntry });
+        }
+      }
+
       return res.json({ action: 'clocked_out', message: `${personName} clocked out by admin.`, record: openEntry });
     } else {
       const entry = await TimeClock.create({
@@ -834,12 +896,12 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
     const dayStart = new Date(clockInDay + 'T00:00:00');
     const dayEnd = new Date(clockInDay + 'T23:59:59');
 
-    // Check 1: Standby, Shop Work, and 1 Man Job require a shop work order per session
-    if (purpose === 'Standby' || purpose === 'Shop Work' || purpose === '1 Man Job') {
+    // Check 1: Standby and Shop Work require a shop work order per session
+    if (purpose === 'Standby' || purpose === 'Shop Work') {
       // Count completed sessions with same purpose on the clock-in day
       const completedSessions = await TimeClock.countDocuments({
         employeeId,
-        purpose: { $in: ['Shop Work', 'Standby', '1 Man Job'] },
+        purpose: { $in: ['Shop Work', 'Standby'] },
         clockIn: { $gte: dayStart, $lte: dayEnd },
         clockOut: { $ne: null }
       });
@@ -861,12 +923,12 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
       }
     }
 
-    // Check 2: Foreman/Driver (non-Shop Work/Standby/1 Man Job) requires a regular work order per session
-    if ((position === 'Foreman' || position === 'Driver') && purpose !== 'Shop Work' && purpose !== 'Standby' && purpose !== '1 Man Job') {
+    // Check 2: Foreman/Driver (non-Shop Work/Standby) requires a regular work order per session
+    if ((position === 'Foreman' || position === 'Driver') && purpose !== 'Shop Work' && purpose !== 'Standby') {
       // Count completed TC sessions on the clock-in day
       const completedSessions = await TimeClock.countDocuments({
         employeeId,
-        purpose: { $nin: ['Shop Work', 'Standby', '1 Man Job', null, ''] },
+        purpose: { $nin: ['Shop Work', 'Standby', null, ''] },
         clockIn: { $gte: dayStart, $lte: dayEnd },
         clockOut: { $ne: null }
       });
