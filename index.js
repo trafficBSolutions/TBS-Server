@@ -60,6 +60,7 @@ app.use('/', require('./routes/autoContactRoute'));
 app.use('/', require('./routes/autoQuoteRoute'));
 app.use('/', require('./routes/shopInvoiceRoute'));
 app.use('/', require('./routes/printCostRoute'));
+app.use('/', require('./routes/printCostLogRoute'));
 app.use('/', require('./routes/adminRoute'));
 app.use(require('./routes/invoiceRoute'));
 app.use(require('./routes/payCard'));  // if using Stripe
