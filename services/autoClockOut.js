@@ -12,6 +12,21 @@ const ADMIN_EMAILS = [
 
 const MAX_SHIFT_HOURS = 14;
 
+const getEasternDay = (date) => {
+  const eastern = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  return eastern.getDay();
+};
+
+const getEasternMidnightSaturday = (fromDate) => {
+  const eastern = new Date(fromDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const dayOfWeek = eastern.getDay();
+  const daysUntilSat = (6 - dayOfWeek + 7) % 7 || 7;
+  eastern.setDate(eastern.getDate() + daysUntilSat);
+  eastern.setHours(0, 0, 0, 0);
+  const satStr = `${eastern.getFullYear()}-${String(eastern.getMonth()+1).padStart(2,'0')}-${String(eastern.getDate()).padStart(2,'0')}T04:00:00.000Z`;
+  return new Date(satStr);
+};
+
 const runAutoClockOut = async () => {
   console.log('[auto-clock-out] Running check...');
   try {
@@ -38,15 +53,13 @@ const runAutoClockOut = async () => {
       if (!entry.originalClockIn) entry.originalClockIn = entry.clockIn;
       await entry.save();
 
-      // Split if crosses Friday-Saturday midnight (pay period boundary)
+      // Split if crosses Friday-Saturday midnight (Eastern time)
       const clockInTime = new Date(entry.clockIn);
-      const clockInDay = clockInTime.getDay(); // 0=Sun,5=Fri,6=Sat
-      const clockOutDay = clockOutTime.getDay();
-      if (clockInDay !== 6 && (clockOutDay === 6 || (clockInTime.toDateString() !== clockOutTime.toDateString() && clockInDay === 5))) {
-        const satMidnight = new Date(clockInTime);
-        const daysUntilSat = (6 - clockInDay + 7) % 7 || 7;
-        satMidnight.setDate(clockInTime.getDate() + daysUntilSat);
-        satMidnight.setHours(0, 0, 0, 0);
+      const clockInDayET = getEasternDay(clockInTime);
+      const clockOutDayET = getEasternDay(clockOutTime);
+
+      if (clockInDayET !== 6 && clockOutDayET === 6 && clockInTime.toDateString() !== clockOutTime.toDateString()) {
+        const satMidnight = getEasternMidnightSaturday(clockInTime);
         if (satMidnight > clockInTime && satMidnight < clockOutTime) {
           entry.clockOut = satMidnight;
           await entry.save();
@@ -104,7 +117,7 @@ const startAutoClockOut = () => {
   // Run at 6:00 AM EST (catches graveyard workers who forgot)
   cron.schedule('0 6 * * *', runAutoClockOut, { timezone: 'America/New_York' });
 
-  console.log(`[auto-clock-out] Scheduled: midnight & 6AM EST (${MAX_SHIFT_HOURS}hr threshold, with pay period split).`);
+  console.log(`[auto-clock-out] Scheduled: midnight & 6AM EST (${MAX_SHIFT_HOURS}hr threshold, Eastern TZ split).`);
 };
 
 module.exports = { startAutoClockOut };
