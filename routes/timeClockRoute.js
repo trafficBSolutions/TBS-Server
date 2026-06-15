@@ -1007,19 +1007,19 @@ router.put('/edit-punch/:id', async (req, res) => {
     const etDateStr = baseDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); // YYYY-MM-DD
 
     // Helper: convert "HH:MM" on a given ET date to a UTC Date object
-    const etTimeToUTC = (dateStr, timeHHMM) => {
+    const etTimeToUTC = (dateYMD, timeHHMM) => {
       const [h, m] = timeHHMM.split(':').map(Number);
       if (isNaN(h) || isNaN(m)) return null;
-      // Determine ET offset (EDT=4, EST=5) for this specific date
-      const jan = new Date(`${dateStr.split('-')[0]}-01-15T12:00:00Z`);
-      const jul = new Date(`${dateStr.split('-')[0]}-07-15T12:00:00Z`);
-      const janOff = -Math.round((new Date(jan.toLocaleString('en-US', {timeZone:'America/New_York'})) - jan) / 3600000);
-      const julOff = -Math.round((new Date(jul.toLocaleString('en-US', {timeZone:'America/New_York'})) - jul) / 3600000);
-      // Check if this date is in DST
-      const testDate = new Date(`${dateStr}T12:00:00Z`);
-      const testOff = -Math.round((new Date(testDate.toLocaleString('en-US', {timeZone:'America/New_York'})) - testDate) / 3600000);
-      const offset = testOff; // hours behind UTC (4 for EDT, 5 for EST)
-      return new Date(`${dateStr}T${String(h + offset).padStart(2,'0')}:${String(m).padStart(2,'0')}:00.000Z`);
+      // Create a reference date at noon UTC on that day to determine DST
+      const refDate = new Date(dateYMD + 'T12:00:00Z');
+      const refET = new Date(refDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const offsetHours = (refDate.getTime() - refET.getTime()) / (1000 * 60 * 60);
+      // offsetHours will be negative (-4 for EDT, -5 for EST)
+      // To convert ET to UTC: subtract the offset (i.e., add the absolute value)
+      const absOffset = Math.abs(offsetHours);
+      // Build UTC date: the ET time + offset = UTC time
+      const utcMs = new Date(dateYMD + 'T00:00:00Z').getTime() + (h * 60 + m) * 60000 + absOffset * 3600000;
+      return new Date(utcMs);
     };
 
     if (clockIn) {
@@ -1030,7 +1030,7 @@ router.put('/edit-punch/:id', async (req, res) => {
     }
     if (clockOut) {
       const time = clockOut.includes('T') ? clockOut.split('T')[1].substring(0, 5) : clockOut;
-      // Check if overnight (clockOut hour < clockIn hour)
+      // Check if overnight (clockOut hour < clockIn hour means next day)
       let outDateStr = etDateStr;
       const inTimeStr = clockIn ? (clockIn.includes('T') ? clockIn.split('T')[1].substring(0,5) : clockIn) : null;
       if (inTimeStr && time < inTimeStr) {
