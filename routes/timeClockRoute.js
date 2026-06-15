@@ -992,7 +992,7 @@ router.delete('/delete-punch/:id', async (req, res) => {
 // PUT /timeclock/edit-punch/:id - Admin edits clock in/out times on a record
 router.put('/edit-punch/:id', async (req, res) => {
   try {
-    const { clockIn, clockOut } = req.body;
+    const { clockIn, clockOut, tzOffset } = req.body;
     if (!clockIn && !clockOut) return res.status(400).json({ message: 'clockIn or clockOut required' });
 
     const record = await TimeClock.findById(req.params.id);
@@ -1002,45 +1002,39 @@ router.put('/edit-punch/:id', async (req, res) => {
     if (!record.originalClockIn) record.originalClockIn = record.clockIn;
     if (!record.originalClockOut && record.clockOut) record.originalClockOut = record.clockOut;
 
-    // Get the calendar date in Eastern from the original clock-in
-    const baseDate = record.originalClockIn || record.clockIn;
-    const etDateStr = baseDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); // YYYY-MM-DD
+    // tzOffset comes from frontend: new Date().getTimezoneOffset() (in minutes, e.g., 240 for EDT, 300 for EST)
+    const offsetMinutes = typeof tzOffset === 'number' ? tzOffset : 240; // default EDT
 
-    // Helper: convert "HH:MM" on a given ET date to a UTC Date object
-    const etTimeToUTC = (dateYMD, timeHHMM) => {
-      const [h, m] = timeHHMM.split(':').map(Number);
-      if (isNaN(h) || isNaN(m)) return null;
-      // Create a reference date at noon UTC on that day to determine DST
-      const refDate = new Date(dateYMD + 'T12:00:00Z');
-      const refET = new Date(refDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-      const offsetHours = (refDate.getTime() - refET.getTime()) / (1000 * 60 * 60);
-      // offsetHours will be negative (-4 for EDT, -5 for EST)
-      // To convert ET to UTC: subtract the offset (i.e., add the absolute value)
-      const absOffset = Math.abs(offsetHours);
-      // Build UTC date: the ET time + offset = UTC time
-      const utcMs = new Date(dateYMD + 'T00:00:00Z').getTime() + (h * 60 + m) * 60000 + absOffset * 3600000;
-      return new Date(utcMs);
-    };
+    // Get the calendar date from the original clock-in in the user's local timezone
+    const baseDate = record.originalClockIn || record.clockIn;
+    const localBase = new Date(baseDate.getTime() - offsetMinutes * 60000);
+    const dateStr = localBase.toISOString().split('T')[0]; // YYYY-MM-DD in local time
 
     if (clockIn) {
       const time = clockIn.includes('T') ? clockIn.split('T')[1].substring(0, 5) : clockIn;
-      const newClockIn = etTimeToUTC(etDateStr, time);
-      if (!newClockIn || isNaN(newClockIn.getTime())) return res.status(400).json({ message: 'Invalid clockIn time. Use HH:MM format.' });
-      record.clockIn = newClockIn;
+      const [h, m] = time.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return res.status(400).json({ message: 'Invalid clockIn time. Use HH:MM format.' });
+      // Convert local time to UTC: local time + offset = UTC
+      const utcMs = new Date(dateStr + 'T00:00:00Z').getTime() + (h * 60 + m + offsetMinutes) * 60000;
+      record.clockIn = new Date(utcMs);
     }
     if (clockOut) {
       const time = clockOut.includes('T') ? clockOut.split('T')[1].substring(0, 5) : clockOut;
-      // Check if overnight (clockOut hour < clockIn hour means next day)
-      let outDateStr = etDateStr;
-      const inTimeStr = clockIn ? (clockIn.includes('T') ? clockIn.split('T')[1].substring(0,5) : clockIn) : null;
-      if (inTimeStr && time < inTimeStr) {
-        const nextDay = new Date(etDateStr + 'T12:00:00Z');
-        nextDay.setDate(nextDay.getDate() + 1);
-        outDateStr = nextDay.toISOString().split('T')[0];
+      const [h, m] = time.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return res.status(400).json({ message: 'Invalid clockOut time. Use HH:MM format.' });
+      // Check if overnight
+      let outDateStr = dateStr;
+      if (clockIn) {
+        const inTime = clockIn.includes('T') ? clockIn.split('T')[1].substring(0, 5) : clockIn;
+        const [inH] = inTime.split(':').map(Number);
+        if (h < inH) {
+          const nextDay = new Date(dateStr + 'T12:00:00Z');
+          nextDay.setDate(nextDay.getDate() + 1);
+          outDateStr = nextDay.toISOString().split('T')[0];
+        }
       }
-      const newClockOut = etTimeToUTC(outDateStr, time);
-      if (!newClockOut || isNaN(newClockOut.getTime())) return res.status(400).json({ message: 'Invalid clockOut time. Use HH:MM format.' });
-      record.clockOut = newClockOut;
+      const utcMs = new Date(outDateStr + 'T00:00:00Z').getTime() + (h * 60 + m + offsetMinutes) * 60000;
+      record.clockOut = new Date(utcMs);
     }
     record.editedByAdmin = true;
     await record.save();
