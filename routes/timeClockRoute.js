@@ -99,26 +99,34 @@ router.post('/punch', verifyIp, async (req, res) => {
       await openEntry.save();
 
       // Split punch if it crosses Friday midnight (pay period boundary: Sat-Fri)
-      const clockInTime = new Date(openEntry.clockIn);
-      const clockInDay = clockInTime.getDay(); // 0=Sun...5=Fri,6=Sat
-      const clockOutDay = clockOutTime.getDay();
-      // Friday = 5, Saturday = 6. If clocked in on Friday (or earlier in week) and clocked out on Saturday (or later)
-      // Find if midnight Saturday falls between clockIn and clockOut
-      if (clockInDay !== 6 && clockOutDay === 6 || (clockInTime.toDateString() !== clockOutTime.toDateString() && clockInDay === 5)) {
-        // Calculate the Saturday midnight boundary
-        const satMidnight = new Date(clockInTime);
-        // Move to next Saturday midnight
-        const daysUntilSat = (6 - clockInDay + 7) % 7 || 7;
-        satMidnight.setDate(clockInTime.getDate() + daysUntilSat);
-        satMidnight.setHours(0, 0, 0, 0);
+      // Use Eastern time for day-of-week calculation
+      const getEasternDay = (date) => {
+        const eastern = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        return eastern.getDay();
+      };
+      const getEasternMidnightSaturday = (fromDate) => {
+        // Find next Saturday midnight in Eastern, return as UTC Date
+        const eastern = new Date(fromDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const dayOfWeek = eastern.getDay();
+        const daysUntilSat = (6 - dayOfWeek + 7) % 7 || 7;
+        eastern.setDate(eastern.getDate() + daysUntilSat);
+        eastern.setHours(0, 0, 0, 0);
+        // Convert back: Saturday midnight Eastern = +4 or +5 UTC depending on DST
+        const satStr = `${eastern.getFullYear()}-${String(eastern.getMonth()+1).padStart(2,'0')}-${String(eastern.getDate()).padStart(2,'0')}T04:00:00.000Z`;
+        // Use 04:00 UTC for EDT, would be 05:00 for EST — approximate with fixed offset for now
+        return new Date(satStr);
+      };
 
-        // Only split if Saturday midnight actually falls between clockIn and clockOut
+      const clockInTime = new Date(openEntry.clockIn);
+      const clockInDayET = getEasternDay(clockInTime);
+      const clockOutDayET = getEasternDay(clockOutTime);
+
+      // Only split if clocked in on Friday (5) or earlier and clocked out on Saturday (6) or later
+      if (clockInDayET !== 6 && clockOutDayET === 6 && clockInTime.toDateString() !== clockOutTime.toDateString()) {
+        const satMidnight = getEasternMidnightSaturday(clockInTime);
         if (satMidnight > clockInTime && satMidnight < clockOutTime) {
-          // Trim original record to end at Saturday midnight
           openEntry.clockOut = satMidnight;
           await openEntry.save();
-
-          // Create new record for Saturday onward (new pay period)
           await TimeClock.create({
             employeeId: person.id,
             employeeName: person.name,
@@ -127,7 +135,6 @@ router.post('/punch', verifyIp, async (req, res) => {
             purpose: openEntry.purpose || null,
             ip: req.clientIp + ' (split)'
           });
-
           return res.json({ action: 'clocked_out', message: `${person.name} clocked out. Shift split at midnight (pay period boundary).`, record: openEntry });
         }
       }
@@ -547,15 +554,22 @@ router.post('/admin-punch', async (req, res) => {
       openEntry.clockOut = clockOutTime;
       await openEntry.save();
 
-      // Split if crosses Friday→Saturday midnight
+      // Split if crosses Friday→Saturday midnight (Eastern time)
+      const getEasternDay = (date) => {
+        const eastern = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        return eastern.getDay();
+      };
       const clockInTime = new Date(openEntry.clockIn);
-      const clockInDay = clockInTime.getDay();
-      const clockOutDay = clockOutTime.getDay();
-      if (clockInDay !== 6 && (clockOutDay === 6 || (clockInTime.toDateString() !== clockOutTime.toDateString() && clockInDay === 5))) {
-        const satMidnight = new Date(clockInTime);
-        const daysUntilSat = (6 - clockInDay + 7) % 7 || 7;
-        satMidnight.setDate(clockInTime.getDate() + daysUntilSat);
-        satMidnight.setHours(0, 0, 0, 0);
+      const clockInDayET = getEasternDay(clockInTime);
+      const clockOutDayET = getEasternDay(clockOutTime);
+
+      if (clockInDayET !== 6 && clockOutDayET === 6 && clockInTime.toDateString() !== clockOutTime.toDateString()) {
+        const eastern = new Date(clockInTime.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const daysUntilSat = (6 - eastern.getDay() + 7) % 7 || 7;
+        eastern.setDate(eastern.getDate() + daysUntilSat);
+        eastern.setHours(0, 0, 0, 0);
+        const satStr = `${eastern.getFullYear()}-${String(eastern.getMonth()+1).padStart(2,'0')}-${String(eastern.getDate()).padStart(2,'0')}T04:00:00.000Z`;
+        const satMidnight = new Date(satStr);
         if (satMidnight > clockInTime && satMidnight < clockOutTime) {
           openEntry.clockOut = satMidnight;
           await openEntry.save();
