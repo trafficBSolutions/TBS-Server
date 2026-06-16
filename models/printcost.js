@@ -4,6 +4,8 @@ const PrintLineSchema = new mongoose.Schema({
   width: { type: Number, required: true },
   length: { type: Number, required: true },
   materialSqFtId: { type: Number, default: 0 },
+  lamWidth: { type: Number, default: 0 },
+  lamLength: { type: Number, default: 0 },
   laminateSqFtId: { type: Number, default: 0 },
   inks: {
     cyan: { type: Number, default: 0 },
