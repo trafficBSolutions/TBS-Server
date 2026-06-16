@@ -145,49 +145,11 @@ router.post('/shop-work-order', async (req, res) => {
       else console.log('Shop work order approval email sent:', info.response);
     });
 
-    // Auto-clock-out all listed employees who are currently clocked in on Shop Work/Standby
-    // ONLY for Standby employees (Shop Work employees clock out on their own)
-    const clockedOutNames = [];
-    try {
-      const names = employeeNames.split(',').map(n => n.trim()).filter(Boolean);
-      for (const name of names) {
-        // Find employee by name
-        const nameParts = name.split(' ');
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' ');
-        let empId = null;
-        if (firstName && lastName) {
-          const emp = await TimeClockEmployee.findOne({
-            firstName: { $regex: new RegExp('^' + firstName + '$', 'i') },
-            lastName: { $regex: new RegExp('^' + lastName + '$', 'i') }
-          });
-          if (emp) empId = emp._id;
-        }
-        if (!empId) {
-          const admin = await Admin.findOne({
-            firstName: { $regex: new RegExp('^' + firstName + '$', 'i') },
-            lastName: { $regex: new RegExp('^' + (lastName || '') + '$', 'i') }
-          });
-          if (admin) empId = admin._id;
-        }
-        if (empId) {
-          // Only auto-clock-out Standby employees
-          const openEntry = await TimeClock.findOne({ employeeId: empId, clockOut: null, purpose: 'Standby' });
-          if (openEntry) {
-            openEntry.clockOut = new Date();
-            await openEntry.save();
-            clockedOutNames.push(name);
-          }
-        }
-      }
-      if (clockedOutNames.length > 0) {
-        console.log('[Shop WO] Auto-clocked out standby:', clockedOutNames.join(', '));
-      }
-    } catch (clockErr) {
-      console.error('[Shop WO] Auto-clock-out error:', clockErr);
-    }
+    // No auto-clock-out for shop work orders.
+    // Each standby employee clocks out individually on their own.
+    // The system just checks that their name is on a shop work order before allowing clock-out.
 
-    res.status(201).json({ message: 'Shop work order submitted for approval', id: wo._id, clockedOut: clockedOutNames });
+    res.status(201).json({ message: 'Shop work order submitted for approval', id: wo._id, clockedOut: [] });
   } catch (e) {
     console.error('Shop work order submission failed:', e);
     res.status(500).json({ error: 'Internal Server Error', details: e.message });
