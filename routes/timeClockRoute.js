@@ -910,12 +910,12 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
     const dayStart = new Date(clockInDay + 'T00:00:00');
     const dayEnd = new Date(clockInDay + 'T23:59:59');
 
-    // Check 1: Standby and Shop Work require a shop work order per session
-    if (purpose === 'Standby' || purpose === 'Shop Work') {
+    // Check 1: Shop Work requires a shop work order per session (Standby does NOT block clock-out)
+    if (purpose === 'Shop Work') {
       // Count completed sessions with same purpose on the clock-in day
       const completedSessions = await TimeClock.countDocuments({
         employeeId,
-        purpose: { $in: ['Shop Work', 'Standby'] },
+        purpose: { $in: ['Shop Work'] },
         clockIn: { $gte: dayStart, $lte: dayEnd },
         clockOut: { $ne: null }
       });
@@ -926,7 +926,7 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
       });
       // Current open session means they need (completedSessions + 1) work orders total
       const needed = completedSessions + 1;
-      console.log(`[clockout-check] Shop/Standby sessions: ${completedSessions} completed + 1 current = ${needed} needed, found ${shopWoCount} shop WOs`);
+      console.log(`[clockout-check] Shop Work sessions: ${completedSessions} completed + 1 current = ${needed} needed, found ${shopWoCount} shop WOs`);
       if (shopWoCount < needed) {
         return res.json({
           allowed: false,
@@ -939,7 +939,7 @@ router.get('/clockout-check/:employeeId', async (req, res) => {
 
     // Check 2: Foreman/Driver (non-Shop Work/Standby) requires a regular work order per session
     if ((position === 'Foreman' || position === 'Driver') && purpose !== 'Shop Work' && purpose !== 'Standby') {
-      // Count completed TC sessions on the clock-in day
+      // Count completed TC sessions on the clock-in day (exclude Shop Work, Standby)
       const completedSessions = await TimeClock.countDocuments({
         employeeId,
         purpose: { $nin: ['Shop Work', 'Standby', null, ''] },
