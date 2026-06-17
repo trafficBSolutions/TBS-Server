@@ -7,7 +7,7 @@ const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions55@gmail.com';
 const foremanmail = 'tbsolutions77@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
-
+const dasia = 'materialworx2@gmail.com';
 const fs = require("fs");
 const PDFDocument = require("pdfkit");
 const path = require("path");
@@ -158,6 +158,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
+            cc: dasia,
             bcc: [
                 { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
                 
@@ -165,7 +166,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
                 { name: 'Bryson Davis', address: mainEmail },
                 { name: 'Jonkell Tolbert', address: foreemail },
                 { name: 'Salvador Gonzalez', address: foremanmail },
-                { name: 'Damien Diskey', address: damienemail}
+                { name: 'Damien Diskey', address: damienemail},
                  
             ],
             subject: 'JOB APPLICATION REQUEST',
