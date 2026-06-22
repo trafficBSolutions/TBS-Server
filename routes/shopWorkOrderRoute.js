@@ -18,6 +18,9 @@ const SUPERVISORS = [
 
 const ALLOWED_APPROVERS = new Set(SUPERVISORS.map(s => s.email));
 
+// Email recipients for work order notifications (excludes tbsolutions1999)
+const EMAIL_RECIPIENTS = SUPERVISORS.filter(s => s.email !== 'tbsolutions1999@gmail.com').map(s => s.email);
+
 function toDataUri(absPath) {
   const ext = path.extname(absPath).toLowerCase();
   const mime = ext === '.png' ? 'image/png' : ext === '.svg' ? 'image/svg+xml' : 'application/octet-stream';
@@ -134,7 +137,7 @@ router.post('/shop-work-order', async (req, res) => {
 
     const mailOptions = {
       from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-      to: SUPERVISORS.map(s => s.email),
+      to: EMAIL_RECIPIENTS,
       subject: `SHOP WORK ORDER – Pending Approval – ${wo.employeeNames} – ${wo.date}`,
       html: approvalHtml,
       attachments: [{ filename: `shop-work-order-${wo._id}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }],
@@ -223,7 +226,7 @@ router.post('/shop-work-order/approve/:id', express.urlencoded({ extended: true 
     // Email approved PDF to all supervisors
     const mailOptions = {
       from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-      to: SUPERVISORS.map(s => s.email),
+      to: EMAIL_RECIPIENTS,
       subject: `✅ APPROVED – Shop Work Order – ${wo.employeeNames} – ${wo.date}`,
       html: `<div style="font-family:Arial;max-width:600px;margin:0 auto;padding:20px;">
         <h2 style="color:#4CAF50;">✅ Shop Work Order Approved</h2>
@@ -257,7 +260,7 @@ router.get('/shop-work-order/disapprove/:id', async (req, res) => {
     // Notify via email
     transporter.sendMail({
       from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-      to: SUPERVISORS.map(s => s.email),
+      to: EMAIL_RECIPIENTS,
       subject: `❌ DISAPPROVED – Shop Work Order – ${wo.employeeNames} – ${wo.date}`,
       html: `<div style="font-family:Arial;padding:20px;"><h2 style="color:#f44336;">❌ Shop Work Order Disapproved (VOID)</h2><p>Employee: ${wo.employeeNames}</p><p>Date: ${wo.date}</p><p>This work order has been voided and will not be processed.</p></div>`,
     }, () => {});
@@ -288,7 +291,7 @@ router.post('/shop-work-order/:id/dashboard-approve', express.json(), async (req
     // Email notification
     transporter.sendMail({
       from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-      to: SUPERVISORS.map(s => s.email),
+      to: EMAIL_RECIPIENTS,
       subject: `✅ APPROVED – Shop Work Order – ${wo.employeeNames} – ${wo.date}`,
       html: `<div style="font-family:Arial;padding:20px;"><h2 style="color:#4CAF50;">✅ Shop Work Order Approved</h2><p>Approved by: <strong>${approverInfo.name}</strong></p><p>Employee: ${wo.employeeNames}</p><p>Date: ${wo.date}</p><p>Location: ${wo.location}</p></div>`,
     }, () => {});
@@ -315,7 +318,7 @@ router.post('/shop-work-order/:id/dashboard-disapprove', express.json(), async (
 
     transporter.sendMail({
       from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-      to: SUPERVISORS.map(s => s.email),
+      to: EMAIL_RECIPIENTS,
       subject: `❌ DISAPPROVED – Shop Work Order – ${wo.employeeNames} – ${wo.date}`,
       html: `<div style="font-family:Arial;padding:20px;"><h2 style="color:#f44336;">❌ Shop Work Order Disapproved (VOID)</h2><p>Employee: ${wo.employeeNames}</p><p>Date: ${wo.date}</p></div>`,
     }, () => {});
