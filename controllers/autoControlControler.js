@@ -27,6 +27,7 @@ const submitTrafficControlJob = async (req, res) => {
             flagger,
             additionalFlaggers,
             additionalFlaggerCount,
+            policeOfficerNeeded,
             equipment,
             terms,
             address,
@@ -148,6 +149,7 @@ const jobCount = result[0]?.count || 0;
             flagger,
             additionalFlaggers: Boolean(additionalFlaggers),
             additionalFlaggerCount: Number(additionalFlaggerCount) || 0,
+            policeOfficerNeeded: Boolean(policeOfficerNeeded),
             equipment,
             terms,
             address,
@@ -177,6 +179,10 @@ const jobCount = result[0]?.count || 0;
           ? `<p style="background-color: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 15px 0;"><strong>⚠️ Note:</strong> ${name} has approved <strong>${additionalFlaggerCount} additional flagger(s)</strong> for this job. Additional charges apply.</p>`
           : '';
         
+        const policeOfficerNote = policeOfficerNeeded
+          ? `<p style="background-color: #e3f2fd; padding: 10px; border-left: 4px solid #2196F3; margin: 15px 0;"><strong>🚔 Police Officer Needed:</strong> This job requires a police officer on site.</p>`
+          : '';
+        
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
@@ -197,6 +203,7 @@ const jobCount = result[0]?.count || 0;
                   <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB REQUEST</h1>
                   
                   ${additionalFlaggerNote}
+                  ${policeOfficerNote}
                   
                   <p>Hi <strong>${name}</strong>,</p>
                   Your job has been scheduled on the following date(s):<br>
@@ -218,6 +225,7 @@ const jobCount = result[0]?.count || 0;
                       <li><strong>Time:</strong> ${time}</li>
                       <li><strong>Project/Task:</strong> ${project}</li>
                       <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
+                      <li><strong>Police Officer Needed:</strong> ${policeOfficerNeeded ? 'Yes' : 'No'}</li>
                       <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
                       <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
                     </ul>
