@@ -53,6 +53,10 @@ const controlUserSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    policeOfficerNeeded: {
+        type: Boolean,
+        default: false
+    },
     equipment: {
         type: [String],
         required: false
