@@ -231,7 +231,7 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
       <p>${message}</p>
 
       <h4 style="margin-top: 30px; color: red;">⚠️ Warning:</h4>
-      <p>You cannot re-apply using the same email and phone number. Please contact us at (706) 263-0175 for updates.</p>
+      <p>You cannot re-apply using the same email and phone number. Please email materialworx2@gmail.com for updates.</p>
 
       <p style="margin-top: 30px;">Best regards,</p>
       ${contactInfo}
