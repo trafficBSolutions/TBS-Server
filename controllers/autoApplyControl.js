@@ -146,11 +146,11 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
         // Contact details for Carson Speer Traffic and Barrier Solutions, LLC
         const contactInfo = `
             <p>Hiring Contact:</p>
-            <p>Carson Speer</p>
+            <p>Dasia Diskey</p>
             <p>Traffic & Barrier Solutions, LLC</p>
-            <p>1995 Dews Pond Rd SE</p>
+            <p>723 N Wall St</p>
             <p>Calhoun, GA 30701</p>
-            <p>Cell: (706) 581-4465</p>
+            <p>Email: materialworx2@gmail.com</p>
             <p>Website: <a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
         `;
         
