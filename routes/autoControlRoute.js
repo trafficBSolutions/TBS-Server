@@ -552,6 +552,8 @@ router.get('/jobs', async (req, res) => {
       matchFilter.region = 'south';
     } else if (region === 'north') {
       matchFilter.$or = [{ region: 'north' }, { region: { $exists: false } }];
+    } else if (region === 'tn') {
+      matchFilter.region = 'tn';
     }
 
     const jobs = await ControlUser.find(matchFilter);
@@ -589,6 +591,8 @@ router.get('/jobs/month', async (req, res) => {
       matchFilter.region = 'south';
     } else if (region === 'north') {
       matchFilter.$or = [{ region: 'north' }, { region: { $exists: false } }];
+    } else if (region === 'tn') {
+      matchFilter.region = 'tn';
     }
 
     const jobs = await ControlUser.find(matchFilter);
@@ -609,6 +613,8 @@ router.get('/jobs/full-dates', async (req, res) => {
       matchRegion = { region: 'south' };
     } else if (region === 'north') {
       matchRegion = { $or: [{ region: 'north' }, { region: { $exists: false } }] };
+    } else if (region === 'tn') {
+      matchRegion = { region: 'tn' };
     }
 
     const pipeline = [
