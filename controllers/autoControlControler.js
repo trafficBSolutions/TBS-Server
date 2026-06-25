@@ -195,13 +195,13 @@ const jobCount = result[0]?.count || 0;
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
             bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                  /*
+                  
               { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
               { name: 'Bryson Davis', address: mainEmail },
       { name: 'Jonkell Tolbert', address: foreemail },
       { name: 'Salvador Gonzalez', address: foremanmail},
       { name: 'Damien Diskey', address: damienemail}
-      */
+      
              ],
             subject: emailSubject,
             html: `
