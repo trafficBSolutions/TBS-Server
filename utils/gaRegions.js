@@ -30,6 +30,7 @@ const getRegionFromCity = async (city, state) => {
     const query = encodeURIComponent(`${city}, ${state}, USA`);
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${apiKey}`;
 
+    // Use native fetch (Node 18+)
     const response = await fetch(url);
     const data = await response.json();
 
