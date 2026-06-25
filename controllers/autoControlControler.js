@@ -66,8 +66,11 @@ const submitTrafficControlJob = async (req, res) => {
             const endOfDay = new Date(estMidnight);
             endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
          
+const regionMatch = region === 'south' 
+  ? { region: 'south' } 
+  : { $or: [{ region: 'north' }, { region: { $exists: false } }] };
 const pipeline = [
-  { $match: { cancelled: { $ne: true }, region: region } },
+  { $match: { cancelled: { $ne: true }, ...regionMatch } },
   { $unwind: "$jobDates" },
   {
     $match: {
