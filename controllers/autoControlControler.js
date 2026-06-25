@@ -1,7 +1,7 @@
 const ControlUser = require('../models/controluser');
 const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const { signQuery, verifyQuery } = require('../utils/linkToken');
-const { getRegionFromCounty } = require('../utils/gaRegions');
+const { getRegionFromCity } = require('../utils/gaRegions');
 const myEmail = 'tbsolutions9@gmail.com';
 const path = require('path'); 
 
@@ -33,14 +33,13 @@ const submitTrafficControlJob = async (req, res) => {
             terms,
             address,
             city,
-            county,
             state,
             zip,
             message
         } = req.body;
 
-        // Determine region from county (defaults to north if no county)
-        const region = (state === 'GA' && county) ? getRegionFromCounty(county) : 'north';
+        // Determine region via geocoding (distance from Tifton, GA)
+        const region = await getRegionFromCity(city, state);
 
         // Parse the job date
         if (!Array.isArray(jobDate) || jobDate.length === 0) {
@@ -159,7 +158,6 @@ const jobCount = result[0]?.count || 0;
             terms,
             address,
             city,
-            county: county || '',
             region,
             state,
             zip,
