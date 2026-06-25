@@ -20,14 +20,43 @@ const getETOffset = (date) => {
   return (utcDate - etDate) / (1000 * 60 * 60);
 };
 
-// Allowed IPs from environment variables
-const ALLOWED_IPS = [
-  process.env.TIMECLOCK_IPV4,
-  process.env.TIMECLOCK_IPV6,
-  process.env.TIMECLOCK_IPV4 ? `::ffff:${process.env.TIMECLOCK_IPV4}` : null,
-  '127.0.0.1',
-  '::1'
-].filter(Boolean);
+const dns = require('dns');
+const { promisify } = require('util');
+const dnsResolve4 = promisify(dns.resolve4);
+const dnsResolve6 = promisify(dns.resolve6);
+
+// Resolve allowed IPs from hostname (DDNS) so it auto-updates when IP changes
+let cachedAllowedIps = ['127.0.0.1', '::1'];
+let lastResolved = 0;
+const CACHE_TTL = 60000; // re-resolve every 60 seconds
+
+const resolveAllowedIps = async () => {
+  if (Date.now() - lastResolved < CACHE_TTL) return cachedAllowedIps;
+  const hostname = process.env.TIMECLOCK_HOSTNAME;
+  const staticIpv4 = process.env.TIMECLOCK_IPV4;
+  const staticIpv6 = process.env.TIMECLOCK_IPV6;
+  const ips = new Set(['127.0.0.1', '::1']);
+
+  // Add any static IPs from env
+  if (staticIpv4) { ips.add(staticIpv4); ips.add(`::ffff:${staticIpv4}`); }
+  if (staticIpv6) ips.add(staticIpv6);
+
+  // Resolve hostname dynamically
+  if (hostname) {
+    try {
+      const ipv4s = await dnsResolve4(hostname);
+      ipv4s.forEach(ip => { ips.add(ip); ips.add(`::ffff:${ip}`); });
+    } catch (e) { /* hostname may not have A record */ }
+    try {
+      const ipv6s = await dnsResolve6(hostname);
+      ipv6s.forEach(ip => ips.add(ip));
+    } catch (e) { /* hostname may not have AAAA record */ }
+  }
+
+  cachedAllowedIps = [...ips];
+  lastResolved = Date.now();
+  return cachedAllowedIps;
+};
 
 const IPV6_PREFIX = process.env.TIMECLOCK_IPV6_PREFIX || '';
 
@@ -37,9 +66,10 @@ const getClientIp = (req) => {
   return req.connection?.remoteAddress || req.socket?.remoteAddress || req.ip;
 };
 
-const verifyIp = (req, res, next) => {
+const verifyIp = async (req, res, next) => {
   const clientIp = getClientIp(req);
-  const allowed = ALLOWED_IPS.some(ip => clientIp === ip) ||
+  const allowedIps = await resolveAllowedIps();
+  const allowed = allowedIps.some(ip => clientIp === ip) ||
     (IPV6_PREFIX && clientIp.startsWith(IPV6_PREFIX));
   if (!allowed) {
     return res.status(403).json({ message: 'Clock-in/out is only allowed from the designated work location.', ip: clientIp });
@@ -867,9 +897,10 @@ router.post('/punch-offline', async (req, res) => {
 });
 
 // GET /timeclock/check-ip
-router.get('/check-ip', (req, res) => {
+router.get('/check-ip', async (req, res) => {
   const clientIp = getClientIp(req);
-  const allowed = ALLOWED_IPS.some(ip => clientIp === ip) ||
+  const allowedIps = await resolveAllowedIps();
+  const allowed = allowedIps.some(ip => clientIp === ip) ||
     (IPV6_PREFIX && clientIp.startsWith(IPV6_PREFIX));
   return res.json({ allowed, ip: clientIp });
 });
