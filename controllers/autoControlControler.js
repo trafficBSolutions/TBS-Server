@@ -1,6 +1,7 @@
 const ControlUser = require('../models/controluser');
 const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const { signQuery, verifyQuery } = require('../utils/linkToken');
+const { getRegionFromCounty } = require('../utils/gaRegions');
 const myEmail = 'tbsolutions9@gmail.com';
 const path = require('path'); 
 
@@ -32,10 +33,14 @@ const submitTrafficControlJob = async (req, res) => {
             terms,
             address,
             city,
+            county,
             state,
             zip,
             message
         } = req.body;
+
+        // Determine region from county (defaults to north if no county)
+        const region = (state === 'GA' && county) ? getRegionFromCounty(county) : 'north';
 
         // Parse the job date
         if (!Array.isArray(jobDate) || jobDate.length === 0) {
@@ -63,12 +68,12 @@ const submitTrafficControlJob = async (req, res) => {
             endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
          
 const pipeline = [
-  { $match: { cancelled: { $ne: true } } },  // Exclude jobs that are entirely cancelled
+  { $match: { cancelled: { $ne: true }, region: region } },
   { $unwind: "$jobDates" },
   {
     $match: {
       "jobDates.date": { $gte: startOfDay, $lt: endOfDay },
-      "jobDates.cancelled": { $ne: true }    // Exclude cancelled dates
+      "jobDates.cancelled": { $ne: true }
     }
   },
   { $count: "count" }
@@ -154,6 +159,8 @@ const jobCount = result[0]?.count || 0;
             terms,
             address,
             city,
+            county: county || '',
+            region,
             state,
             zip,
             message,
