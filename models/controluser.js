@@ -74,7 +74,15 @@ const controlUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-
+    county: {
+        type: String,
+        default: ''
+    },
+    region: {
+        type: String,
+        enum: ['north', 'south'],
+        default: 'north'
+    },
     state: {
         type: String,
         required: true
