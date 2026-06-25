@@ -221,7 +221,7 @@ router.patch('/reschedule-job/:id', async (req, res) => {
       return res.status(400).json({ error: 'Cannot reschedule a cancelled job date.' });
     }
 
-    // Check if the new date is already full
+    // Check if the new date is already full (per region)
     const [year, month, day] = [newDateObj.getFullYear(), newDateObj.getMonth(), newDateObj.getDate()];
     const estMidnight = new Date(Date.UTC(year, month, day));
     const startOfDay = new Date(estMidnight);
@@ -229,7 +229,7 @@ router.patch('/reschedule-job/:id', async (req, res) => {
     endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
     const pipeline = [
-      { $match: { cancelled: { $ne: true } } },
+      { $match: { cancelled: { $ne: true }, region: job.region || 'north' } },
       { $unwind: "$jobDates" },
       {
         $match: {
@@ -523,7 +523,7 @@ const formatted = new Date(job.jobDates[dateIndex].date).toLocaleDateString('en-
 // 📋 Fetch jobs for a specific date (in EST)
 router.get('/jobs', async (req, res) => {
   try {
-    const { date } = req.query; // Expected format: YYYY-MM-DD
+    const { date, region } = req.query;
 
     if (!date) {
       return res.status(400).json({ error: 'Date is required' });
@@ -536,14 +536,17 @@ router.get('/jobs', async (req, res) => {
     const endOfDay = new Date(estMidnight);
     endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
-    const jobs = await ControlUser.find({
+    const matchFilter = {
       jobDates: {
         $elemMatch: {
           date: { $gte: startOfDay, $lt: endOfDay },
           cancelled: false
         }
-      }      
-    });
+      }
+    };
+    if (region) matchFilter.region = region;
+
+    const jobs = await ControlUser.find(matchFilter);
 
     res.json(jobs);
   } catch (err) {
@@ -554,26 +557,29 @@ router.get('/jobs', async (req, res) => {
 // 📅 Get all jobs for a given month and year
 router.get('/jobs/month', async (req, res) => {
   try {
-    const { month, year } = req.query;
+    const { month, year, region } = req.query;
 
     if (!month || !year) {
       return res.status(400).json({ error: 'Month and year are required' });
     }
 
-    const monthInt = parseInt(month, 10) - 1; // JS months are 0-indexed
+    const monthInt = parseInt(month, 10) - 1;
     const yearInt = parseInt(year, 10);
 
     const start = new Date(Date.UTC(yearInt, monthInt, 1));
     const end = new Date(Date.UTC(yearInt, monthInt + 1, 1));
 
-    const jobs = await ControlUser.find({
+    const matchFilter = {
       jobDates: {
         $elemMatch: {
           date: { $gte: start, $lt: end },
           cancelled: false
         }
-      }      
-    });
+      }
+    };
+    if (region) matchFilter.region = region;
+
+    const jobs = await ControlUser.find(matchFilter);
 
     res.json(jobs);
   } catch (err) {
@@ -581,29 +587,33 @@ router.get('/jobs/month', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch monthly jobs' });
   }
 });
-// Add this route to fetch fully booked dates
+// Add this route to fetch fully booked dates (per region)
 router.get('/jobs/full-dates', async (req, res) => {
   try {
-const pipeline = [
-  { $match: { cancelled: { $ne: true } } },  // Exclude jobs that are entirely cancelled
-  { $unwind: "$jobDates" },
-  {
-    $match: {
-      "jobDates.date": { $exists: true },
-      "jobDates.cancelled": { $ne: true }    // Exclude cancelled dates
-    }
-  },
-  {
-    $group: {
-      _id: "$jobDates.date",
-      count: { $sum: 1 }
-    }
-  },
-  { $match: { count: { $gte: 10 } } }
-];
+    const { region } = req.query; // 'north', 'south', or empty for both
+
+    const matchRegion = region ? { region } : {};
+
+    const pipeline = [
+      { $match: { cancelled: { $ne: true }, ...matchRegion } },
+      { $unwind: "$jobDates" },
+      {
+        $match: {
+          "jobDates.date": { $exists: true },
+          "jobDates.cancelled": { $ne: true }
+        }
+      },
+      {
+        $group: {
+          _id: "$jobDates.date",
+          count: { $sum: 1 }
+        }
+      },
+      { $match: { count: { $gte: 10 } } }
+    ];
     const result = await ControlUser.aggregate(pipeline);
     const fullDates = result.map(r =>
-      new Date(r._id).toISOString().split('T')[0] // Format: YYYY-MM-DD
+      new Date(r._id).toISOString().split('T')[0]
     );
 
     res.json(fullDates);
