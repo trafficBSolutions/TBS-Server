@@ -35,7 +35,7 @@ const getRegionFromCity = async (city, state) => {
     const data = await response.json();
 
     if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-      console.warn(`Geocoding failed for "${city}, ${state}": ${data.status}`);
+      console.warn(`Geocoding failed for "${city}, ${state}": ${data.status} — ${data.error_message || 'no error message'}`);
       return 'north';
     }
 
