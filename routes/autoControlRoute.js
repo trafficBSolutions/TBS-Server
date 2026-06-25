@@ -228,8 +228,12 @@ router.patch('/reschedule-job/:id', async (req, res) => {
     const endOfDay = new Date(estMidnight);
     endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
+    const rescheduleRegion = job.region === 'south' 
+      ? { region: 'south' } 
+      : { $or: [{ region: 'north' }, { region: { $exists: false } }] };
+
     const pipeline = [
-      { $match: { cancelled: { $ne: true }, region: job.region || 'north' } },
+      { $match: { cancelled: { $ne: true }, ...rescheduleRegion } },
       { $unwind: "$jobDates" },
       {
         $match: {
@@ -544,7 +548,11 @@ router.get('/jobs', async (req, res) => {
         }
       }
     };
-    if (region) matchFilter.region = region;
+    if (region === 'south') {
+      matchFilter.region = 'south';
+    } else if (region === 'north') {
+      matchFilter.$or = [{ region: 'north' }, { region: { $exists: false } }];
+    }
 
     const jobs = await ControlUser.find(matchFilter);
 
@@ -577,7 +585,11 @@ router.get('/jobs/month', async (req, res) => {
         }
       }
     };
-    if (region) matchFilter.region = region;
+    if (region === 'south') {
+      matchFilter.region = 'south';
+    } else if (region === 'north') {
+      matchFilter.$or = [{ region: 'north' }, { region: { $exists: false } }];
+    }
 
     const jobs = await ControlUser.find(matchFilter);
 
@@ -592,7 +604,12 @@ router.get('/jobs/full-dates', async (req, res) => {
   try {
     const { region } = req.query; // 'north', 'south', or empty for both
 
-    const matchRegion = region ? { region } : {};
+    let matchRegion = {};
+    if (region === 'south') {
+      matchRegion = { region: 'south' };
+    } else if (region === 'north') {
+      matchRegion = { $or: [{ region: 'north' }, { region: { $exists: false } }] };
+    }
 
     const pipeline = [
       { $match: { cancelled: { $ne: true }, ...matchRegion } },
