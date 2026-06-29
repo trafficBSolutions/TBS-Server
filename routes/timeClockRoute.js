@@ -34,6 +34,7 @@ const resolveAllowedIps = async () => {
   if (Date.now() - lastResolved < CACHE_TTL) return cachedAllowedIps;
   const hostname = process.env.TIMECLOCK_HOSTNAME;
   const hostnameSouth = process.env.TIMECLOCK_HOSTNAME_SOUTH;
+  const hostnameHouse = process.env.TIMECLOCK_HOSTNAME_HOUSE;
   const staticIpv4 = process.env.TIMECLOCK_IPV4;
   const staticIpv6 = process.env.TIMECLOCK_IPV6;
   const ips = new Set(['127.0.0.1', '::1']);
@@ -42,8 +43,8 @@ const resolveAllowedIps = async () => {
   if (staticIpv4) { staticIpv4.split(',').map(ip => ip.trim()).filter(Boolean).forEach(ip => { ips.add(ip); ips.add(`::ffff:${ip}`); }); }
   if (staticIpv6) { staticIpv6.split(',').map(ip => ip.trim()).filter(Boolean).forEach(ip => ips.add(ip)); }
 
-  // Resolve hostnames dynamically (North GA + South GA)
-  const hostnames = [hostname, hostnameSouth].filter(Boolean);
+  // Resolve hostnames dynamically (North GA + South GA + House)
+  const hostnames = [hostname, hostnameSouth, hostnameHouse].filter(Boolean);
   for (const hn of hostnames) {
     try {
       const ipv4s = await dnsResolve4(hn);
