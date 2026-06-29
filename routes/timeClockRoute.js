@@ -33,6 +33,7 @@ const CACHE_TTL = 60000; // re-resolve every 60 seconds
 const resolveAllowedIps = async () => {
   if (Date.now() - lastResolved < CACHE_TTL) return cachedAllowedIps;
   const hostname = process.env.TIMECLOCK_HOSTNAME;
+  const hostnameSouth = process.env.TIMECLOCK_HOSTNAME_SOUTH;
   const staticIpv4 = process.env.TIMECLOCK_IPV4;
   const staticIpv6 = process.env.TIMECLOCK_IPV6;
   const ips = new Set(['127.0.0.1', '::1']);
@@ -41,14 +42,15 @@ const resolveAllowedIps = async () => {
   if (staticIpv4) { ips.add(staticIpv4); ips.add(`::ffff:${staticIpv4}`); }
   if (staticIpv6) ips.add(staticIpv6);
 
-  // Resolve hostname dynamically
-  if (hostname) {
+  // Resolve hostnames dynamically (North GA + South GA)
+  const hostnames = [hostname, hostnameSouth].filter(Boolean);
+  for (const hn of hostnames) {
     try {
-      const ipv4s = await dnsResolve4(hostname);
+      const ipv4s = await dnsResolve4(hn);
       ipv4s.forEach(ip => { ips.add(ip); ips.add(`::ffff:${ip}`); });
     } catch (e) { /* hostname may not have A record */ }
     try {
-      const ipv6s = await dnsResolve6(hostname);
+      const ipv6s = await dnsResolve6(hn);
       ipv6s.forEach(ip => ips.add(ip));
     } catch (e) { /* hostname may not have AAAA record */ }
   }
