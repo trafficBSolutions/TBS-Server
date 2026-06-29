@@ -5,6 +5,7 @@ const TimeClockEmployeeSchema = new mongoose.Schema({
   lastName:  { type: String, trim: true, required: true },
   position:  { type: String, trim: true, enum: ['Flagger', 'Driver', 'Foreman', 'Custodian', 'Receptionist'], required: true },
   pin:       { type: String, required: true, unique: true },
+  location:  { type: String, trim: true, enum: ['North GA', 'South GA'], default: 'North GA' },
   active:    { type: Boolean, default: true }
 }, { timestamps: true });
 
