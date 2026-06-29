@@ -83,6 +83,9 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 // ✅ Job cleaner utility (MongoDB cleanup job)
 require('./utils/cleanJob');
 
+// ✅ Applicant cleaner (deletes applicants older than 14 days)
+require('./utils/cleanApplicants');
+
 // ✅ Auto clock-out at midnight
 const { startAutoClockOut } = require('./services/autoClockOut');
 startAutoClockOut();
