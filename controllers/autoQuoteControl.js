@@ -45,14 +45,21 @@ const submitQuote = async (req, res) => {
                     </p>
                     
                     <p style="font-size:16px;line-height:1.6;">
-                        If you have any questions or would like to proceed, please email us or call <strong>706-263-0175</strong>.
+                        If you have any questions or would like to proceed, please email us at <strong><a href="mailto:materialworx2@gmail.com">materialworx2@gmail.com</a></strong>.
                     </p>
+
+                    <div style="text-align:center;margin:30px 0;">
+                        <a href="${process.env.SERVER_URL || 'https://www.trafficbarriersolutions.com'}/api/quotes/${newQuote._id}/approve" 
+                           style="display:inline-block;padding:14px 30px;background:#17365D;color:#fff;text-decoration:none;border-radius:6px;font-size:16px;font-weight:bold;">
+                            ✅ Approve Quote
+                        </a>
+                    </div>
 
                     <div style="margin-top:30px;padding-top:20px;border-top:1px solid #ddd;font-size:14px;color:#666;">
                         <p style="margin:5px 0;"><strong>Bryson C Davis</strong></p>
                         <p style="margin:5px 0;">Traffic & Barrier Solutions, LLC</p>
                         <p style="margin:5px 0;">723 N Wall Street, Calhoun, GA 30701</p>
-                        <p style="margin:5px 0;">Cell: 706-263-0175</p>
+                        <p style="margin:5px 0;">Email: materialworx2@gmail.com</p>
                         <p style="margin:5px 0;">www.trafficbarriersolutions.com</p>
                     </div>
                 </div>
@@ -149,14 +156,21 @@ const resendQuote = async (req, res) => {
                     </p>
                     
                     <p style="font-size:16px;line-height:1.6;">
-                        If you have any questions or would like to proceed, please email us or call <strong>706-263-0175</strong>.
+                        If you have any questions or would like to proceed, please email us at <strong><a href="mailto:materialworx2@gmail.com">materialworx2@gmail.com</a></strong>.
                     </p>
+
+                    <div style="text-align:center;margin:30px 0;">
+                        <a href="${process.env.SERVER_URL || 'https://www.trafficbarriersolutions.com'}/api/quotes/${quote._id}/approve" 
+                           style="display:inline-block;padding:14px 30px;background:#17365D;color:#fff;text-decoration:none;border-radius:6px;font-size:16px;font-weight:bold;">
+                            ✅ Approve Quote
+                        </a>
+                    </div>
 
                     <div style="margin-top:30px;padding-top:20px;border-top:1px solid #ddd;font-size:14px;color:#666;">
                         <p style="margin:5px 0;"><strong>Bryson C Davis</strong></p>
                         <p style="margin:5px 0;">Traffic & Barrier Solutions, LLC</p>
                         <p style="margin:5px 0;">723 N Wall Street, Calhoun, GA 30701</p>
-                        <p style="margin:5px 0;">Cell: 706-263-0175</p>
+                        <p style="margin:5px 0;">Email: materialworx2@gmail.com</p>
                         <p style="margin:5px 0;">www.trafficbarriersolutions.com</p>
                     </div>
                 </div>
@@ -223,12 +237,12 @@ const submitInvoice = async (req, res) => {
                 <div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;">
                     <h2 style="color:#17365D;margin-top:0;">Dear ${customer},</h2>
                     <p style="font-size:16px;line-height:1.6;">Please see the attached invoice <strong>#${invoiceNumber}</strong> for your project.</p>
-                    <p style="font-size:16px;line-height:1.6;">If you have any questions, please email us or call <strong>706-263-0175</strong>.</p>
+                    <p style="font-size:16px;line-height:1.6;">If you have any questions, please email us at <strong><a href="mailto:materialworx2@gmail.com">materialworx2@gmail.com</a></strong>.</p>
                     <div style="margin-top:30px;padding-top:20px;border-top:1px solid #ddd;font-size:14px;color:#666;">
                         <p style="margin:5px 0;"><strong>Bryson C Davis</strong></p>
                         <p style="margin:5px 0;">Traffic & Barrier Solutions, LLC</p>
                         <p style="margin:5px 0;">723 N Wall Street, Calhoun, GA 30701</p>
-                        <p style="margin:5px 0;">Cell: 706-263-0175</p>
+                        <p style="margin:5px 0;">Email: materialworx2@gmail.com</p>
                         <p style="margin:5px 0;">www.trafficbarriersolutions.com</p>
                     </div>
                 </div>
@@ -254,4 +268,31 @@ const submitInvoice = async (req, res) => {
     }
 };
 
-module.exports = { submitQuote, getMonthlyQuotes, getDailyQuotes, resendQuote, submitInvoice };
+const approveQuote = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const quote = await Quote.findById(id);
+        if (!quote) return res.status(404).send('<h1>Quote not found</h1>');
+        if (quote.approved) return res.send('<h1 style="font-family:Arial;color:#17365D;">✅ This quote has already been approved. Thank you!</h1>');
+
+        quote.approved = true;
+        quote.approvedAt = new Date();
+        await quote.save();
+
+        // Notify team of approval
+        const mailOptions = {
+            from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+            to: ['materialworx2@gmail.com', 'tbsolutions9@gmail.com', 'tbsolutions4@gmail.com'],
+            subject: `✅ Quote Approved by ${quote.customer} - ${quote.company}`,
+            html: `<p style="font-family:Arial;font-size:16px;"><strong>${quote.customer}</strong> from <strong>${quote.company}</strong> has approved their quote (Total: $${quote.computed.total.toFixed(2)}).</p>`
+        };
+        transporter.sendMail(mailOptions);
+
+        res.send('<h1 style="font-family:Arial;color:#17365D;">✅ Quote Approved!</h1><p style="font-family:Arial;">Thank you for approving your quote. Our team will be in touch shortly.</p>');
+    } catch (error) {
+        console.error('Error approving quote:', error);
+        res.status(500).send('<h1>Something went wrong. Please try again.</h1>');
+    }
+};
+
+module.exports = { submitQuote, getMonthlyQuotes, getDailyQuotes, resendQuote, submitInvoice, approveQuote };
