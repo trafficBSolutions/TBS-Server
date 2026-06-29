@@ -55,6 +55,8 @@ const applySchema = new mongoose.Schema({
   message: { type: String, required: true }
 });
 
+applySchema.set('timestamps', true);
+
 const Apply = mongoose.model('Apply', applySchema);
 
 module.exports = Apply;
