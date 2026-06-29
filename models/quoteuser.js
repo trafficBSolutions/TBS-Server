@@ -34,6 +34,8 @@ const quoteSchema = new mongoose.Schema({
     total: Number,
     depositDue: Number
   },
+  approved: { type: Boolean, default: false },
+  approvedAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   lastSentAt: { type: Date, default: Date.now }
 });
