@@ -290,7 +290,10 @@ router.get('/history', async (req, res) => {
 // GET /timeclock/employees - List all time clock employees and hourly admins with points
 router.get('/employees', async (req, res) => {
   try {
-    const employees = await TimeClockEmployee.find({ active: true }).select('firstName lastName position pin').sort({ firstName: 1 });
+    const { location } = req.query;
+    const filter = { active: true };
+    if (location) filter.location = location;
+    const employees = await TimeClockEmployee.find(filter).select('firstName lastName position pin location').sort({ firstName: 1 });
     const hourlyAdminEmails = ['tbsolutions77@gmail.com', 'tbsolutions14@gmail.com', 'tbsolutions66@gmail.com'];
     const hourlyAdmins = await Admin.find({ email: { $in: hourlyAdminEmails } }).select('firstName lastName email pin').sort({ firstName: 1 });
 
@@ -307,7 +310,7 @@ router.get('/employees', async (req, res) => {
     const empList = await Promise.all(employees.map(async (e) => {
       const fullName = `${e.firstName} ${e.lastName}`;
       const discEmp = await DisciplineEmployee.findOne({ name: { $regex: new RegExp(`^${fullName}$`, 'i') } });
-      return { _id: e._id, name: fullName, position: e.position, pin: e.pin, type: 'Employee', points: discEmp?.totalPoints || 0, terminated: discEmp?.terminated || false };
+      return { _id: e._id, name: fullName, position: e.position, pin: e.pin, location: e.location || 'North GA', type: 'Employee', points: discEmp?.totalPoints || 0, terminated: discEmp?.terminated || false };
     }));
 
     const admList = await Promise.all(hourlyAdmins.map(async (a) => {
@@ -325,7 +328,7 @@ router.get('/employees', async (req, res) => {
 // POST /timeclock/add-employee - Add a new employee to the time clock roster
 router.post('/add-employee', async (req, res) => {
   try {
-    const { firstName, lastName, position, pin } = req.body;
+    const { firstName, lastName, position, pin, location } = req.body;
     if (!firstName?.trim() || !lastName?.trim()) {
       return res.status(400).json({ message: 'First name and last name are required' });
     }
@@ -345,7 +348,8 @@ router.post('/add-employee', async (req, res) => {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       position,
-      pin
+      pin,
+      location: location || 'North GA'
     });
 
     // Also add to DisciplineEmployee roster so they appear on the disciplinary action page
@@ -356,8 +360,8 @@ router.post('/add-employee', async (req, res) => {
     }
 
     return res.status(201).json({
-      message: `${firstName} ${lastName} (${position}) added with PIN: ${pin}`,
-      employee: { _id: emp._id, name: fullName, position, pin, type: 'Employee' }
+      message: `${firstName} ${lastName} (${position}) added to ${location || 'North GA'} with PIN: ${pin}`,
+      employee: { _id: emp._id, name: fullName, position, pin, location: location || 'North GA', type: 'Employee' }
     });
   } catch (e) {
     if (e.code === 11000) return res.status(409).json({ message: 'That PIN is already in use' });
@@ -632,23 +636,31 @@ router.post('/admin-punch', async (req, res) => {
   }
 });
 
-// GET /timeclock/time-worked?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD - Total time worked per employee with punch times
+// GET /timeclock/time-worked?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&location=North GA - Total time worked per employee with punch times
 router.get('/time-worked', async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, location } = req.query;
     if (!startDate || !endDate) return res.status(400).json({ message: 'startDate and endDate required' });
     const start = new Date(startDate);
     const end = new Date(endDate);
     end.setDate(end.getDate() + 1);
 
-    const records = await TimeClock.find({
-      clockIn: { $gte: start, $lt: end }
-    }).sort({ clockIn: 1 });
-
-    // Get all active employees so we can show those with 0 hours too
-    const allEmployees = await TimeClockEmployee.find({ active: true }).select('firstName lastName position');
+    // Get all active employees (filtered by location if specified)
+    const empFilter = { active: true };
+    if (location) empFilter.location = location;
+    const allEmployees = await TimeClockEmployee.find(empFilter).select('firstName lastName position');
     const hourlyAdminEmails = ['tbsolutions77@gmail.com', 'tbsolutions14@gmail.com', 'tbsolutions66@gmail.com'];
-    const hourlyAdmins = await Admin.find({ email: { $in: hourlyAdminEmails } }).select('firstName lastName email');
+    const hourlyAdmins = location ? [] : await Admin.find({ email: { $in: hourlyAdminEmails } }).select('firstName lastName email');
+
+    // Build a set of employee IDs to filter time records
+    const empIds = allEmployees.map(e => e._id);
+    const adminIds = hourlyAdmins.map(a => a._id);
+    const allIds = [...empIds, ...adminIds];
+
+    const records = await TimeClock.find({
+      clockIn: { $gte: start, $lt: end },
+      ...(location ? { employeeId: { $in: allIds } } : {})
+    }).sort({ clockIn: 1 });
 
     // Build position map and initialize summary with all employees
     const positionMap = {};
