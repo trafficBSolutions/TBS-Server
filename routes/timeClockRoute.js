@@ -38,9 +38,9 @@ const resolveAllowedIps = async () => {
   const staticIpv6 = process.env.TIMECLOCK_IPV6;
   const ips = new Set(['127.0.0.1', '::1']);
 
-  // Add any static IPs from env
-  if (staticIpv4) { ips.add(staticIpv4); ips.add(`::ffff:${staticIpv4}`); }
-  if (staticIpv6) ips.add(staticIpv6);
+  // Add any static IPs from env (supports comma-separated lists)
+  if (staticIpv4) { staticIpv4.split(',').map(ip => ip.trim()).filter(Boolean).forEach(ip => { ips.add(ip); ips.add(`::ffff:${ip}`); }); }
+  if (staticIpv6) { staticIpv6.split(',').map(ip => ip.trim()).filter(Boolean).forEach(ip => ips.add(ip)); }
 
   // Resolve hostnames dynamically (North GA + South GA)
   const hostnames = [hostname, hostnameSouth].filter(Boolean);
