@@ -95,6 +95,7 @@ startAutoClockOut();
 app.use('/', workOrdersRouter);
 app.use('/', require('./routes/shopWorkOrderRoute'));
 app.use('/', require('./routes/leaveRequestRoute'));
+app.use('/', require('./routes/followUpRoute'));
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, '0.0.0.0', () => {
