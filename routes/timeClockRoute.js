@@ -725,7 +725,7 @@ router.get('/time-worked', async (req, res) => {
 // POST /timeclock/manual-entry - Salary admin manually adds hours for an employee
 router.post('/manual-entry', async (req, res) => {
   try {
-    const { employeeId, date, clockIn, clockOut, reason, purpose } = req.body;
+    const { employeeId, date, clockIn, clockOut, reason, purpose, tzOffset } = req.body;
     if (!employeeId || !date || !clockIn || !clockOut) {
       return res.status(400).json({ message: 'employeeId, date, clockIn, clockOut are required' });
     }
@@ -742,9 +742,12 @@ router.post('/manual-entry', async (req, res) => {
       person = admin;
     }
 
-    // Parse clock in/out times for the given date
-    const clockInDate = new Date(`${date}T${clockIn}:00`);
-    const clockOutDate = new Date(`${date}T${clockOut}:00`);
+    // Convert local time to UTC using the browser's timezone offset
+    const offsetMinutes = typeof tzOffset === 'number' ? tzOffset : 240; // default EDT
+    const [inH, inM] = clockIn.split(':').map(Number);
+    const [outH, outM] = clockOut.split(':').map(Number);
+    const clockInDate = new Date(new Date(`${date}T00:00:00Z`).getTime() + (inH * 60 + inM + offsetMinutes) * 60000);
+    const clockOutDate = new Date(new Date(`${date}T00:00:00Z`).getTime() + (outH * 60 + outM + offsetMinutes) * 60000);
 
     if (clockOutDate <= clockInDate) {
       return res.status(400).json({ message: 'Clock out must be after clock in' });
@@ -1112,7 +1115,7 @@ router.put('/edit-purpose/:id', async (req, res) => {
 // POST /timeclock/add-punch - Admin adds a new punch line for an employee on a specific day
 router.post('/add-punch', async (req, res) => {
   try {
-    const { employeeId, date, clockIn, clockOut, purpose } = req.body;
+    const { employeeId, date, clockIn, clockOut, purpose, tzOffset } = req.body;
     if (!employeeId || !date || !clockIn || !clockOut) {
       return res.status(400).json({ message: 'employeeId, date, clockIn, clockOut required' });
     }
@@ -1128,8 +1131,12 @@ router.post('/add-punch', async (req, res) => {
       person = admin;
     }
 
-    const clockInDate = new Date(`${date}T${clockIn}:00`);
-    const clockOutDate = new Date(`${date}T${clockOut}:00`);
+    // Convert local time to UTC using the browser's timezone offset
+    const offsetMinutes = typeof tzOffset === 'number' ? tzOffset : 240; // default EDT
+    const [inH, inM] = clockIn.split(':').map(Number);
+    const [outH, outM] = clockOut.split(':').map(Number);
+    const clockInDate = new Date(new Date(`${date}T00:00:00Z`).getTime() + (inH * 60 + inM + offsetMinutes) * 60000);
+    const clockOutDate = new Date(new Date(`${date}T00:00:00Z`).getTime() + (outH * 60 + outM + offsetMinutes) * 60000);
     if (clockOutDate <= clockInDate) return res.status(400).json({ message: 'Clock out must be after clock in' });
 
     const entry = await TimeClock.create({
