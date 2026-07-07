@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   addEmployee, listEmployees, deleteEmployee, getEmployeePoints,
+  terminateEmployee,
   submitDiscipline, listByMonth, listByDate, getDisciplinePDF
 } = require('../controllers/disciplineController');
 
@@ -10,6 +11,7 @@ router.get('/employees', listEmployees);
 router.post('/employees', addEmployee);
 router.delete('/employees/:id', deleteEmployee);
 router.get('/employees/:id/points', getEmployeePoints);
+router.put('/employees/:id/terminate', terminateEmployee);
 
 // Discipline actions
 router.post('/', submitDiscipline);
