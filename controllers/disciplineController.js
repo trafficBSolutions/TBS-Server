@@ -14,7 +14,7 @@ const addEmployee = async (req, res) => {
     const { name, position, totalPoints } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
     const pts = Math.min(Math.max(parseFloat(totalPoints) || 0, 0), 3);
-    const doc = await DisciplineEmployee.create({ name: name.trim(), position: position?.trim() || '', totalPoints: pts, terminated: pts >= 3 });
+    const doc = await DisciplineEmployee.create({ name: name.trim(), position: position?.trim() || '', totalPoints: pts, terminated: false });
     res.status(201).json(doc);
   } catch (e) {
     console.error('addEmployee:', e);
@@ -110,7 +110,6 @@ const submitDiscipline = async (req, res) => {
     // Update employee total points
     if (emp) {
       emp.totalPoints = newTotal;
-      if (newTotal >= 3) emp.terminated = true;
       await emp.save();
     }
 
@@ -118,11 +117,11 @@ const submitDiscipline = async (req, res) => {
     try {
       const pdfBuffer = await generateDisciplinePdf(doc.toObject());
       const dateStr = doc.incidentDate ? new Date(doc.incidentDate).toLocaleDateString() : '';
-      const termNotice = newTotal >= 3 ? '<p style="color:red;font-weight:bold">⚠️ EMPLOYEE HAS REACHED 3.00 POINTS — TERMINATION REQUIRED</p>' : '';
+      const termNotice = newTotal >= 3 ? '<p style="color:red;font-weight:bold">⚠️ EMPLOYEE HAS REACHED 3.00 POINTS — TERMINATION REVIEW REQUIRED (Carson & Rowel to decide)</p>' : '';
       await transporter.sendMail({
         from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
         to: NOTIFY_EMAILS.join(','),
-        subject: `DISCIPLINARY ACTION: ${doc.employeeName} – ${dateStr}${newTotal >= 3 ? ' [TERMINATION]' : ''}`,
+        subject: `DISCIPLINARY ACTION: ${doc.employeeName} – ${dateStr}${newTotal >= 3 ? ' [REVIEW REQUIRED - 3.00 PTS]' : ''}`,
         html: `<h2>Disciplinary Action Filed</h2>
           <p><strong>Employee:</strong> ${doc.employeeName}</p>
           <p><strong>Incident Date:</strong> ${dateStr}</p>
