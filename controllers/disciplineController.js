@@ -42,6 +42,17 @@ const deleteEmployee = async (req, res) => {
   }
 };
 
+const terminateEmployee = async (req, res) => {
+  try {
+    const emp = await DisciplineEmployee.findByIdAndUpdate(req.params.id, { terminated: true }, { new: true });
+    if (!emp) return res.status(404).json({ error: 'Employee not found' });
+    res.json({ message: `${emp.name} has been terminated.`, employee: emp });
+  } catch (e) {
+    console.error('terminateEmployee:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 const getEmployeePoints = async (req, res) => {
   try {
     const emp = await DisciplineEmployee.findById(req.params.id);
@@ -202,5 +213,6 @@ const getDisciplinePDF = async (req, res) => {
 
 module.exports = {
   addEmployee, listEmployees, deleteEmployee, getEmployeePoints,
+  terminateEmployee,
   submitDiscipline, listByMonth, listByDate, getDisciplinePDF
 };
