@@ -385,11 +385,10 @@ router.post('/add-points', async (req, res) => {
 
     const newTotal = Math.min(emp.totalPoints + pts, 3);
     emp.totalPoints = newTotal;
-    if (newTotal >= 3) emp.terminated = true;
     await emp.save();
 
     return res.json({
-      message: `${pts.toFixed(2)} point(s) added to ${employeeName}. New total: ${newTotal.toFixed(2)}/3.00${newTotal >= 3 ? ' — TERMINATION' : ''}`,
+      message: `${pts.toFixed(2)} point(s) added to ${employeeName}. New total: ${newTotal.toFixed(2)}/3.00${newTotal >= 3 ? ' — REVIEW REQUIRED' : ''}`,
       newTotal
     });
   } catch (e) {
