@@ -157,7 +157,7 @@ function generateDisciplineHTML(doc) {
         <div class="row"><div class="label">New Total:</div><div class="val" style="font-size:16px;font-weight:bold;color:${(doc.newTotalPoints || 0) >= 3 ? '#c0392b' : '#1e3a8a'}">${(doc.newTotalPoints || 0).toFixed(2)} / 3.00</div></div>
       </div>
     </div>
-    ${(doc.newTotalPoints || 0) >= 3 ? '<div style="background:#f8d7da;border:1px solid #f5c6cb;border-radius:6px;padding:10px;margin-top:10px;color:#721c24;font-weight:bold;text-align:center">⚠️ EMPLOYEE HAS REACHED 3.00 POINTS — TERMINATION</div>' : ''}
+    ${(doc.newTotalPoints || 0) >= 3 ? '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px;margin-top:10px;color:#856404;font-weight:bold;text-align:center">⚠️ WARNING: Employee has reached 3.00 points. Termination may result. Please take this seriously.</div>' : ''}
     ${doc.decision ? `<div class="text-box" style="margin-top:10px">${doc.decision.replace(/\n/g, '<br>')}</div>` : ''}
   </div>
 
