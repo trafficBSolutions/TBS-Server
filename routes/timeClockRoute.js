@@ -127,6 +127,20 @@ router.post('/punch', verifyIp, async (req, res) => {
           personName: person.name
         });
       }
+
+      // Check if employee has reviewed the handbook
+      if (person.type === 'Employee') {
+        const emp = await TimeClockEmployee.findById(person.id);
+        if (emp && !emp.handbookReviewed) {
+          return res.status(403).json({
+            message: 'You must review and sign the Employee Handbook before clocking out.',
+            action: 'handbook_required',
+            personId: person.id,
+            personName: person.name
+          });
+        }
+      }
+
       const clockOutTime = new Date();
       openEntry.clockOut = clockOutTime;
       await openEntry.save();
@@ -1152,6 +1166,75 @@ router.post('/add-punch', async (req, res) => {
     return res.json({ message: `Added ${(mins/60).toFixed(2)} hrs for ${personName}`, record: entry });
   } catch (e) {
     console.error('Add punch error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /timeclock/acknowledge-handbook - Employee signs the handbook from the kiosk
+router.post('/acknowledge-handbook', verifyIp, async (req, res) => {
+  try {
+    const { pin, signature } = req.body;
+    if (!pin || !signature) {
+      return res.status(400).json({ message: 'PIN and signature are required' });
+    }
+
+    const person = await findPersonByPin(pin);
+    if (!person) return res.status(401).json({ message: 'Invalid PIN' });
+
+    if (person.type !== 'Employee') {
+      return res.status(400).json({ message: 'Only employees need handbook acknowledgment' });
+    }
+
+    const emp = await TimeClockEmployee.findById(person.id);
+    if (!emp) return res.status(404).json({ message: 'Employee not found' });
+
+    if (emp.handbookReviewed) {
+      return res.json({ message: 'Handbook already acknowledged.' });
+    }
+
+    emp.handbookReviewed = true;
+    emp.handbookReviewedAt = new Date();
+    await emp.save();
+
+    // Send email notification with signature
+    try {
+      const base64Data = signature.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const estDate = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+
+      await transporter.sendMail({
+        from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+        to: NOTIFY_EMAILS.join(','),
+        subject: `HANDBOOK SIGNED: ${emp.firstName} ${emp.lastName}`,
+        html: `<h2>Employee Handbook Acknowledged (Time Clock Kiosk)</h2>
+          <p><strong>Employee:</strong> ${emp.firstName} ${emp.lastName}</p>
+          <p><strong>Date:</strong> ${estDate}</p>
+          <p><strong>Location:</strong> ${emp.location}</p>
+          <p>Signature attached.</p>`,
+        attachments: [{
+          filename: `${emp.firstName}_${emp.lastName}_handbook_signature.png`,
+          content: buffer,
+          contentType: 'image/png'
+        }]
+      });
+    } catch (emailErr) {
+      console.error('Handbook acknowledgment email failed:', emailErr);
+    }
+
+    return res.json({ message: `${emp.firstName} ${emp.lastName} has acknowledged the Employee Handbook.` });
+  } catch (e) {
+    console.error('Acknowledge handbook error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET /timeclock/handbook-status/:employeeId - Check if employee has reviewed handbook
+router.get('/handbook-status/:employeeId', async (req, res) => {
+  try {
+    const emp = await TimeClockEmployee.findById(req.params.employeeId);
+    if (!emp) return res.status(404).json({ message: 'Employee not found' });
+    return res.json({ handbookReviewed: emp.handbookReviewed, handbookReviewedAt: emp.handbookReviewedAt });
+  } catch (e) {
     return res.status(500).json({ message: 'Server error' });
   }
 });
