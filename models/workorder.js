@@ -80,6 +80,8 @@ const WorkOrderSchema = new mongoose.Schema({
     jobsite: { type: JobsiteSchema, required: true },
   },
 
+  supervisors: [{ type: String, trim: true }],
+
   mismatch: { type: Boolean, required: true },
 
   policeOfficer: {
