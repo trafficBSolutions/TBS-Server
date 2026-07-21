@@ -16,6 +16,15 @@ const employeeHandbook = require('./routes/employeeHandbook');
 const app = express();
 
 // ✅ Middleware
+const corsOptions = {
+  origin: ['http://127.0.0.1:5173', 'https://www.trafficbarriersolutions.com'],
+  credentials: true,
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // handle preflight for all routes
+
 app.use(helmet()); // Secure headers
 app.use(xss()); // Prevent XSS
 app.use(compression()); // GZIP compression
@@ -29,16 +38,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// server.js / app.js
 const cookieParser = require('cookie-parser');
- app.use(express.json());                    // JSON should be before routes
- app.use(cookieParser());
- app.use(cors({
- origin: ['http://127.0.0.1:5173','https://www.trafficbarriersolutions.com'],
-  credentials: true,
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
-}));
+app.use(express.json());
+app.use(cookieParser());
 
 // ✅ Database connection
 mongoose.connect(process.env.MONGO_URL)
