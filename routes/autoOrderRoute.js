@@ -226,7 +226,15 @@ function renderWorkOrderHTML(wo, assets) {
     <p><strong>${formatName(basic.foremanName)}</strong></p>
   </div>
 
-  ${wo.policeOfficer?.used ? `
+  ${(wo.policeOfficers && wo.policeOfficers.length > 0) ? wo.policeOfficers.map((o, i) => `
+  <div class="section">
+    <h3>🚔 Police Officer #${i + 1} On Site</h3>
+    <div class="field"><span class="label">Officer Name:</span><span class="value">${formatName(o.name)}</span></div>
+    <div class="signature-section">
+      ${o.signature ? `<img src="data:image/png;base64,${o.signature}" alt="Officer Signature" />` : ''}
+      <p><strong>${formatName(o.name)}</strong></p>
+    </div>
+  </div>`).join('') : (wo.policeOfficer?.used ? `
   <div class="section">
     <h3>🚔 Police Officer On Site</h3>
     <div class="field"><span class="label">Officer Name:</span><span class="value">${formatName(wo.policeOfficer.name)}</span></div>
@@ -234,7 +242,7 @@ function renderWorkOrderHTML(wo, assets) {
       ${wo.policeOfficer.signature ? `<img src="data:image/png;base64,${wo.policeOfficer.signature}" alt="Officer Signature" />` : ''}
       <p><strong>${formatName(wo.policeOfficer.name)}</strong></p>
     </div>
-  </div>` : ''}
+  </div>` : '')}
 
   ${wo.jobAddresses && wo.jobAddresses.length > 0 ? `
   <div class="section">
@@ -425,6 +433,7 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       mismatch,
       foremanSignature,
       policeOfficer,
+      policeOfficers,
       jobAddresses
     } = req.body;
 
@@ -452,6 +461,15 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
         policeOfficer = { used: false, name: '', signature: '' };
       }
     }
+
+    if (typeof policeOfficers === 'string') {
+      try {
+        policeOfficers = JSON.parse(policeOfficers);
+      } catch (e) {
+        policeOfficers = [];
+      }
+    }
+    if (!Array.isArray(policeOfficers)) policeOfficers = [];
 
     if (typeof jobAddresses === 'string') {
       try {
@@ -515,11 +533,10 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       mismatch: mismatchServer,
       ...(foremanSignature ? { foremanSignature } : {}),
       ...(photos.length > 0 ? { photos } : {}),
-      policeOfficer: policeOfficer?.used ? {
-        used: true,
-        name: (policeOfficer.name || '').trim(),
-        signature: policeOfficer.signature || '',
-      } : { used: false, name: '', signature: '' },
+      policeOfficer: policeOfficers.length > 0
+        ? { used: true, name: policeOfficers[0].name || '', signature: policeOfficers[0].signature || '' }
+        : { used: false, name: '', signature: '' },
+      policeOfficers: policeOfficers.map(o => ({ name: (o.name || '').trim(), signature: o.signature || '' })),
       ...(jobAddresses.length > 0 ? { jobAddresses } : {}),
     });
 
@@ -597,13 +614,18 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
           ${foremanSignature ? `<div style="text-align: center; margin: 10px 0; padding: 10px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Signature Captured</strong><br/><em>(See attached PDF for signature image)</em></div>` : ''}
           <p><strong>${formatName(basic.foremanName)}</strong></p>
           
-          ${created.policeOfficer?.used ? `
+          ${created.policeOfficers && created.policeOfficers.length > 0 ? `
+          <h3>🚔 Police Officer(s) On Site:</h3>
+          <ul>
+            ${created.policeOfficers.map((o, i) => `<li><strong>Officer ${i + 1}:</strong> ${formatName(o.name)} — Signature Captured (See attached PDF)</li>`).join('')}
+          </ul>
+          ` : (created.policeOfficer?.used ? `
           <h3>🚔 Police Officer On Site:</h3>
           <ul>
             <li><strong>Officer Name:</strong> ${formatName(created.policeOfficer.name)}</li>
             <li><strong>Officer Signature:</strong> Captured (See attached PDF)</li>
           </ul>
-          ` : ''}
+          ` : '')}
 
           ${created.jobAddresses && created.jobAddresses.length > 0 ? `
           <h3>Job Addresses:</h3>
