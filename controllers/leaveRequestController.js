@@ -7,7 +7,7 @@ const NOTIFY_EMAILS = [
   { name: 'Leah Davis', address: 'trafficandbarriersolutions.ap@gmail.com' },
   { name: 'Bryson Davis', address: 'tbsolutions9@gmail.com' },
   { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
-  { name: 'Debbie Owens', address: 'tbsolutions.work.orders@gmail.com' },
+  { name: 'Debbie Owens', address: 'tbsolutions1995@gmail.com' },
 ];
 
 const APPROVERS = new Set([
@@ -15,7 +15,7 @@ const APPROVERS = new Set([
   'trafficandbarriersolutions.ap@gmail.com',
   'tbsolutions9@gmail.com',
   'tbsolutions4@gmail.com',
-  'tbsolutions.work.orders@gmail.com',
+  'tbsolutions1995@gmail.com',
 ]);
 
 const APP_URL = process.env.APP_URL || 'https://www.trafficbarriersolutions.com';
