@@ -88,6 +88,11 @@ const WorkOrderSchema = new mongoose.Schema({
     signature: { type: String, default: '' },
   },
 
+  policeOfficers: [{
+    name: { type: String, trim: true, default: '' },
+    signature: { type: String, default: '' },
+  }],
+
   jobAddresses: [JobAddressSchema],
 
   // Approval fields
