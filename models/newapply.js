@@ -67,7 +67,7 @@ const applySchema = new mongoose.Schema({
   skills: { type: String, required: true },
   workHistory: [workHistorySchema],
   // Required documents
-  idFile: { type: String, required: true },           // Government-issued ID
+  idFile: { type: String },                  // Government-issued ID (optional)
   ssnCard: { type: String, required: true },           // Social Security Card
   driversLicense: { type: String, required: true },    // Driver's License
   drivingRecordFile: { type: String, required: true }, // 7-year DMV driving record
