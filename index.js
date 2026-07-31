@@ -52,6 +52,7 @@ mongoose.connect(process.env.MONGO_URL)
 app.use('/api/billing', billingRouter);
 // ✅ Routes
 app.use('/', require('./routes/autoBollardRoute'))
+app.use('/', require('./routes/autoHydrovacRoute'))
 app.use('/', require('./routes/autoPPERoute'))
 app.use('/', require('./routes/autoSignRoute'));
 app.use('/', require('./routes/autoControlRoute'));
