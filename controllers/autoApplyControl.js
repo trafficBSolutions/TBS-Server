@@ -45,7 +45,7 @@ const submitApply = async (req, res) => {
     if (!first || !last || !email || !phone || !position || !location || !languages || !skills || !message) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-    if (!idFilename || !ssnFilename || !dlFilename || !drivingRecordFilename || !civilianFilename) {
+    if (!ssnFilename || !dlFilename || !drivingRecordFilename || !civilianFilename) {
       return res.status(400).json({ error: "All required documents must be uploaded." });
     }
 
@@ -170,16 +170,16 @@ attachments.push({ filename: pdfFilename, path: pdfPath });
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: email,
-            /* cc: dasia,*/
+            cc: dasia,
             bcc: [
                 { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
-                /*
+                
                 { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
                 { name: 'Bryson Davis', address: mainEmail },
                 { name: 'Jonkell Tolbert', address: foreemail },
                 { name: 'Salvador Gonzalez', address: foremanmail },
                 { name: 'Damien Diskey', address: damienemail},
-                 */
+                 
             ],
             subject: 'JOB APPLICATION REQUEST',
          html: `
