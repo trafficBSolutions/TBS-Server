@@ -32,20 +32,21 @@ const submitApply = async (req, res) => {
       workHistory  
     } = req.body;
 
-    // ✅ Corrected file handling
-// Ensure req.files exists and contains uploaded files
-const resumeFilename = req.files && req.files["resume"] ? req.files["resume"][0].filename : null;
-const coverFilename = req.files && req.files["cover"] ? req.files["cover"][0].filename : null;
+    const getFile = (field) => req.files && req.files[field] ? req.files[field][0].filename : null;
+    const idFilename = getFile('idFile');
+    const ssnFilename = getFile('ssnCard');
+    const dlFilename = getFile('driversLicense');
+    const drivingRecordFilename = getFile('drivingRecordFile');
+    const civilianFilename = getFile('civilianRequest');
+    const coverFilename = getFile('cover');
+    console.log("Uploaded Files:", req.files);
 
-// Debugging: Log uploaded files to verify
-console.log("Uploaded Files:", req.files);
-console.log("Resume File:", resumeFilename);
-console.log("Cover File:", coverFilename);
 
-
-    // ✅ Validate required fields
     if (!first || !last || !email || !phone || !position || !location || !languages || !skills || !message) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+    if (!idFilename || !ssnFilename || !dlFilename || !drivingRecordFilename || !civilianFilename) {
+      return res.status(400).json({ error: "All required documents must be uploaded." });
     }
 
 
@@ -58,12 +59,16 @@ console.log("Cover File:", coverFilename);
     let formattedBackground = [];
     let formattedWorkHistory = [];
     let formattedDrivingRecord = {};
+    let formattedDrugScreening = {};
+    let formattedPayroll = {};
     
     try {
         formattedEducation = typeof education === "string" ? JSON.parse(education) : Array.isArray(education) ? education : [];
         formattedBackground = typeof background === "string" ? JSON.parse(background) : Array.isArray(background) ? background : [];
         formattedWorkHistory = typeof workHistory === "string" ? JSON.parse(workHistory) : Array.isArray(workHistory) ? workHistory : [];
         formattedDrivingRecord = typeof drivingRecord === "string" ? JSON.parse(drivingRecord) : drivingRecord || {};
+        formattedDrugScreening = req.body.drugScreening ? (typeof req.body.drugScreening === "string" ? JSON.parse(req.body.drugScreening) : req.body.drugScreening) : {};
+        formattedPayroll = req.body.payrollInfo ? (typeof req.body.payrollInfo === "string" ? JSON.parse(req.body.payrollInfo) : req.body.payrollInfo) : {};
     } catch (error) {
         console.error("Error parsing JSON data:", error);
         return res.status(400).json({ error: "Invalid JSON format in form data" });
@@ -89,8 +94,14 @@ console.log("Cover File:", coverFilename);
       languages,
       skills,
       workHistory: formattedWorkHistory,
-      resume: resumeFilename || null,
+      idFile: idFilename,
+      ssnCard: ssnFilename,
+      driversLicense: dlFilename,
+      drivingRecordFile: drivingRecordFilename,
+      civilianRequest: civilianFilename,
       cover: coverFilename,
+      drugScreening: formattedDrugScreening,
+      payrollInfo: formattedPayroll,
       message
     });
             // ✅ Generate PDF
@@ -106,9 +117,10 @@ console.log("Cover File:", coverFilename);
             }, pdfPath);
     // ✅ Prepare email attachments
     const attachments = [];
-    if (resumeFilename) {
-      attachments.push({ filename: resumeFilename, path: `./files/${resumeFilename}` });
-    }
+    [['idFile', idFilename], ['ssnCard', ssnFilename], ['driversLicense', dlFilename],
+     ['drivingRecordFile', drivingRecordFilename], ['civilianRequest', civilianFilename]].forEach(([, fn]) => {
+      if (fn) attachments.push({ filename: fn, path: `./files/${fn}` });
+    });
     if (coverFilename) {
       attachments.push({ filename: coverFilename, path: `./files/${coverFilename}` });
     }
