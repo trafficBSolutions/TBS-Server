@@ -33,33 +33,33 @@ const submitHydrovac = async (req, res) => {
       ],
       subject: 'HYDROVAC SERVICE REQUEST',
       html: `
-        <!DOCTYPE html>
-        <html lang="en">
-        <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#e7e7e7;">
-          <header style="background-color:#efad76;">
-            <h2 style="margin-top:20px;font-size:50px;text-align:center;font-family:Arial,sans-serif;color:#000;">TRAFFIC & BARRIER SOLUTIONS, LLC</h2>
-          </header>
-          <h2 style="margin-top:20px;font-size:40px;text-align:center;color:#000;">HYDROVAC SERVICE REQUEST</h2>
-          <div style="padding:20px;">
-            <h1 style="font-family:Arial,sans-serif;">Dear ${first},</h1>
-            <h1 style="font-family:Arial,sans-serif;">Your hydrovac service request has been received! We will contact you within 48 hours.</h1>
-            <h2 style="margin-top:30px;font-size:30px;color:#000;">Contact Info:</h2>
-            <p style="font-size:20px;"><strong>Name:</strong> ${first} ${last}</p>
-            <p style="font-size:20px;"><strong>Company:</strong> ${company}</p>
-            <p style="font-size:20px;"><strong>Email:</strong> ${email}</p>
-            <p style="font-size:20px;"><strong>Phone:</strong> ${phone}</p>
-            <h2 style="margin-top:30px;font-size:30px;color:#000;">Job Site:</h2>
-            <p style="font-size:20px;">${address}, ${city}, ${state} ${zip}</p>
-            <h2 style="margin-top:30px;font-size:30px;color:#000;">Service Details:</h2>
-            <p style="font-size:20px;"><strong>Service Type:</strong> ${serviceType}</p>
-            <p style="font-size:20px;"><strong>Preferred Date:</strong> ${preferredDate}</p>
-            <p style="font-size:20px;"><strong>Message:</strong> ${message}</p>
-            <h2 style="margin-top:40px;font-family:Arial,sans-serif;">Best Regards,</h2>
-            <h2 style="font-family:Arial,sans-serif;">Bryson Davis: 706-263-0175</h2>
-            <p style="font-family:Arial,sans-serif;">Traffic and Barrier Solutions, LLC | 721 N Wall St, Calhoun, GA 30701</p>
-            <p><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
-          </div>
-        </body>
+        <html>
+          <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
+            <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
+              <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">HYDROVAC SERVICE REQUEST</h1>
+              <p>Hi <strong>${first} ${last}</strong>,</p>
+              <p>Your hydrovac service request has been received! We will contact you within 48 hours.</p>
+              <h3>Contact Info:</h3>
+              <ul style="padding-left: 20px; margin: 0;">
+                <li><strong>Name:</strong> ${first} ${last}</li>
+                <li><strong>Company:</strong> ${company}</li>
+                <li><strong>Email:</strong> ${email}</li>
+                <li><strong>Phone:</strong> ${phone}</li>
+              </ul>
+              <h3>Job Site:</h3>
+              <ul style="padding-left: 20px; margin: 0;">
+                <li>${address}, ${city}, ${state} ${zip}</li>
+              </ul>
+              <h3>Service Details:</h3>
+              <ul style="padding-left: 20px; margin: 0;">
+                <li><strong>Service Type:</strong> ${serviceType}</li>
+                <li><strong>Preferred Date:</strong> ${preferredDate}</li>
+                <li><strong>Message:</strong> ${message}</li>
+              </ul>
+              <hr style="margin: 20px 0;">
+              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+            </div>
+          </body>
         </html>`
     };
 
