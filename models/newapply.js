@@ -23,11 +23,10 @@ const workHistorySchema = new mongoose.Schema({
   zip: { type: String, required: true },
   phone: { type: String, required: true },
   duties: { type: String, required: true },
-  currentlyEmployed: { type: Boolean, required: true }, // ✅ Added
-  reasonForLeaving: { type: String, required: function () { return !this.currentlyEmployed; } }, // ✅ Required only if NOT currently employed
-  mayContact: { type: String, required: true, enum: ["Yes", "No"] } // ✅ Ensures "Yes" or "No"
+  currentlyEmployed: { type: Boolean, required: true },
+  reasonForLeaving: { type: String, required: function () { return !this.currentlyEmployed; } },
+  mayContact: { type: String, required: true, enum: ["Yes", "No"] }
 });
-
 
 const drivingRecordSchema = new mongoose.Schema({
   speedingTickets: { type: String, default: '0' },
@@ -36,22 +35,48 @@ const drivingRecordSchema = new mongoose.Schema({
   otherViolations: { type: String, default: '' }
 });
 
+const drugScreeningSchema = new mongoose.Schema({
+  fullName: { type: String },
+  dob: { type: String },
+  collectionDate: { type: String },
+  specimenId: { type: String },
+  testReason: { type: String },
+  signature: { type: String }
+});
+
+const payrollSchema = new mongoose.Schema({
+  bankName: { type: String },
+  accountType: { type: String, enum: ['Checking', 'Savings', ''] },
+  routingNumber: { type: String },
+  accountNumber: { type: String },
+  paymentMethod: { type: String, enum: ['Direct Deposit', 'Check', ''] }
+});
+
 const applySchema = new mongoose.Schema({
   first: { type: String, required: true },
   last: { type: String, required: true },
   email: { type: String, unique: true },
   phone: { type: String, unique: true },
-  education: [educationSchema], 
+  education: [educationSchema],
   position: { type: String, required: true },
   wantsDriver: { type: String, enum: ['Yes', 'No', ''], default: '' },
   drivingRecord: { type: drivingRecordSchema, default: () => ({}) },
   location: { type: String, required: true },
-  background: [backgroundSchema], 
+  background: [backgroundSchema],
   languages: { type: String, required: true },
   skills: { type: String, required: true },
-  workHistory: [workHistorySchema], 
-  resume: { type: String },
+  workHistory: [workHistorySchema],
+  // Required documents
+  idFile: { type: String, required: true },           // Government-issued ID
+  ssnCard: { type: String, required: true },           // Social Security Card
+  driversLicense: { type: String, required: true },    // Driver's License
+  drivingRecordFile: { type: String, required: true }, // 7-year DMV driving record
+  civilianRequest: { type: String, required: true },   // Sheriff's Dept Civilian Request
+  // Optional
   cover: { type: String },
+  // Fillable forms
+  drugScreening: { type: drugScreeningSchema, default: () => ({}) },
+  payrollInfo: { type: payrollSchema, default: () => ({}) },
   message: { type: String, required: true }
 });
 
