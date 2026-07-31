@@ -38,7 +38,7 @@ const submitHydrovac = async (req, res) => {
             <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
               <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">HYDROVAC SERVICE REQUEST</h1>
               <p>Hi <strong>${first} ${last}</strong>,</p>
-              <p>Your hydrovac service request has been received!</p>
+              <p>Your hydrovac service request has been received! We will contact you within 48 hours.</p>
               <h3>Contact Info:</h3>
               <ul style="padding-left: 20px; margin: 0;">
                 <li><strong>Name:</strong> ${first} ${last}</li>
@@ -57,7 +57,7 @@ const submitHydrovac = async (req, res) => {
                 <li><strong>Message:</strong> ${message}</li>
               </ul>
               <hr style="margin: 20px 0;">
-              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>721 N Wall St Calhoun, GA 30701<a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>721 N Wall St, Calhoun, GA 30701<br>Email: materialworx2@gmail.com<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
             </div>
           </body>
         </html>`
