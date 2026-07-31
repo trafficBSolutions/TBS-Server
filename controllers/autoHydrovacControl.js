@@ -4,8 +4,6 @@ const axios = require('axios');
 
 const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
-const mainEmail = 'tbsolutions3@gmail.com';
-const foreemail = 'tbsolutions1999@gmail.com';
 const foremanmail = 'materialworx2@gmail.com';
 const damienemail = 'tbsolutions14@gmail.com';
 const submitHydrovac = async (req, res) => {
@@ -30,8 +28,6 @@ const submitHydrovac = async (req, res) => {
       cc: [
         { name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
         { name: 'Carson Speer', address: userEmail },
-        { name: 'Bryson Davis', address: mainEmail },
-        { name: 'Bryson Davis', address: foreemail },
         { name: 'Dasia Diskey', address: foremanmail },
         { name: 'Damien Diskey', address: damienemail }
       ],
