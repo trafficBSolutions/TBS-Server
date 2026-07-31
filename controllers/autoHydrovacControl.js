@@ -57,7 +57,7 @@ const submitHydrovac = async (req, res) => {
                 <li><strong>Message:</strong> ${message}</li>
               </ul>
               <hr style="margin: 20px 0;">
-              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>721 N Wall St Calhoun, GA 30701<a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
             </div>
           </body>
         </html>`
