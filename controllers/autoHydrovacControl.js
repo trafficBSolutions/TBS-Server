@@ -6,7 +6,8 @@ const myEmail = 'tbsolutions9@gmail.com';
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
 const foreemail = 'tbsolutions1999@gmail.com';
-const dasia = 'materialworx2@gmail.com';
+const foremanmail = 'materialworx2@gmail.com';
+const damienemail = 'tbsolutions14@gmail.com';
 const submitHydrovac = async (req, res) => {
   try {
     const { first, last, company, email, phone, address, city, state, zip, serviceType, preferredDate, message, token } = req.body;
@@ -31,7 +32,8 @@ const submitHydrovac = async (req, res) => {
         { name: 'Carson Speer', address: userEmail },
         { name: 'Bryson Davis', address: mainEmail },
         { name: 'Bryson Davis', address: foreemail },
-        { name: 'Dasia Diskey', address: dasia }
+        { name: 'Dasia Diskey', address: foremanmail },
+        { name: 'Damien Diskey', address: damienemail }
       ],
       subject: 'HYDROVAC SERVICE REQUEST',
       html: `
