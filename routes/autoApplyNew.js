@@ -34,9 +34,13 @@ const storage = multer.diskStorage({
 // 📌 Fix: Ensure correct field names match frontend
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 }).fields([
-    { name: 'resume', maxCount: 1 },
+    { name: 'idFile', maxCount: 1 },
+    { name: 'ssnCard', maxCount: 1 },
+    { name: 'driversLicense', maxCount: 1 },
+    { name: 'drivingRecordFile', maxCount: 1 },
+    { name: 'civilianRequest', maxCount: 1 },
     { name: 'cover', maxCount: 1 }
 ]);
 
