@@ -5,8 +5,7 @@ const path = require('path');
 
 const myEmail = 'tbsolutions9@gmail.com';
 const dasia = 'materialworx2@gmail.com';
-const userEmail = 'tbsolutions4@gmail.com';
-const mainEmail = 'tbsolutions3@gmail.com';
+const mainEmail = 'tbsolutions1995@gmail.com';
 
 const generateDirectDepositPDF = (data, filePath) => {
   return new Promise((resolve, reject) => {
@@ -67,11 +66,7 @@ const submitDirectDeposit = async (req, res) => {
     const mailOptions = {
       from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
       to: myEmail,
-      cc: dasia,
-      bcc: [
-        { name: 'Carson Speer', address: userEmail },
-        { name: 'Bryson Davis', address: mainEmail }
-      ],
+      cc: [dasia, mainEmail],
       subject: `DIRECT DEPOSIT FORM — ${fullName}`,
       html: `
 <!DOCTYPE html>
