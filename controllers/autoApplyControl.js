@@ -60,7 +60,6 @@ const submitApply = async (req, res) => {
     let formattedWorkHistory = [];
     let formattedDrivingRecord = {};
     let formattedDrugScreening = {};
-    let formattedPayroll = {};
     
     try {
         formattedEducation = typeof education === "string" ? JSON.parse(education) : Array.isArray(education) ? education : [];
@@ -68,7 +67,6 @@ const submitApply = async (req, res) => {
         formattedWorkHistory = typeof workHistory === "string" ? JSON.parse(workHistory) : Array.isArray(workHistory) ? workHistory : [];
         formattedDrivingRecord = typeof drivingRecord === "string" ? JSON.parse(drivingRecord) : drivingRecord || {};
         formattedDrugScreening = req.body.drugScreening ? (typeof req.body.drugScreening === "string" ? JSON.parse(req.body.drugScreening) : req.body.drugScreening) : {};
-        formattedPayroll = req.body.payrollInfo ? (typeof req.body.payrollInfo === "string" ? JSON.parse(req.body.payrollInfo) : req.body.payrollInfo) : {};
     } catch (error) {
         console.error("Error parsing JSON data:", error);
         return res.status(400).json({ error: "Invalid JSON format in form data" });
@@ -101,7 +99,6 @@ const submitApply = async (req, res) => {
       civilianRequest: civilianFilename,
       cover: coverFilename,
       drugScreening: formattedDrugScreening,
-      payrollInfo: formattedPayroll,
       message
     });
             // ✅ Generate PDF
