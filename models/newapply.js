@@ -44,14 +44,6 @@ const drugScreeningSchema = new mongoose.Schema({
   signature: { type: String }
 });
 
-const payrollSchema = new mongoose.Schema({
-  bankName: { type: String },
-  accountType: { type: String, enum: ['Checking', 'Savings', ''] },
-  routingNumber: { type: String },
-  accountNumber: { type: String },
-  paymentMethod: { type: String, enum: ['Direct Deposit', 'Check', ''] }
-});
-
 const applySchema = new mongoose.Schema({
   first: { type: String, required: true },
   last: { type: String, required: true },
@@ -76,7 +68,6 @@ const applySchema = new mongoose.Schema({
   cover: { type: String },
   // Fillable forms
   drugScreening: { type: drugScreeningSchema, default: () => ({}) },
-  payrollInfo: { type: payrollSchema, default: () => ({}) },
   message: { type: String, required: true }
 });
 
