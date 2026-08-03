@@ -58,6 +58,7 @@ app.use('/', require('./routes/autoSignRoute'));
 app.use('/', require('./routes/autoControlRoute'));
 app.use('/', require('./routes/autoPlanRoute'));
 app.use('/', require('./routes/autoApplyNew'));
+app.use('/', require('./routes/directDeposit'));
 app.use('/', require('./routes/autoRentalRoute'));
 app.use('/', require('./routes/autoContactRoute'));
 app.use('/', require('./routes/autoQuoteRoute'));
