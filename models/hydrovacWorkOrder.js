@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 
 const HydrovacWorkOrderSchema = new mongoose.Schema({
   date: { type: String, required: true },
-  foreman: { type: String, required: true, trim: true },
-  numberOfCrewmen: { type: Number, required: true, min: 1 },
+  coordinator: { type: String, required: true, trim: true },
+  cdlDriver: { type: String, required: true, trim: true },
+  secondWorker: { type: String, required: true, trim: true },
 
   // Hydrovac metrics
   extensionPipeLength: { type: Number, default: 100 },
