@@ -98,6 +98,7 @@ startAutoClockOut();
 
 app.use('/', workOrdersRouter);
 app.use('/', require('./routes/shopWorkOrderRoute'));
+app.use('/', require('./routes/hydrovacWorkOrderRoute'));
 app.use('/', require('./routes/leaveRequestRoute'));
 app.use('/', require('./routes/followUpRoute'));
 const PORT = process.env.PORT || 8000;
