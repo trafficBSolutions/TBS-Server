@@ -5,11 +5,11 @@ const { transporter } = require('../utils/emailConfig');
 
 const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com', 'tbsolutions.work.orders@gmail.com'];
 
-// POST /hydrovac-work-order — submit a new hydrovac work order
+// POST /hydrovac-work-order
 router.post('/hydrovac-work-order', async (req, res) => {
   try {
     const {
-      date, foreman, numberOfCrewmen,
+      date, coordinator, cdlDriver, secondWorker,
       extensionPipeLength, timesDumped, utilitiesFound,
       engineHoursStart, engineHoursEnd,
       mileageStart, mileageEnd,
@@ -19,15 +19,16 @@ router.post('/hydrovac-work-order', async (req, res) => {
       foremanSignature, notes,
     } = req.body;
 
-    if (!date || !foreman || !numberOfCrewmen || timesDumped == null || utilitiesFound == null ||
+    if (!date || !coordinator || !cdlDriver || !secondWorker ||
+        timesDumped == null || utilitiesFound == null ||
         !engineHoursStart || !engineHoursEnd || !mileageStart || !mileageEnd ||
-        !arrivalAtLocate || !arrivalBackAtShop || !truckCleanedOut || !filterCleaned ||
-        !waterRefill || !foremanSignature) {
+        !arrivalAtLocate || !arrivalBackAtShop ||
+        !truckCleanedOut || !filterCleaned || !waterRefill || !foremanSignature) {
       return res.status(400).json({ error: 'All required fields must be filled out.' });
     }
 
     const wo = await HydrovacWorkOrder.create({
-      date, foreman, numberOfCrewmen: Number(numberOfCrewmen),
+      date, coordinator, cdlDriver, secondWorker,
       extensionPipeLength: Number(extensionPipeLength) || 100,
       timesDumped: Number(timesDumped),
       utilitiesFound: Number(utilitiesFound),
@@ -39,8 +40,8 @@ router.post('/hydrovac-work-order', async (req, res) => {
       greasePointsChecked: Boolean(greasePointsChecked),
       truckCleanedOut, filterCleaned, waterRefill,
       trafficControlUsed: Boolean(trafficControlUsed),
-      tcStartTime: trafficControlUsed ? tcStartTime : '',
-      tcEndTime: trafficControlUsed ? tcEndTime : '',
+      tcStartTime: trafficControlUsed ? (tcStartTime || '') : '',
+      tcEndTime: trafficControlUsed ? (tcEndTime || '') : '',
       tcTrucks: trafficControlUsed ? (tcTrucks || []) : [],
       foremanSignature,
       notes: notes || '',
@@ -49,21 +50,32 @@ router.post('/hydrovac-work-order', async (req, res) => {
     const totalEngineHours = (Number(engineHoursEnd) - Number(engineHoursStart)).toFixed(1);
     const totalMiles = Number(mileageEnd) - Number(mileageStart);
 
+    const tcRows = trafficControlUsed
+      ? `<tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">TC Start Time:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${tcStartTime}</td></tr>
+         <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">TC End Time:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${tcEndTime}</td></tr>
+         <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">TC Trucks:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${(tcTrucks || []).join(', ')}</td></tr>`
+      : '';
+
+    const notesRow = notes
+      ? `<tr><td style="padding:8px;font-weight:bold;">Notes:</td><td style="padding:8px;">${notes}</td></tr>`
+      : '';
+
     const emailHtml = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:#1a1a1a;padding:20px;text-align:center;">
-        <h1 style="color:#fff;margin:0;">🚛 Hydrovac Work Order Submitted</h1>
+        <h1 style="color:#fff;margin:0;">&#x1F69B; Hydrovac Work Order Submitted</h1>
       </div>
       <div style="padding:20px;background:#f9f9f9;">
         <table style="width:100%;border-collapse:collapse;">
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;width:200px;">Date:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${date}</td></tr>
-          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Foreman:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${foreman}</td></tr>
-          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Crewmen:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${numberOfCrewmen}</td></tr>
+          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Coordinator:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${coordinator}</td></tr>
+          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">CDL Driver:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${cdlDriver}</td></tr>
+          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Second Worker:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${secondWorker}</td></tr>
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Extension Pipe:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${extensionPipeLength || 100} ft</td></tr>
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Times Dumped:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${timesDumped}</td></tr>
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Utilities/Holes Found:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${utilitiesFound}</td></tr>
-          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Engine Hours:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${engineHoursStart} → ${engineHoursEnd} (${totalEngineHours} hrs)</td></tr>
-          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Mileage:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${mileageStart} → ${mileageEnd} (${totalMiles} mi)</td></tr>
+          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Engine Hours:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${engineHoursStart} to ${engineHoursEnd} (${totalEngineHours} hrs)</td></tr>
+          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Mileage:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${mileageStart} to ${mileageEnd} (${totalMiles} mi)</td></tr>
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Arrival at Locate:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${arrivalAtLocate}</td></tr>
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Back at Shop:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${arrivalBackAtShop}</td></tr>
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Grease Points Checked:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${greasePointsChecked ? 'Yes' : 'No'}</td></tr>
@@ -71,12 +83,8 @@ router.post('/hydrovac-work-order', async (req, res) => {
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Filter Cleaned:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${filterCleaned}</td></tr>
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Water Refill:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${waterRefill}</td></tr>
           <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Traffic Control Used:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${trafficControlUsed ? 'Yes' : 'No'}</td></tr>
-          ${trafficControlUsed ? `
-          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">TC Start Time:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${tcStartTime}</td></tr>
-          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">TC End Time:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${tcEndTime}</td></tr>
-          <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">TC Trucks:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${(tcTrucks || []).join(', ')}</td></tr>
-          ` : ''}
-          ${notes ? `<tr><td style="padding:8px;font-weight:bold;">Notes:</td><td style="padding:8px;">${notes}</td></tr>` : ''}
+          ${tcRows}
+          ${notesRow}
         </table>
       </div>
     </div>`;
@@ -84,7 +92,7 @@ router.post('/hydrovac-work-order', async (req, res) => {
     transporter.sendMail({
       from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
       to: NOTIFY_EMAILS,
-      subject: `🚛 Hydrovac Work Order – ${foreman} – ${date}`,
+      subject: `Hydrovac Work Order - ${cdlDriver} & ${secondWorker} - ${date}`,
       html: emailHtml,
     }, (err) => {
       if (err) console.error('Hydrovac WO email error:', err);
