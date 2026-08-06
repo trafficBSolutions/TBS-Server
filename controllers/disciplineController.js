@@ -42,6 +42,37 @@ const deleteEmployee = async (req, res) => {
   }
 };
 
+const adjustPoints = async (req, res) => {
+  try {
+    const { delta, reason } = req.body;
+    const deltaNum = parseFloat(delta);
+    if (isNaN(deltaNum)) return res.status(400).json({ error: 'Invalid delta' });
+    const emp = await DisciplineEmployee.findById(req.params.id);
+    if (!emp) return res.status(404).json({ error: 'Employee not found' });
+    const previousPoints = emp.totalPoints;
+    emp.totalPoints = Math.min(Math.max(previousPoints + deltaNum, 0), 3);
+    await emp.save();
+    // Log the adjustment as a discipline record
+    await Discipline.create({
+      employeeName: emp.name,
+      position: emp.position,
+      employeeRef: emp._id,
+      points: deltaNum,
+      previousPoints,
+      newTotalPoints: emp.totalPoints,
+      violationTypes: ['Point Adjustment'],
+      employerStatement: reason || (deltaNum < 0 ? 'Points removed by admin' : 'Points added by admin'),
+      supervisorName: 'Admin',
+      incidentDate: new Date(),
+      dateOfWarning: new Date()
+    });
+    res.json({ employee: emp, previousPoints, newTotalPoints: emp.totalPoints });
+  } catch (e) {
+    console.error('adjustPoints:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 const terminateEmployee = async (req, res) => {
   try {
     const emp = await DisciplineEmployee.findByIdAndUpdate(req.params.id, { terminated: true }, { new: true });
@@ -213,6 +244,6 @@ const getDisciplinePDF = async (req, res) => {
 
 module.exports = {
   addEmployee, listEmployees, deleteEmployee, getEmployeePoints,
-  terminateEmployee,
+  terminateEmployee, adjustPoints,
   submitDiscipline, listByMonth, listByDate, getDisciplinePDF
 };
