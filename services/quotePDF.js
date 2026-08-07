@@ -94,7 +94,7 @@ td{padding:6px;border:1px solid #ddd;}
     ${notes ? `<p style="margin:10px 0 5px 0;"><strong>NOTES:</strong></p><p style="margin:3px 0;white-space:pre-wrap;">${notes}</p>` : ''}
     <p style="margin:10px 0 5px 0;"><strong>REMIT PAYMENT TO:</strong></p>
     <p style="margin:3px 0;">Traffic and Barrier Solutions, LLC</p>
-    <p style="margin:3px 0;">723 N Wall St, Calhoun, GA 30701</p>
+    <p style="margin:3px 0;">1995 Dews Pond Rd, Calhoun, GA 30701</p>
     <p style="margin:10px 0 3px 0;">If your company is tax exempt, then the subtotal will be your final total.</p>
     <p style="margin:3px 0;">A 3% charge will be added to credit card payments.</p>
     <p style="margin:10px 0 3px 0;">If you have any questions about this quote, please contact Dasia Diskey, materialworx2@gmail.com</p>
@@ -235,7 +235,7 @@ td{padding:6px;border:1px solid #ddd;}
     ${notes ? `<p style="margin:10px 0 5px 0;"><strong>NOTES:</strong></p><p style="margin:3px 0;white-space:pre-wrap;">${notes}</p>` : ''}
     <p style="margin:10px 0 5px 0;"><strong>REMIT PAYMENT TO:</strong></p>
     <p style="margin:3px 0;">Traffic and Barrier Solutions, LLC</p>
-    <p style="margin:3px 0;">723 N Wall St, Calhoun, GA 30701</p>
+    <p style="margin:3px 0;">1995 Dews Pond Rd, Calhoun, GA 30701</p>
     <p style="margin:10px 0 3px 0;">If your company is tax exempt, then the subtotal will be your final total.</p>
     <p style="margin:3px 0;">A 3% charge will be added to credit card payments.</p>
     <p style="margin:10px 0 3px 0;">If you have any questions about this invoice, please contact Dasia Diskey, materialworx2@gmail.com</p>
