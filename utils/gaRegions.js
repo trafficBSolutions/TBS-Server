@@ -20,6 +20,9 @@ const haversineDistance = (lat1, lng1, lat2, lng2) => {
 const getRegionFromCity = async (city, state) => {
   if (!city || !state) return 'north';
 
+  // If state is Tennessee, it's a TN job
+  if (state === 'TN') return 'tn';
+
   const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
   if (!apiKey) {
     console.warn('GOOGLE_GEOCODING_API_KEY not set — defaulting to north');
@@ -51,4 +54,16 @@ const getRegionFromCity = async (city, state) => {
   }
 };
 
-module.exports = { getRegionFromCity, haversineDistance, TIFTON_LAT, TIFTON_LNG, SOUTH_GA_RADIUS_MILES };
+// Determine region directly from GPS coordinates (no external API needed)
+const getRegionFromCoords = (lat, lng) => {
+  if (lat === undefined || lat === null || lng === undefined || lng === null) return null;
+
+  // Tennessee bounding box (rough)
+  if (lat >= 34.98 && lat <= 36.68 && lng >= -90.31 && lng <= -81.65) return 'tn';
+
+  // Georgia only — check distance from Tifton for south vs north
+  const distance = haversineDistance(TIFTON_LAT, TIFTON_LNG, lat, lng);
+  return distance <= SOUTH_GA_RADIUS_MILES ? 'south' : 'north';
+};
+
+module.exports = { getRegionFromCity, getRegionFromCoords, haversineDistance, TIFTON_LAT, TIFTON_LNG, SOUTH_GA_RADIUS_MILES };
