@@ -39,6 +39,8 @@ const upload = multer({
   }
 });
 
+const { getRegionFromCity } = require('../utils/gaRegions');
+
 function verifyToken(t) { 
   try {
     const decoded = jwt.verify(t, process.env.JWT_SECRET);
@@ -91,7 +93,7 @@ function toDataUri(absPath) {
   return `data:${mime};base64,${base64}`;
 }
 
-function renderWorkOrderHTML(wo, assets) {
+function renderWorkOrderHTML(wo, assets, clockIns = []) {
   const { tbs, basic } = wo;
   const m = tbs.morning || {};
   const js = tbs.jobsite || {};
@@ -254,6 +256,17 @@ function renderWorkOrderHTML(wo, assets) {
       </tbody>
     </table>
   </div>` : ''}
+
+  ${clockIns.length > 0 ? `
+  <div class="section">
+    <h3>TBS Employee Clock In Times</h3>
+    <table>
+      <thead><tr><th>Employee</th><th>Clock In Time</th></tr></thead>
+      <tbody>
+        ${clockIns.map(c => `<tr><td>${c.name}</td><td>${c.clockIn}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  </div>` : ''}
 </body>
 </html>`;
 }
@@ -290,7 +303,29 @@ async function generateWorkOrderPdf(wo) {
   const logoPath = path.join(__dirname, '..', 'public', 'TBSPDF7.png');
   const assets = { cone: toDataUri(conePath), logo: toDataUri(logoPath) };
 
-  const html = renderWorkOrderHTML(wo, assets);
+  // Fetch clock-in times for employees on this work order
+  const clockIns = [];
+  try {
+    const employeeNames = [wo.tbs?.flagger1, wo.tbs?.flagger2, wo.tbs?.flagger3, wo.tbs?.flagger4, wo.tbs?.flagger5, wo.tbs?.flagger6].filter(Boolean);
+    if (employeeNames.length > 0 && wo.scheduledDate) {
+      const dayStart = new Date(wo.scheduledDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(wo.scheduledDate);
+      dayEnd.setHours(23, 59, 59, 999);
+      const records = await TimeClock.find({
+        employeeName: { $in: employeeNames },
+        clockIn: { $gte: dayStart, $lte: dayEnd }
+      }).lean();
+      records.forEach(r => {
+        const d = new Date(r.clockIn);
+        const h = String(d.getHours()).padStart(2, '0');
+        const m = String(d.getMinutes()).padStart(2, '0');
+        clockIns.push({ name: r.employeeName, clockIn: `${h}:${m}` });
+      });
+    }
+  } catch (_) {}
+
+  const html = renderWorkOrderHTML(wo, assets, clockIns);
 
   const browser = await puppeteer.launch({
     headless: 'new',
@@ -336,7 +371,7 @@ router.use((req, _res, next) => {
 
 router.get('/work-orders', requireStaff, async (req, res) => {
   try {
-       const { date } = req.query;
+       const { date, region } = req.query;
     console.log(`[DEBUG] *** WORK ORDERS ROUTE HIT *** date=${date}`);
     if (!date) return res.status(400).json({ error: 'Date parameter required (YYYY-MM-DD)' });
     // Basic YYYY-MM-DD guard
@@ -354,9 +389,9 @@ router.get('/work-orders', requireStaff, async (req, res) => {
     console.log(`[DEBUG] Local range: ${startDate} - ${endDate}`);
     console.log(`[DEBUG] ISO range: ${startDate.toISOString()} - ${endDate.toISOString()}`);
     
-    const workOrders = await WorkOrder.find({
-      scheduledDate: { $gte: startDate, $lte: endDate }
-    }).sort({ createdAt: -1 });
+    const woQuery = { scheduledDate: { $gte: startDate, $lte: endDate } };
+    if (region) woQuery['basic.region'] = region;
+    const workOrders = await WorkOrder.find(woQuery).sort({ createdAt: -1 });
     
     // Populate Invoice.principal for billed jobs missing amount fields
     const Invoice = require('../models/invoice');
@@ -377,7 +412,25 @@ router.get('/work-orders', requireStaff, async (req, res) => {
     
     console.log(`[DEBUG] Found ${workOrdersWithPrincipal.length} work orders for date ${date}`);
     
-    res.json(workOrdersWithPrincipal);
+    // Attach clock-in times for each work order's employees
+    const enriched = await Promise.all(workOrdersWithPrincipal.map(async (wo) => {
+      const employeeNames = [wo.tbs?.flagger1, wo.tbs?.flagger2, wo.tbs?.flagger3, wo.tbs?.flagger4, wo.tbs?.flagger5, wo.tbs?.flagger6].filter(Boolean);
+      if (employeeNames.length === 0) return wo;
+      try {
+        const dayStart = new Date(wo.scheduledDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(wo.scheduledDate);
+        dayEnd.setHours(23, 59, 59, 999);
+        const records = await TimeClock.find({ employeeName: { $in: employeeNames }, clockIn: { $gte: dayStart, $lte: dayEnd } }).lean();
+        wo.clockIns = records.map(r => {
+          const d = new Date(r.clockIn);
+          return { name: r.employeeName, clockIn: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` };
+        });
+      } catch (_) {}
+      return wo;
+    }));
+    
+    res.json(enriched);
   } catch (e) {
         console.error('Failed to fetch daily work orders:', e?.message, e?.stack);
    // Return a little more info in dev; keep generic in prod if you prefer.
@@ -393,9 +446,10 @@ router.get('/work-orders/month', requireStaff, async (req, res) => {
     const endDate = new Date(year, month, 0, 23, 59, 59);
     console.log(`[DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
-    const workOrders = await WorkOrder.find({
-      scheduledDate: { $gte: startDate, $lte: endDate }
-    }).sort({ scheduledDate: 1 });
+    const { region: monthRegion } = req.query;
+    const monthQuery = { scheduledDate: { $gte: startDate, $lte: endDate } };
+    if (monthRegion) monthQuery['basic.region'] = monthRegion;
+    const workOrders = await WorkOrder.find(monthQuery).sort({ scheduledDate: 1 });
     
     // Populate Invoice.principal for billed jobs missing amount fields
     const Invoice = require('../models/invoice');
@@ -525,10 +579,14 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
 
     const scheduled = new Date(scheduledDate + 'T00:00:00');
 
+    // Determine region from city/state
+    let region = 'north';
+    try { region = await getRegionFromCity(basic.city, basic.state); } catch (_) {}
+
     const created = await WorkOrder.create({
       ...(job ? { job: job._id } : {}),
       scheduledDate: scheduled,
-      basic: { ...basic, client: basic.client || basic.company, foremanName },
+      basic: { ...basic, client: basic.client || basic.company, foremanName, region },
       tbs,
       mismatch: mismatchServer,
       ...(foremanSignature ? { foremanSignature } : {}),
@@ -638,6 +696,9 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
           ${basic.notes ? `<h3>Additional Notes:</h3><p>${basic.notes}</p>` : ''}
           
           ${created.photos && created.photos.length > 0 ? `<h3>Work Order Photos:</h3><p>${created.photos.length} photo(s) attached to this work order.</p>` : ''}
+
+          <h3>TBS Employee Clock In Times:</h3>
+          <p><em>See attached PDF for clock-in times recorded on the day of the job.</em></p>
           
           <hr style="margin: 20px 0;">
           <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
@@ -849,7 +910,8 @@ const EDIT_ALLOWED_EMAILS = new Set([
   'tbsolutions4@gmail.com',
   'tbsolutions1999@gmail.com',
   'tbsolutions1995@gmail.com',
-  'materialworx2@gmail.com'
+  'materialworx2@gmail.com',
+  'davissmithtbs@gmail.com'
 ]);
 
 router.put('/work-order/:id/admin-edit', express.json(), async (req, res) => {
