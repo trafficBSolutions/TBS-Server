@@ -62,6 +62,7 @@ const WorkOrderSchema = new mongoose.Schema({
     // ✅ add this
     foremanName: { type: String, required: true },
     requiresPhotos: { type: Boolean, default: false },
+    region: { type: String, enum: ['north', 'south', 'tn'], default: 'north' },
   },
 
   photos: [{ type: String }], // Array of photo filenames
