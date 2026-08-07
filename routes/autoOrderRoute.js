@@ -39,7 +39,7 @@ const upload = multer({
   }
 });
 
-const { getRegionFromCity } = require('../utils/gaRegions');
+const { getRegionFromCity, getRegionFromCoords } = require('../utils/gaRegions');
 
 function verifyToken(t) { 
   try {
@@ -146,6 +146,7 @@ function renderWorkOrderHTML(wo, assets, clockIns = []) {
     <div class="title-section">
       <h1>Work Order</h1>
       <p>Date: ${basic.dateOfJob}</p>
+      ${basic.region ? `<p style="font-weight:bold;color:${basic.region === 'south' ? '#e65100' : basic.region === 'tn' ? '#2e7d32' : '#1565c0'};">${basic.region === 'south' ? '🟧 South GA District' : basic.region === 'tn' ? '🟩 Tennessee District' : '🟦 North GA District'}</p>` : ''}
     </div>
   </div>
   
@@ -488,7 +489,9 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
       foremanSignature,
       policeOfficer,
       policeOfficers,
-      jobAddresses
+      jobAddresses,
+      submissionLat,
+      submissionLng
     } = req.body;
 
     // Parse JSON fields if they're strings (from FormData)
@@ -579,14 +582,21 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
 
     const scheduled = new Date(scheduledDate + 'T00:00:00');
 
-    // Determine region from city/state
-    let region = 'north';
-    try { region = await getRegionFromCity(basic.city, basic.state); } catch (_) {}
+    // Determine region: GPS coords first (instant, no API), then city/state geocoding as fallback
+    const lat = parseFloat(submissionLat);
+    const lng = parseFloat(submissionLng);
+    let region = (!isNaN(lat) && !isNaN(lng)) ? getRegionFromCoords(lat, lng) : null;
+    if (!region) {
+      try { region = await getRegionFromCity(basic.city, basic.state); } catch (_) { region = 'north'; }
+    }
 
     const created = await WorkOrder.create({
       ...(job ? { job: job._id } : {}),
       scheduledDate: scheduled,
-      basic: { ...basic, client: basic.client || basic.company, foremanName, region },
+      basic: { ...basic, client: basic.client || basic.company, foremanName, region,
+        ...(!isNaN(lat) ? { submissionLat: lat } : {}),
+        ...(!isNaN(lng) ? { submissionLng: lng } : {}),
+      },
       tbs,
       mismatch: mismatchServer,
       ...(foremanSignature ? { foremanSignature } : {}),
