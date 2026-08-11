@@ -203,27 +203,20 @@ router.post('/hydrovac-work-order', async (req, res) => {
   }
 });
 
-// GET /hydrovac-work-order/:id/pdf — download PDF for a specific work order
+// GET /hydrovac-work-order/:id/pdf — always regenerate from latest DB data
 router.get('/hydrovac-work-order/:id/pdf', async (req, res) => {
   try {
     const wo = await HydrovacWorkOrder.findById(req.params.id);
     if (!wo) return res.status(404).json({ error: 'Work order not found.' });
 
-    const savedPath = path.join(__dirname, '..', 'pdfs', 'hydrovac-work-orders', `${wo._id}.pdf`);
-    let pdfBuffer;
-
-    if (fs.existsSync(savedPath)) {
-      pdfBuffer = fs.readFileSync(savedPath);
-    } else {
-      // Regenerate if file was lost
-      const html = renderHydrovacWorkOrderHTML(wo);
-      pdfBuffer = await generatePdf(html);
-      savePdf(wo._id, pdfBuffer);
-    }
+    const html = renderHydrovacWorkOrderHTML(wo);
+    const pdfBuffer = await generatePdf(html);
+    savePdf(wo._id, pdfBuffer);
 
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="hydrovac-work-order-${wo.date}-${wo._id}.pdf"`,
+      'Cache-Control': 'no-store',
     });
     res.send(pdfBuffer);
   } catch (e) {
