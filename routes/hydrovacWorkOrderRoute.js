@@ -140,7 +140,7 @@ router.post('/hydrovac-work-order', async (req, res) => {
       foremanSignature, notes,
     } = req.body;
 
-    if (!date || !coordinator || !cdlDriver || !secondWorker ||
+    if (!date || !coordinator || !cdlDriver ||
         timesDumped == null || utilitiesFound == null ||
         !engineHoursStart || !engineHoursEnd || !mileageStart || !mileageEnd ||
         !arrivalAtLocate || !arrivalBackAtShop ||
