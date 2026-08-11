@@ -207,27 +207,40 @@ const resendQuote = async (req, res) => {
 
 const submitInvoice = async (req, res) => {
     try {
-        const { invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, payMethod, cardType, cardLast4, checkNumber, notes, donation } = req.body;
+        // Support both multipart/form-data (with attachments) and plain JSON
+        const body = req.body.data ? JSON.parse(req.body.data) : req.body;
+        const { invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, payMethod, cardType, cardLast4, checkNumber, notes, donation } = body;
         if (!email) return res.status(400).json({ error: "Email is required" });
         if (!invoiceNumber) return res.status(400).json({ error: "Invoice number is required" });
 
         // Save invoice to database
         await ShopInvoice.create({ invoiceNumber, date, company, customer, email, phone, rows, computed, isTaxExempt, taxExemptNumber, payMethod, cardType, cardLast4, checkNumber, notes, donation });
 
-        const pdfBuffer = await generateInvoicePdf(req.body);
+        const pdfBuffer = await generateInvoicePdf(body);
         const emailList = email.split(',').map(e => e.trim()).filter(e => e);
+
+        // Build attachments: invoice PDF first, then any uploaded files
+        const attachments = [
+            {
+                filename: `TBS_Invoice_${invoiceNumber}_${customer.replace(/\s+/g, '_')}_${date}.pdf`,
+                content: pdfBuffer
+            },
+            ...((req.files || []).map(f => ({
+                filename: f.originalname,
+                content: f.buffer,
+                contentType: f.mimetype
+            })))
+        ];
 
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
             to: emailList,
             cc: [
                 { name: 'Traffic & Barrier Solutions LLC', address: 'tbsolutions9@gmail.com' },
-                
                 { name: 'Carson Speer', address: 'tbsolutions4@gmail.com' },
                 { name: 'Bryson Davis', address: 'tbsolutions3@gmail.com' },
                 { name: 'bryson davis', address: 'mxbrysondavis@gmail.com' },
                 { name: 'Dasia Diskey', address: 'materialworx2@gmail.com' },
-                 
             ],
             subject: `Invoice #${invoiceNumber} for ${customer} - ${company}`,
             html: `
@@ -248,10 +261,7 @@ const submitInvoice = async (req, res) => {
                 </div>
             </body>
             </html>`,
-            attachments: [{
-                filename: `TBS_Invoice_${invoiceNumber}_${customer.replace(/\s+/g, '_')}_${date}.pdf`,
-                content: pdfBuffer
-            }]
+            attachments
         };
 
         transporter.sendMail(mailOptions, (error, info) => {
