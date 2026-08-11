@@ -232,11 +232,41 @@ router.get('/hydrovac-work-order/:id/pdf', async (req, res) => {
   }
 });
 
-// PUT /hydrovac-work-order/:id
+// PUT /hydrovac-work-order/:id — save edits, regenerate PDF, email updated PDF
 router.put('/hydrovac-work-order/:id', async (req, res) => {
   try {
     const wo = await HydrovacWorkOrder.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!wo) return res.status(404).json({ error: 'Work order not found.' });
+
+    // Regenerate and overwrite saved PDF
+    const html = renderHydrovacWorkOrderHTML(wo);
+    const pdfBuffer = await generatePdf(html);
+    savePdf(wo._id, pdfBuffer);
+
+    // Email updated PDF to notify list
+    transporter.sendMail({
+      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+      to: NOTIFY_EMAILS,
+      subject: `[UPDATED] Hydrovac Work Order - ${wo.cdlDriver} & ${wo.secondWorker} - ${wo.date}`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1a1a1a;padding:20px;text-align:center;">
+          <h1 style="color:#fff;margin:0;">&#x1F69B; Hydrovac Work Order Updated</h1>
+        </div>
+        <div style="padding:20px;background:#f9f9f9;">
+          <p>A Hydrovac Work Order has been <strong>edited by an admin</strong>. See the updated PDF attached.</p>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;width:200px;">Date:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${wo.date}</td></tr>
+            <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">Coordinator:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${wo.coordinator}</td></tr>
+            <tr><td style="padding:8px;font-weight:bold;border-bottom:1px solid #ddd;">CDL Driver:</td><td style="padding:8px;border-bottom:1px solid #ddd;">${wo.cdlDriver}</td></tr>
+            <tr><td style="padding:8px;font-weight:bold;">Second Worker:</td><td style="padding:8px;">${wo.secondWorker}</td></tr>
+          </table>
+        </div>
+      </div>`,
+      attachments: [{ filename: `hydrovac-work-order-${wo.date}-${wo._id}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }],
+    }, (err) => {
+      if (err) console.error('Hydrovac WO update email error:', err);
+    });
+
     res.json(wo);
   } catch (e) {
     res.status(500).json({ error: e.message });
