@@ -232,6 +232,17 @@ router.get('/hydrovac-work-order/:id/pdf', async (req, res) => {
   }
 });
 
+// PUT /hydrovac-work-order/:id
+router.put('/hydrovac-work-order/:id', async (req, res) => {
+  try {
+    const wo = await HydrovacWorkOrder.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!wo) return res.status(404).json({ error: 'Work order not found.' });
+    res.json(wo);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /hydrovac-work-orders?date=YYYY-MM-DD  OR  ?month=M&year=YYYY
 router.get('/hydrovac-work-orders', async (req, res) => {
   try {
