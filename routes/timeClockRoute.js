@@ -9,6 +9,7 @@ const ShopWorkOrder = require('../models/shopWorkOrder');
 const WorkOrder = require('../models/workorder');
 const { transporter } = require('../utils/emailConfig');
 const { generateDisciplinePdf } = require('../services/disciplinePDF');
+const { generateHoursPdf } = require('../services/hoursPDF');
 
 const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com'];
 
@@ -1236,6 +1237,43 @@ router.get('/handbook-status/:employeeId', async (req, res) => {
     return res.json({ handbookReviewed: emp.handbookReviewed, handbookReviewedAt: emp.handbookReviewedAt });
   } catch (e) {
     return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /timeclock/hours-pdf - Generate & email a weekly hours PDF for one employee
+router.post('/hours-pdf', async (req, res) => {
+  try {
+    const { employeeName, position, weekStart, weekEnd, days, weekTotalMin, purposeTotals, emailTo } = req.body;
+    if (!employeeName || !weekStart || !weekEnd) {
+      return res.status(400).json({ message: 'employeeName, weekStart, weekEnd required' });
+    }
+
+    const pdfBuffer = await generateHoursPdf({ employeeName, position, weekStart, weekEnd, days: days || {}, weekTotalMin: weekTotalMin || 0, purposeTotals: purposeTotals || {} });
+
+    const recipients = emailTo || NOTIFY_EMAILS;
+    const toStr = Array.isArray(recipients) ? recipients.join(',') : recipients;
+    const weekLabel = `${new Date(weekStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(weekEnd + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+    await transporter.sendMail({
+      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+      to: toStr,
+      subject: `Hours Report: ${employeeName} — ${weekLabel}`,
+      html: `<h2>Employee Hours Report</h2>
+        <p><strong>Employee:</strong> ${employeeName}${position ? ` (${position})` : ''}</p>
+        <p><strong>Week:</strong> ${weekLabel}</p>
+        <p><strong>Total Hours:</strong> ${((weekTotalMin || 0) / 60).toFixed(2)} hrs</p>
+        <p>Full punch detail and hours-by-purpose breakdown attached as PDF.</p>`,
+      attachments: [{
+        filename: `Hours_${employeeName.replace(/\s+/g, '_')}_${weekStart}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }]
+    });
+
+    return res.json({ message: `Hours PDF emailed for ${employeeName}` });
+  } catch (e) {
+    console.error('Hours PDF error:', e);
+    return res.status(500).json({ message: 'Failed to generate or send PDF' });
   }
 });
 
