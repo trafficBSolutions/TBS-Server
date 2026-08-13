@@ -214,7 +214,7 @@ const handlePunch = async (req, res) => {
 };
 
 // POST /timeclock/acknowledge-discipline
-router.post('/acknowledge-discipline', verifyIp, async (req, res) => {
+router.post('/acknowledge-discipline', async (req, res) => {
   try {
     const { pin, disciplineId, typedName, employeeStatement } = req.body;
     if (!pin || !disciplineId || !typedName) {
@@ -1219,7 +1219,7 @@ router.post('/add-punch', async (req, res) => {
 });
 
 // POST /timeclock/acknowledge-handbook - Employee signs the handbook from the kiosk
-router.post('/acknowledge-handbook', verifyIp, async (req, res) => {
+router.post('/acknowledge-handbook', async (req, res) => {
   try {
     const { pin, signature } = req.body;
     if (!pin || !signature) {
