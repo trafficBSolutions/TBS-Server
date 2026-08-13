@@ -974,6 +974,9 @@ router.post('/check-gps', (req, res) => {
 // POST /timeclock/punch-gps - Same as punch but verified by GPS instead of IP
 router.post('/punch-gps', verifyGps, handlePunch);
 
+// POST /timeclock/punch - IP-verified punch
+router.post('/punch', verifyIp, handlePunch);
+
 
 // GET /timeclock/check-ip
 router.get('/check-ip', async (req, res) => {
