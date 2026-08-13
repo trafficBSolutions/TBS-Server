@@ -12,7 +12,7 @@ const { generateDisciplinePdf } = require('../services/disciplinePDF');
 const { generateHoursPdf } = require('../services/hoursPDF');
 
 const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com'];
-
+const HOURS_EMAILS = ['tbsolutions9@gmail.com', 'materialworx2@gmail.com', 'tbsolutions1995@gmail.com'];
 // Helper: get Eastern Time UTC offset in hours (handles DST automatically)
 // Returns positive number (4 for EDT, 5 for EST) to ADD to local time to get UTC
 const getETOffset = (date) => {
@@ -1250,7 +1250,7 @@ router.post('/hours-pdf', async (req, res) => {
 
     const pdfBuffer = await generateHoursPdf({ employeeName, position, weekStart, weekEnd, days: days || {}, weekTotalMin: weekTotalMin || 0, purposeTotals: purposeTotals || {} });
 
-    const recipients = emailTo || NOTIFY_EMAILS;
+    const recipients = emailTo || HOURS_EMAILS;
     const toStr = Array.isArray(recipients) ? recipients.join(',') : recipients;
     const weekLabel = `${new Date(weekStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(weekEnd + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
