@@ -94,7 +94,7 @@ const findPersonByPin = async (pin) => {
 };
 
 // POST /timeclock/punch
-router.post('/punch', verifyIp, async (req, res) => {
+const handlePunch = async (req, res) => {
   try {
     const { pin, purpose } = req.body;
     if (!pin) return res.status(400).json({ message: 'PIN is required' });
@@ -211,7 +211,7 @@ router.post('/punch', verifyIp, async (req, res) => {
     console.error('TimeClock punch error:', e);
     return res.status(500).json({ message: 'Server error' });
   }
-});
+};
 
 // POST /timeclock/acknowledge-discipline
 router.post('/acknowledge-discipline', verifyIp, async (req, res) => {
@@ -928,13 +928,60 @@ router.post('/punch-offline', async (req, res) => {
   }
 });
 
+// GPS distance check helper (Haversine formula, returns miles)
+const haversineDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
+
+const getGpsLocations = () => {
+  const raw = process.env.TIMECLOCK_GPS_LOCATIONS || '';
+  return raw.split(',').map(s => s.trim()).filter(Boolean).map(s => {
+    const parts = s.split(':');
+    return { lat: Number(parts[0]), lng: Number(parts[1]), radius: Number(parts[2]) || 0.1, name: parts[3] || 'North GA' };
+  });
+};
+
+const verifyGps = (req, res, next) => {
+  const { lat, lng } = req.body;
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    return res.status(400).json({ message: 'GPS coordinates required' });
+  }
+  const locations = getGpsLocations();
+  const match = locations.find(loc => haversineDistance(lat, lng, loc.lat, loc.lng) <= loc.radius);
+  if (!match) {
+    return res.status(403).json({ message: 'You are not at an allowed work location.' });
+  }
+  req.clientIp = `gps:${lat.toFixed(5)},${lng.toFixed(5)}`;
+  req.detectedLocation = match.name;
+  next();
+};
+
+// POST /timeclock/check-gps - Check if GPS coordinates are at an allowed location
+router.post('/check-gps', (req, res) => {
+  const { lat, lng } = req.body;
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    return res.json({ allowed: false });
+  }
+  const locations = getGpsLocations();
+  const match = locations.find(loc => haversineDistance(lat, lng, loc.lat, loc.lng) <= loc.radius);
+  return res.json({ allowed: !!match, location: match?.name || null });
+});
+
+// POST /timeclock/punch-gps - Same as punch but verified by GPS instead of IP
+router.post('/punch-gps', verifyGps, handlePunch);
+
+
 // GET /timeclock/check-ip
 router.get('/check-ip', async (req, res) => {
   const clientIp = getClientIp(req);
   const allowedIps = await resolveAllowedIps();
   const allowed = allowedIps.some(ip => clientIp === ip) ||
     (IPV6_PREFIX && clientIp.startsWith(IPV6_PREFIX));
-  return res.json({ allowed, ip: clientIp });
+  return res.json({ allowed, ip: clientIp, location: allowed ? 'North GA' : null });
 });
 
 // GET /timeclock/clockout-check/:employeeId - Check if employee needs to fill out a work order before clocking out
