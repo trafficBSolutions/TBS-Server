@@ -29,7 +29,8 @@ const MATERIALS = [
   { sqFtId: 22, materialId: 18, item: 'UltraFlex Banner', company: 'Ultraflex', width: 54, costPerSqFt: 0.16 },
   { sqFtId: 23, materialId: 19, item: 'ROLAND HEATSOFT', company: 'Roland', width: 20, costPerSqFt: 1.94 },
   { sqFtId: 24, materialId: 20, item: 'LUMINA BLACK OPAQUE HEAT TRANSFER', company: 'Lumina', width: 15, costPerSqFt: 1.83 },
-  { sqFtId: 25, materialId: 21, item: 'Siser ColorPrint PU', company: 'SignWarehouse', width: 30, costPerSqFt: 1.65 }
+  { sqFtId: 25, materialId: 21, item: 'Siser ColorPrint PU', company: 'SignWarehouse', width: 30, costPerSqFt: 1.65 },
+  { sqFtId: 26, materialId: 22, item: 'ORAJET 315HT', company: 'ORAFOL', width: 54, costPerSqFt: 0.64 }
 ];
 
 const LAMINATES = [
