@@ -109,7 +109,7 @@ function renderWorkOrderHTML(wo, assets, clockIns = []) {
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Work Order – ${basic.client} – ${basic.dateOfJob}</title>
+<title>Work Order â€“ ${basic.client} â€“ ${basic.dateOfJob}</title>
 <style>
   @page { size: Letter; margin: 10mm; }
   body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; position: relative; }
@@ -146,7 +146,7 @@ function renderWorkOrderHTML(wo, assets, clockIns = []) {
     <div class="title-section">
       <h1>Work Order</h1>
       <p>Date: ${basic.dateOfJob}</p>
-      ${basic.region ? `<p style="font-weight:bold;color:${basic.region === 'south' ? '#e65100' : basic.region === 'tn' ? '#2e7d32' : '#1565c0'};">${basic.region === 'south' ? '🟧 South GA District' : basic.region === 'tn' ? '🟩 Tennessee District' : '🟦 North GA District'}</p>` : ''}
+      ${basic.region ? `<p style="font-weight:bold;color:${basic.region === 'south' ? '#e65100' : basic.region === 'tn' ? '#2e7d32' : '#1565c0'};">${basic.region === 'south' ? 'ðŸŸ§ South GA District' : basic.region === 'tn' ? 'ðŸŸ© Tennessee District' : 'ðŸŸ¦ North GA District'}</p>` : ''}
     </div>
   </div>
   
@@ -186,18 +186,18 @@ function renderWorkOrderHTML(wo, assets, clockIns = []) {
         ${keys.map(k => `<tr><td>${formatEquipmentName(k)}</td><td>${m[k]?.start ?? ''}</td><td>${m[k]?.end ?? ''}</td></tr>`).join('')}
       </tbody>
     </table>
-    ${mismatch ? '<div style="color: #B45309; font-weight: bold; margin-top: 5px;">⚠️ Equipment counts mismatch detected</div>' : ''}
+    ${mismatch ? '<div style="color: #B45309; font-weight: bold; margin-top: 5px;">âš ï¸ Equipment counts mismatch detected</div>' : ''}
   </div>
 
   <div class="section">
     <h3>Jobsite Checklist</h3>
     <div class="checklist">
-      <div>✓ Visibility: ${js.visibility ? 'Yes' : 'No'}</div>
-      <div>✓ Communication: ${js.communication ? 'Yes' : 'No'}</div>
-      <div>✓ Site Foreman: ${js.siteForeman ? 'Yes' : 'No'}</div>
-      <div>✓ Signs/Stands: ${js.signsAndStands ? 'Yes' : 'No'}</div>
-      <div>✓ Cones/Taper: ${js.conesAndTaper ? 'Yes' : 'No'}</div>
-      <div>✓ Equipment Left: ${js.equipmentLeft ? 'Yes' : 'No'}</div>
+      <div>âœ“ Visibility: ${js.visibility ? 'Yes' : 'No'}</div>
+      <div>âœ“ Communication: ${js.communication ? 'Yes' : 'No'}</div>
+      <div>âœ“ Site Foreman: ${js.siteForeman ? 'Yes' : 'No'}</div>
+      <div>âœ“ Signs/Stands: ${js.signsAndStands ? 'Yes' : 'No'}</div>
+      <div>âœ“ Cones/Taper: ${js.conesAndTaper ? 'Yes' : 'No'}</div>
+      <div>âœ“ Equipment Left: ${js.equipmentLeft ? 'Yes' : 'No'}</div>
     </div>
     ${js.equipmentLeft && js.equipmentLeftReason ? `<div style="margin-top: 8px; padding: 5px; background: #f9f9f9; border-radius: 3px;"><strong>Equipment Left Reason:</strong> ${js.equipmentLeftReason}</div>` : ''}
     </div>
@@ -231,7 +231,7 @@ function renderWorkOrderHTML(wo, assets, clockIns = []) {
 
   ${(wo.policeOfficers && wo.policeOfficers.length > 0) ? wo.policeOfficers.map((o, i) => `
   <div class="section">
-    <h3>🚔 Police Officer #${i + 1} On Site</h3>
+    <h3>ðŸš” Police Officer #${i + 1} On Site</h3>
     <div class="field"><span class="label">Officer Name:</span><span class="value">${formatName(o.name)}</span></div>
     <div class="signature-section">
       ${o.signature ? `<img src="data:image/png;base64,${o.signature}" alt="Officer Signature" />` : ''}
@@ -239,7 +239,7 @@ function renderWorkOrderHTML(wo, assets, clockIns = []) {
     </div>
   </div>`).join('') : (wo.policeOfficer?.used ? `
   <div class="section">
-    <h3>🚔 Police Officer On Site</h3>
+    <h3>ðŸš” Police Officer On Site</h3>
     <div class="field"><span class="label">Officer Name:</span><span class="value">${formatName(wo.policeOfficer.name)}</span></div>
     <div class="signature-section">
       ${wo.policeOfficer.signature ? `<img src="data:image/png;base64,${wo.policeOfficer.signature}" alt="Officer Signature" />` : ''}
@@ -369,6 +369,25 @@ router.use((req, _res, next) => {
   next();
 });
 
+
+// GET /api/geocode - Proxy Google Geocoding for region detection
+router.get('/api/geocode', async (req, res) => {
+  const { city, state } = req.query;
+  if (!city || !state) return res.status(400).json({ error: 'city and state required' });
+  const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'Geocoding not configured' });
+  try {
+    const query = encodeURIComponent(city + ', ' + state + ', USA');
+    const url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + query + '&key=' + apiKey;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.status !== 'OK' || !data.results || !data.results.length) return res.status(404).json({ error: 'Not found' });
+    const loc = data.results[0].geometry.location;
+    return res.json({ lat: loc.lat, lng: loc.lng });
+  } catch (e) {
+    return res.status(500).json({ error: 'Geocoding failed' });
+  }
+});
 
 router.get('/work-orders', requireStaff, async (req, res) => {
   try {
@@ -683,12 +702,12 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
           <p><strong>${formatName(basic.foremanName)}</strong></p>
           
           ${created.policeOfficers && created.policeOfficers.length > 0 ? `
-          <h3>🚔 Police Officer(s) On Site:</h3>
+          <h3>ðŸš” Police Officer(s) On Site:</h3>
           <ul>
-            ${created.policeOfficers.map((o, i) => `<li><strong>Officer ${i + 1}:</strong> ${formatName(o.name)} — Signature Captured (See attached PDF)</li>`).join('')}
+            ${created.policeOfficers.map((o, i) => `<li><strong>Officer ${i + 1}:</strong> ${formatName(o.name)} â€” Signature Captured (See attached PDF)</li>`).join('')}
           </ul>
           ` : (created.policeOfficer?.used ? `
-          <h3>🚔 Police Officer On Site:</h3>
+          <h3>ðŸš” Police Officer On Site:</h3>
           <ul>
             <li><strong>Officer Name:</strong> ${formatName(created.policeOfficer.name)}</li>
             <li><strong>Officer Signature:</strong> Captured (See attached PDF)</li>
@@ -728,7 +747,7 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
         { name: 'Damien Diskey', address: 'tbsolutions14@gmail.com' },
         { name: 'Debbie Owens', address: 'tbsolutions.work.orders@gmail.com' }
       ],
-      subject: `WORK ORDER – ${clientOrCompany} – ${basic.dateOfJob}`,
+      subject: `WORK ORDER â€“ ${clientOrCompany} â€“ ${basic.dateOfJob}`,
       html,
       attachments: [
         {
