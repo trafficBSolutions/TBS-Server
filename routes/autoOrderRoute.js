@@ -146,7 +146,7 @@ function renderWorkOrderHTML(wo, assets, clockIns = []) {
     <div class="title-section">
       <h1>Work Order</h1>
       <p>Date: ${basic.dateOfJob}</p>
-      ${basic.region ? `<p style="font-weight:bold;color:${basic.region === 'south' ? '#e65100' : basic.region === 'tn' ? '#2e7d32' : '#1565c0'};">${basic.region === 'south' ? 'ðŸŸ§ South GA District' : basic.region === 'tn' ? 'ðŸŸ© Tennessee District' : 'ðŸŸ¦ North GA District'}</p>` : ''}
+      ${basic.region ? `<p style="font-weight:bold;color:${basic.region === 'south' ? '#e65100' : basic.region === 'tn' ? '#2e7d32' : '#1565c0'};">${basic.region === 'south' ? 'South GA District' : basic.region === 'tn' ? 'Tennessee District' : 'North GA District'}</p>` : ''}
     </div>
   </div>
   
@@ -192,12 +192,12 @@ function renderWorkOrderHTML(wo, assets, clockIns = []) {
   <div class="section">
     <h3>Jobsite Checklist</h3>
     <div class="checklist">
-      <div>âœ“ Visibility: ${js.visibility ? 'Yes' : 'No'}</div>
-      <div>âœ“ Communication: ${js.communication ? 'Yes' : 'No'}</div>
-      <div>âœ“ Site Foreman: ${js.siteForeman ? 'Yes' : 'No'}</div>
-      <div>âœ“ Signs/Stands: ${js.signsAndStands ? 'Yes' : 'No'}</div>
-      <div>âœ“ Cones/Taper: ${js.conesAndTaper ? 'Yes' : 'No'}</div>
-      <div>âœ“ Equipment Left: ${js.equipmentLeft ? 'Yes' : 'No'}</div>
+      <div>Visibility: ${js.visibility ? 'Yes' : 'No'}</div>
+      <div>Communication: ${js.communication ? 'Yes' : 'No'}</div>
+      <div>Site Foreman: ${js.siteForeman ? 'Yes' : 'No'}</div>
+      <div>Signs/Stands: ${js.signsAndStands ? 'Yes' : 'No'}</div>
+      <div>Cones/Taper: ${js.conesAndTaper ? 'Yes' : 'No'}</div>
+      <div>Equipment Left: ${js.equipmentLeft ? 'Yes' : 'No'}</div>
     </div>
     ${js.equipmentLeft && js.equipmentLeftReason ? `<div style="margin-top: 8px; padding: 5px; background: #f9f9f9; border-radius: 3px;"><strong>Equipment Left Reason:</strong> ${js.equipmentLeftReason}</div>` : ''}
     </div>
@@ -747,7 +747,7 @@ router.post('/work-order', requireStaff, upload.array('photos', 5), async (req, 
         { name: 'Damien Diskey', address: 'tbsolutions14@gmail.com' },
         { name: 'Debbie Owens', address: 'tbsolutions.work.orders@gmail.com' }
       ],
-      subject: `WORK ORDER â€“ ${clientOrCompany} â€“ ${basic.dateOfJob}`,
+      subject: `WORK ORDER ${clientOrCompany} ${basic.dateOfJob}`,
       html,
       attachments: [
         {
