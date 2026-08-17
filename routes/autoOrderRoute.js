@@ -109,7 +109,7 @@ function renderWorkOrderHTML(wo, assets, clockIns = []) {
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Work Order â€“ ${basic.client} â€“ ${basic.dateOfJob}</title>
+<title>Work Order ${basic.client} ${basic.dateOfJob}</title>
 <style>
   @page { size: Letter; margin: 10mm; }
   body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; position: relative; }
