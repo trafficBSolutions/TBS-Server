@@ -984,7 +984,24 @@ router.get('/check-ip', async (req, res) => {
   const allowedIps = await resolveAllowedIps();
   const allowed = allowedIps.some(ip => clientIp === ip) ||
     (IPV6_PREFIX && clientIp.startsWith(IPV6_PREFIX));
-  return res.json({ allowed, ip: clientIp, location: allowed ? 'North GA' : null });
+
+  let location = null;
+  if (allowed) {
+    // Determine which location this IP belongs to
+    const hostnameSouth = process.env.TIMECLOCK_HOSTNAME_SOUTH;
+    if (hostnameSouth) {
+      try {
+        const southIps = new Set();
+        try { (await dnsResolve4(hostnameSouth)).forEach(ip => { southIps.add(ip); southIps.add(`::ffff:${ip}`); }); } catch {}
+        try { (await dnsResolve6(hostnameSouth)).forEach(ip => southIps.add(ip)); } catch {}
+        location = southIps.has(clientIp) ? 'South GA' : 'North GA';
+      } catch { location = 'North GA'; }
+    } else {
+      location = 'North GA';
+    }
+  }
+
+  return res.json({ allowed, ip: clientIp, location });
 });
 
 // GET /timeclock/clockout-check/:employeeId - Check if employee needs to fill out a work order before clocking out
