@@ -977,6 +977,13 @@ router.post('/punch-gps', verifyGps, handlePunch);
 // POST /timeclock/punch - IP-verified punch
 router.post('/punch', verifyIp, handlePunch);
 
+// POST /timeclock/punch-pin - PIN-only punch for South GA (no shop WiFi)
+// Security: valid PIN required; records cellular IP for audit trail
+router.post('/punch-pin', async (req, res) => {
+  req.clientIp = getClientIp(req) + ' (pin-only)';
+  return handlePunch(req, res);
+});
+
 
 // GET /timeclock/check-ip
 router.get('/check-ip', async (req, res) => {
