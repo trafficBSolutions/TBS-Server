@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
+const HandbookAck = require('../models/handbookAck');
+
+const CURRENT_VERSION = '2026-01-07'; // bump this string whenever the handbook changes
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
@@ -250,6 +253,23 @@ async function generateHandbookPdf(firstName, lastName, signature) {
   }
 }
 
+// Returns the current handbook version so the frontend can check if re-sign is needed
+router.get('/api/employee-handbook/version', (req, res) => {
+  res.json({ version: CURRENT_VERSION });
+});
+
+// Check if a specific person has signed the current version
+router.get('/api/employee-handbook/check', async (req, res) => {
+  const { firstName, lastName } = req.query;
+  if (!firstName || !lastName) return res.status(400).json({ error: 'firstName and lastName required' });
+  const ack = await HandbookAck.findOne({
+    firstName: new RegExp(`^${firstName}$`, 'i'),
+    lastName: new RegExp(`^${lastName}$`, 'i'),
+    handbookVersion: CURRENT_VERSION
+  });
+  res.json({ signed: !!ack, version: CURRENT_VERSION });
+});
+
 router.post('/api/employee-handbook', async (req, res) => {
   try {
     const { firstName, lastName, signature, hasRead } = req.body;
@@ -317,8 +337,17 @@ router.post('/api/employee-handbook', async (req, res) => {
       ]
     };
 
+    // Save acknowledgment record
+    await HandbookAck.create({
+      firstName,
+      lastName,
+      handbookVersion: CURRENT_VERSION,
+      signature,
+      source: req.body.source || 'employee'
+    });
+
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Handbook acknowledgment submitted successfully' });
+    res.status(200).json({ message: 'Handbook acknowledgment submitted successfully', version: CURRENT_VERSION });
   } catch (error) {
     console.error('Error submitting handbook acknowledgment:', error);
     res.status(500).json({ error: 'Failed to submit acknowledgment' });
