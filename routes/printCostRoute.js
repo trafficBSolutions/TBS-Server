@@ -19,19 +19,20 @@ const MATERIALS = [
   { sqFtId: 12, materialId: 8, item: 'ORAJET 3651', company: 'ORAFOL', width: 54, costPerSqFt: 0.43 },
   { sqFtId: 13, materialId: 9, item: 'ORAJET 3676', company: 'ORAFOL', width: 54, costPerSqFt: 2.25 },
   { sqFtId: 14, materialId: 10, item: 'ORALITE 5900', company: 'ORAFOL', width: 48, costPerSqFt: 1.56 },
-  { sqFtId: 15, materialId: 11, item: 'ORALITE 5600', company: 'ORAFOL', width: 54, costPerSqFt: 2.72 },
-  { sqFtId: 16, materialId: 12, item: 'ORALITE 5400', company: 'ORAFOL', width: 48, costPerSqFt: 1.33 },
-  { sqFtId: 17, materialId: 13, item: 'Omnicube Orange', company: 'Avery Dennison', width: 48, costPerSqFt: 2.16 },
-  { sqFtId: 18, materialId: 14, item: 'ORAJET 3951RA', company: 'ORAFOL', width: 54, costPerSqFt: 1.24 },
-  { sqFtId: 19, materialId: 15, item: 'ORALITE 9900', company: 'ORAFOL', width: 48, costPerSqFt: 3.19 },
-  { sqFtId: 20, materialId: 16, item: 'ORACAL 970RA', company: 'ORAFOL', width: 60, costPerSqFt: 1.90 },
-  { sqFtId: 21, materialId: 17, item: 'ORACAL 651', company: 'ORAFOL', width: 24, costPerSqFt: 0.38 },
-  { sqFtId: 22, materialId: 18, item: 'UltraFlex Banner', company: 'Ultraflex', width: 54, costPerSqFt: 0.16 },
+  { sqFtId: 15, materialId: 10, item: 'ORALITE 5900', company: 'ORAFOL', width: 30, costPerSqFt: 1.61 },
+  { sqFtId: 16, materialId: 11, item: 'ORALITE 5600', company: 'ORAFOL', width: 54, costPerSqFt: 2.72 },
+  { sqFtId: 17, materialId: 12, item: 'ORALITE 5400', company: 'ORAFOL', width: 48, costPerSqFt: 1.33 },
+  { sqFtId: 18, materialId: 13, item: 'Omnicube Orange', company: 'Avery Dennison', width: 48, costPerSqFt: 2.16 },
+  { sqFtId: 19, materialId: 14, item: 'ORAJET 3951RA', company: 'ORAFOL', width: 54, costPerSqFt: 1.24 },
+  { sqFtId: 20, materialId: 15, item: 'ORALITE 9900', company: 'ORAFOL', width: 48, costPerSqFt: 3.19 },
+  { sqFtId: 21, materialId: 16, item: 'ORACAL 970RA', company: 'ORAFOL', width: 60, costPerSqFt: 1.90 },
+  { sqFtId: 22, materialId: 17, item: 'ORACAL 651', company: 'ORAFOL', width: 24, costPerSqFt: 0.38 },
   { sqFtId: 23, materialId: 19, item: 'ROLAND HEATSOFT', company: 'Roland', width: 20, costPerSqFt: 1.94 },
   { sqFtId: 24, materialId: 20, item: 'LUMINA BLACK OPAQUE HEAT TRANSFER', company: 'Lumina', width: 15, costPerSqFt: 1.83 },
   { sqFtId: 25, materialId: 21, item: 'Siser ColorPrint PU', company: 'SignWarehouse', width: 30, costPerSqFt: 1.65 },
   { sqFtId: 26, materialId: 22, item: 'ORAJET 315HT', company: 'ORAFOL', width: 54, costPerSqFt: 0.64 },
-  { sqFtId: 27, materialId: 23, item: 'ORAJET 3105HT', company: 'SignWarehouse', width: 30, costPerSqFt: 0.86 }
+  { sqFtId: 27, materialId: 23, item: 'ORAJET 3105HT', company: 'SignWarehouse', width: 30, costPerSqFt: 0.86 },
+
 ];
 
 const LAMINATES = [
