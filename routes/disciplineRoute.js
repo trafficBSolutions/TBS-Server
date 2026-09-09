@@ -20,15 +20,15 @@ router.post('/', submitDiscipline);
 router.get('/month', listByMonth);
 router.get('/', listByDate);
 router.get('/:id([0-9a-fA-F]{24})/pdf', getDisciplinePDF);
-router.get('/employee-discipline/:id', async (req, res) => {
+router.get('/by-name/:name', async (req, res) => {
   try {
-    const job = await Discipline.findById(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: 'Write Up not found' });
-    }
-    res.json(job);
+    const name = decodeURIComponent(req.params.name).trim();
+    const records = await Discipline.find({
+      employeeName: { $regex: new RegExp(`^${name}$`, 'i') }
+    }).sort({ createdAt: -1 });
+    res.json(records);
   } catch (err) {
-    console.error('Error fetching write up:', err);
+    console.error('Error fetching disciplines by name:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
