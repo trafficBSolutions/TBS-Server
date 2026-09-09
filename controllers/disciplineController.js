@@ -88,7 +88,12 @@ const getEmployeePoints = async (req, res) => {
   try {
     const emp = await DisciplineEmployee.findById(req.params.id);
     if (!emp) return res.status(404).json({ error: 'Employee not found' });
-    const history = await Discipline.find({ employeeRef: emp._id }).sort({ createdAt: -1 });
+    const history = await Discipline.find({
+      $or: [
+        { employeeRef: emp._id },
+        { employeeName: { $regex: new RegExp(`^${emp.name.trim()}$`, 'i') } }
+      ]
+    }).sort({ createdAt: -1 });
     res.json({ employee: emp, history });
   } catch (e) {
     console.error('getEmployeePoints:', e);
