@@ -18,8 +18,6 @@ router.put('/employees/:id/points', adjustPoints);
 // Discipline actions
 router.post('/', submitDiscipline);
 router.get('/month', listByMonth);
-router.get('/', listByDate);
-router.get('/:id([0-9a-fA-F]{24})/pdf', getDisciplinePDF);
 router.get('/by-name/:name', async (req, res) => {
   try {
     const name = decodeURIComponent(req.params.name).trim();
@@ -32,4 +30,6 @@ router.get('/by-name/:name', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+router.get('/:id([0-9a-fA-F]{24})/pdf', getDisciplinePDF);
+router.get('/', listByDate);
 module.exports = router;
