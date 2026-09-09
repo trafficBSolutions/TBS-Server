@@ -123,6 +123,7 @@ const submitDiscipline = async (req, res) => {
 
     const doc = await Discipline.create({
       ...req.body,
+      employeeRef: emp ? emp._id : undefined,
       points: pointsNum,
       previousPoints,
       newTotalPoints: newTotal
