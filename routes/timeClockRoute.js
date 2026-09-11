@@ -1245,6 +1245,17 @@ router.post('/add-punch', async (req, res) => {
   }
 });
 
+// POST /timeclock/reset-handbook - Admin resets all handbookReviewed flags (run once after handbook update)
+router.post('/reset-handbook', async (req, res) => {
+  try {
+    const result = await TimeClockEmployee.updateMany({}, { handbookReviewed: false, handbookReviewedAt: null });
+    return res.json({ message: `Reset handbook status for ${result.modifiedCount} employees.` });
+  } catch (e) {
+    console.error('Reset handbook error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // POST /timeclock/acknowledge-handbook - Employee signs the handbook from the kiosk
 router.post('/acknowledge-handbook', async (req, res) => {
   try {
