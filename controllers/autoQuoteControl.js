@@ -2,6 +2,7 @@ const { transporter } = require('../utils/emailConfig');
 const { generateQuotePdf, generateInvoicePdf } = require('../services/quotePDF');
 const Quote = require('../models/quoteuser');
 const ShopInvoice = require('../models/shopinvoice');
+const QuoteDraft = require('../models/quoteDraft');
 const path = require('path');
 const fs = require('fs');
 
@@ -305,4 +306,39 @@ const approveQuote = async (req, res) => {
     }
 };
 
-module.exports = { submitQuote, getMonthlyQuotes, getDailyQuotes, resendQuote, submitInvoice, approveQuote };
+const saveDraft = async (req, res) => {
+    try {
+        const { type, data, savedBy } = req.body;
+        if (!type || !data) return res.status(400).json({ error: 'type and data are required' });
+        const label = type === 'quote'
+            ? `Unfinished Quote – ${data.company || 'No Company'} (${data.date || ''})`
+            : `Unfinished Invoice – ${data.invCompany || 'No Company'} #${data.invNumber || '?'} (${data.invDate || ''})`;
+        const draft = await QuoteDraft.create({ type, label, data, savedBy });
+        res.status(201).json(draft);
+    } catch (e) {
+        console.error('saveDraft:', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+const listDrafts = async (req, res) => {
+    try {
+        const drafts = await QuoteDraft.find().sort({ createdAt: -1 });
+        res.json(drafts);
+    } catch (e) {
+        console.error('listDrafts:', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+const deleteDraft = async (req, res) => {
+    try {
+        await QuoteDraft.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Draft deleted' });
+    } catch (e) {
+        console.error('deleteDraft:', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+module.exports = { submitQuote, getMonthlyQuotes, getDailyQuotes, resendQuote, submitInvoice, approveQuote, saveDraft, listDrafts, deleteDraft };
