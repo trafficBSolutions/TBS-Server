@@ -101,6 +101,7 @@ app.use('/', require('./routes/shopWorkOrderRoute'));
 app.use('/', require('./routes/hydrovacWorkOrderRoute'));
 app.use('/', require('./routes/leaveRequestRoute'));
 app.use('/', require('./routes/followUpRoute'));
+app.use('/', require('./routes/safetyRoute'));
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, '0.0.0.0', () => {
