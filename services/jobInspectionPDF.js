@@ -91,6 +91,7 @@ function generateJobInspectionHTML(doc) {
     <div class="result-badge">${resultLabel}</div>
     ${doc.result === 'WorkStopped' && doc.stopWorkReason ? `<div style="margin-top:8px;background:#fff;border:1px solid #c0392b;border-radius:4px;padding:8px;font-size:11px"><strong>Stop-Work Reason:</strong> ${doc.stopWorkReason}</div>` : ''}
     ${doc.followUpRequired ? `<div style="margin-top:8px;font-size:11px"><strong>Follow-Up Required:</strong> ${fmtDate(doc.followUpDate) || 'TBD'} &nbsp;|&nbsp; <strong>Completed By:</strong> ${doc.followUpCompletedBy || '___________________'}</div>` : ''}
+    ${doc.notes ? `<div style="margin-top:10px;background:#fff;border:1px solid #ddd;border-radius:4px;padding:10px;font-size:11px"><strong>Additional Notes:</strong><br>${doc.notes}</div>` : ''}
   </div>
 
   <div class="section">
