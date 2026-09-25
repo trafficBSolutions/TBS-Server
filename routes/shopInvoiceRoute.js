@@ -6,7 +6,7 @@ const Quote = require('../models/quoteuser');
 // Get last invoice number used
 router.get('/shop-invoices/last-number', async (req, res) => {
   try {
-    const all = await ShopInvoice.find({ invoiceNumber: { $exists: true, $ne: '' } }).select('invoiceNumber');
+    const all = await ShopInvoice.find({ invoiceNumber: /^2026SS/i }).select('invoiceNumber');
     if (!all.length) return res.json({ lastNumber: '' });
     const highest = all.reduce((best, inv) => {
       return (inv.invoiceNumber || '').localeCompare(best, undefined, { numeric: true }) > 0 ? inv.invoiceNumber : best;
