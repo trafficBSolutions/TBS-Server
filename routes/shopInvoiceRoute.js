@@ -3,6 +3,18 @@ const router = express.Router();
 const ShopInvoice = require('../models/shopinvoice');
 const Quote = require('../models/quoteuser');
 
+// Get last invoice number used
+router.get('/shop-invoices/last-number', async (req, res) => {
+  try {
+    const last = await ShopInvoice.findOne({ invoiceNumber: { $exists: true, $ne: '' } })
+      .sort({ createdAt: -1 })
+      .select('invoiceNumber');
+    res.json({ lastNumber: last?.invoiceNumber || '' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch last invoice number' });
+  }
+});
+
 // Get shop invoices by month
 router.get('/shop-invoices/month', async (req, res) => {
   try {
@@ -14,7 +26,7 @@ router.get('/shop-invoices/month', async (req, res) => {
         $gte: startDate.toISOString().split('T')[0],
         $lte: endDate.toISOString().split('T')[0]
       }
-    }).sort({ date: -1 });
+    }).sort({ invoiceNumber: -1 });
     res.json(invoices);
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch shop invoices' });
