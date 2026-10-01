@@ -1,0 +1,109 @@
+
+const express = require('express');
+const dotenv = require('dotenv').config();
+const mongoose = require('mongoose');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const xss = require('xss-clean');
+const compression = require('compression');
+const cors = require('cors');
+const path = require('path');
+const billingRouter = require('./routes/billing');
+const workOrdersRouter = require('./routes/autoOrderRoute');
+const employeeAuth = require('./routes/employeeAuth');
+const employeeHandbook = require('./routes/employeeHandbook');
+// Create Express app
+const app = express();
+
+// ✅ Middleware
+const corsOptions = {
+  origin: ['http://127.0.0.1:5173', 'https://www.trafficbarriersolutions.com'],
+  credentials: true,
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // handle preflight for all routes
+
+app.use(helmet()); // Secure headers
+app.use(xss()); // Prevent XSS
+app.use(compression()); // GZIP compression
+
+// Limit repeated requests
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 mins
+  max: 100, // 100 requests per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+const cookieParser = require('cookie-parser');
+app.use(express.json());
+app.use(cookieParser());
+
+// ✅ Database connection
+mongoose.connect(process.env.MONGO_URL)
+  .then(() => {
+    console.log('✅ Database Connected');
+    // Optional: call a post-connection function here (e.g., cleanup)
+  })
+  .catch((err) => console.error('❌ Database Not Connected', err));
+app.use('/api/billing', billingRouter);
+// ✅ Routes
+app.use('/', require('./routes/autoBollardRoute'))
+app.use('/', require('./routes/autoHydrovacRoute'))
+app.use('/', require('./routes/autoPPERoute'))
+app.use('/', require('./routes/autoSignRoute'));
+app.use('/', require('./routes/autoControlRoute'));
+app.use('/', require('./routes/autoPlanRoute'));
+app.use('/', require('./routes/autoApplyNew'));
+app.use('/', require('./routes/directDeposit'));
+app.use('/', require('./routes/autoRentalRoute'));
+app.use('/', require('./routes/autoContactRoute'));
+app.use('/', require('./routes/autoQuoteRoute'));
+app.use('/', require('./routes/shopInvoiceRoute'));
+app.use('/', require('./routes/printCostRoute'));
+app.use('/', require('./routes/printCostLogRoute'));
+app.use('/', require('./routes/adminRoute'));
+app.use(require('./routes/invoiceRoute'));
+app.use(require('./routes/payCard'));  // if using Stripe
+ const complaintsRouter = require('./routes/complaints');
+app.use('/', require('./routes/complaints'));
+ app.use('/employee-complaint-form', complaintsRouter);
+app.use('/employee', employeeAuth);
+app.use('/', employeeHandbook);
+app.use('/tasks', require('./routes/taskRoute'));
+app.use('/signshop-jobs', require('./routes/signShopRoute'));
+app.use('/discipline', require('./routes/disciplineRoute'));
+app.use('/timeclock', require('./routes/timeClockRoute'));
+// ✅ Static file routes
+app.use('/forms', express.static(path.join(__dirname, 'forms')));
+app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
+app.use('/signshop-photos', express.static(path.join(__dirname, 'signshop-photos')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
+// server.js or app.js
+
+// ✅ Job cleaner utility (MongoDB cleanup job)
+require('./utils/cleanJob');
+
+// ✅ Applicant cleaner (deletes applicants older than 14 days)
+require('./utils/cleanApplicants');
+
+// ✅ Auto clock-out at midnight
+const { startAutoClockOut } = require('./services/autoClockOut');
+startAutoClockOut();
+
+
+
+app.use('/', workOrdersRouter);
+app.use('/', require('./routes/shopWorkOrderRoute'));
+app.use('/', require('./routes/hydrovacWorkOrderRoute'));
+app.use('/', require('./routes/leaveRequestRoute'));
+app.use('/', require('./routes/followUpRoute'));
+app.use('/', require('./routes/safetyRoute'));
+const PORT = process.env.PORT || 8000;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
+});

@@ -1,0 +1,50 @@
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const Discipline = require('../models/discipline');
+const {
+  addEmployee, listEmployees, deleteEmployee, getEmployeePoints,
+  terminateEmployee, adjustPoints,
+  submitDiscipline, listByMonth, listByDate, getDisciplinePDF
+} = require('../controllers/disciplineController');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads/discipline')),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`)
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image files are allowed'));
+  }
+});
+
+// Employee roster
+router.get('/employees', listEmployees);
+router.post('/employees', addEmployee);
+router.delete('/employees/:id', deleteEmployee);
+router.get('/employees/:id/points', getEmployeePoints);
+router.put('/employees/:id/terminate', terminateEmployee);
+router.put('/employees/:id/points', adjustPoints);
+
+// Discipline actions
+router.post('/', upload.array('attachments', 10), submitDiscipline);
+router.get('/month', listByMonth);
+router.get('/by-name/:name', async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name).trim();
+    const records = await Discipline.find({
+      employeeName: { $regex: new RegExp(`^${name}$`, 'i') }
+    }).sort({ createdAt: -1 });
+    res.json(records);
+  } catch (err) {
+    console.error('Error fetching disciplines by name:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+router.get('/:id([0-9a-fA-F]{24})/pdf', getDisciplinePDF);
+router.get('/', listByDate);
+module.exports = router;
