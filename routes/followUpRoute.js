@@ -7,4 +7,3 @@ const { sendFollowUpEmails } = require("../controllers/followUpController");
 router.post("/send-followup-emails", sendFollowUpEmails);
 
 module.exports = router;
-dPVauKIA
