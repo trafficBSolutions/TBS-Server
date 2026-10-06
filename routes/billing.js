@@ -1852,4 +1852,66 @@ router.get('/receipt/:workOrderId/pdf', async (req, res) => {
   }
 });
 
+// Send invoice/work order PDFs for a company profile (from Leah's email)
+router.post('/send-company-invoice', upload.fields([
+  { name: 'invoicePdf', maxCount: 1 },
+  { name: 'workOrderPdf', maxCount: 1 },
+  { name: 'remit', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { to, company, payStatus, payMethod, cardNumber, checkNumber } = req.body;
+    if (!to) return res.status(400).json({ message: 'Recipient email required' });
+
+    const attachments = [];
+    if (req.files?.invoicePdf?.[0]) {
+      const f = req.files.invoicePdf[0];
+      attachments.push({ filename: f.originalname || 'invoice.pdf', content: f.buffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
+    }
+    if (req.files?.workOrderPdf?.[0]) {
+      const f = req.files.workOrderPdf[0];
+      attachments.push({ filename: f.originalname || 'work-order.pdf', content: f.buffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
+    }
+    if (req.files?.remit?.[0]) {
+      const f = req.files.remit[0];
+      attachments.push({ filename: f.originalname || 'remit.pdf', content: f.buffer, contentType: f.mimetype || 'application/pdf', contentDisposition: 'attachment' });
+    }
+
+    const paymentLine = payStatus === 'paid'
+      ? `<p style="margin:5px 0"><strong>Payment Status:</strong> <span style="color:#28a745;font-weight:bold">PAID</span></p>
+         <p style="margin:5px 0"><strong>Payment Method:</strong> ${payMethod === 'card' ? `Card${cardNumber ? ` — ${cardNumber}` : ''}` : payMethod === 'check' ? `Check${checkNumber ? ` #${checkNumber}` : ''}` : 'Remit (see attachment)'}</p>`
+      : `<p style="margin:5px 0"><strong>Payment Status:</strong> <span style="color:#dc3545;font-weight:bold">UNPAID</span></p>`;
+
+    const html = `
+      <html><body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e7e7e7;color:#000">
+        <div style="max-width:600px;margin:auto;background:#fff;padding:20px;border-radius:8px">
+          <h1 style="text-align:center;background:#17365D;color:white;padding:15px;border-radius:6px;margin:0 0 20px 0">Invoice — ${company}</h1>
+          <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-bottom:20px">
+            <p style="margin:5px 0"><strong>Company:</strong> ${company}</p>
+            ${paymentLine}
+            <p style="margin:5px 0"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+          </div>
+          <p style="text-align:center;font-size:16px;margin:30px 0">Please find the attached invoice and/or work order PDF(s). Thank you for your business!</p>
+          <div style="text-align:center;border-top:2px solid #17365D;padding-top:15px;margin-top:30px">
+            <p style="margin:5px 0;font-weight:bold">Traffic &amp; Barrier Solutions, LLC</p>
+            <p style="margin:5px 0">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+            <p style="margin:5px 0">Phone: (706) 263-0175</p>
+          </div>
+        </div>
+      </body></html>`;
+
+    await transporter7.sendMail({
+      from: 'tbsellen@gmail.com',
+      to,
+      subject: `Invoice — ${company}`,
+      html,
+      attachments,
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[send-company-invoice] error:', e);
+    res.status(500).json({ message: 'Failed to send invoice', error: e.message });
+  }
+});
+
 module.exports = router;
