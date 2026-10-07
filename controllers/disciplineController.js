@@ -173,7 +173,7 @@ const submitDiscipline = async (req, res) => {
       // Load image buffers for PDF embedding
       const imageBuffers = (docObj.attachments || []).map(att => ({
         filename: att.filename,
-        buffer: att.data,
+        buffer: Buffer.isBuffer(att.data) ? att.data : Buffer.from(att.data?.buffer || att.data),
         mimetype: att.mimetype
       }));
       const pdfBuffer = await generateDisciplinePdf(docObj, imageBuffers);
@@ -262,7 +262,7 @@ const getDisciplinePDF = async (req, res) => {
     if (!doc) return res.status(404).json({ error: 'Not found' });
     const imageBuffers = (doc.attachments || []).map(att => ({
       filename: att.filename,
-      buffer: att.data,
+      buffer: Buffer.isBuffer(att.data) ? att.data : Buffer.from(att.data?.buffer || att.data),
       mimetype: att.mimetype
     }));
     const buf = await generateDisciplinePdf(doc, imageBuffers);
