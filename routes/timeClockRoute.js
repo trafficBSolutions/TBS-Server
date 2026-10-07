@@ -12,6 +12,18 @@ const { generateDisciplinePdf } = require('../services/disciplinePDF');
 const { generateHoursPdf } = require('../services/hoursPDF');
 
 const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com'];
+
+const serializeDisciplines = (docs) => docs.map(d => {
+  const obj = d.toObject ? d.toObject() : { ...d };
+  obj.attachments = (obj.attachments || []).map(att => ({
+    filename: att.filename,
+    mimetype: att.mimetype,
+    dataUrl: att.data
+      ? `data:${att.mimetype};base64,${Buffer.isBuffer(att.data) ? att.data.toString('base64') : Buffer.from(att.data.buffer || att.data).toString('base64')}`
+      : null
+  }));
+  return obj;
+});
 const HOURS_EMAILS = ['tbsolutions9@gmail.com', 'materialworx2@gmail.com', 'tbsolutions1995@gmail.com'];
 // Helper: get Eastern Time UTC offset in hours (handles DST automatically)
 // Returns positive number (4 for EDT, 5 for EST) to ADD to local time to get UTC
@@ -123,7 +135,7 @@ const handlePunch = async (req, res) => {
         return res.status(403).json({
           message: 'You must review and acknowledge your disciplinary action(s) before clocking out.',
           action: 'discipline_required',
-          disciplines: allPending,
+          disciplines: serializeDisciplines(allPending),
           personId: person.id,
           personName: person.name
         });
@@ -193,7 +205,7 @@ const handlePunch = async (req, res) => {
         return res.status(403).json({
           message: 'You must review and acknowledge your disciplinary action(s) before clocking in.',
           action: 'discipline_required',
-          disciplines: allPending,
+          disciplines: serializeDisciplines(allPending),
           personId: person.id,
           personName: person.name
         });
@@ -480,7 +492,7 @@ router.post('/admin-self-punch', verifyIp, async (req, res) => {
         return res.status(403).json({
           message: 'You must review and acknowledge your disciplinary action(s) before clocking out.',
           action: 'discipline_required',
-          disciplines: pendingDisciplines,
+          disciplines: serializeDisciplines(pendingDisciplines),
           personId: admin._id,
           personName
         });
@@ -493,7 +505,7 @@ router.post('/admin-self-punch', verifyIp, async (req, res) => {
         return res.status(403).json({
           message: 'You must review and acknowledge your disciplinary action(s) before clocking in.',
           action: 'discipline_required',
-          disciplines: pendingDisciplines,
+          disciplines: serializeDisciplines(pendingDisciplines),
           personId: admin._id,
           personName
         });
