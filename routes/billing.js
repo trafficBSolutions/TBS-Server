@@ -1923,9 +1923,10 @@ router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
     // Resend email if requested
     if (resend === 'true') {
       const attachments = [];
-      const invoicePdfData = set.invoicePdfData || record.invoicePdfData;
-      const workOrderPdfData = set.workOrderPdfData || record.workOrderPdfData;
-      const remitData = set.remitData || record.remitData;
+      const toBuffer = (v) => v ? Buffer.from(v.buffer || v) : null;
+      const invoicePdfData = toBuffer(set.invoicePdfData || record.invoicePdfData);
+      const workOrderPdfData = toBuffer(set.workOrderPdfData || record.workOrderPdfData);
+      const remitData = toBuffer(set.remitData || record.remitData);
       if (invoicePdfData) attachments.push({ filename: record.invoicePdfName || 'invoice.pdf', content: invoicePdfData, contentType: 'application/pdf', contentDisposition: 'attachment' });
       if (workOrderPdfData) attachments.push({ filename: record.workOrderPdfName || 'work-order.pdf', content: workOrderPdfData, contentType: 'application/pdf', contentDisposition: 'attachment' });
       if (remitData) attachments.push({ filename: record.remitName || 'remit.pdf', content: remitData, contentType: 'application/pdf', contentDisposition: 'attachment' });
