@@ -2,7 +2,6 @@ const Discipline = require('../models/discipline');
 const DisciplineEmployee = require('../models/disciplineEmployee');
 const TimeClockEmployee = require('../models/timeClockEmployee');
 const Admin = require('../models/Admin');
-const fs = require('fs');
 const path = require('path');
 const { transporter } = require('../utils/emailConfig');
 const { generateDisciplinePdf } = require('../services/disciplinePDF');
@@ -131,7 +130,7 @@ const submitDiscipline = async (req, res) => {
       newTotalPoints: newTotal,
       attachments: (req.files || []).map(f => ({
         filename: f.originalname,
-        path: f.path,
+        data: f.buffer,
         mimetype: f.mimetype
       }))
     });
@@ -174,7 +173,7 @@ const submitDiscipline = async (req, res) => {
       // Load image buffers for PDF embedding
       const imageBuffers = (docObj.attachments || []).map(att => ({
         filename: att.filename,
-        buffer: fs.readFileSync(att.path),
+        buffer: att.data,
         mimetype: att.mimetype
       }));
       const pdfBuffer = await generateDisciplinePdf(docObj, imageBuffers);
@@ -263,7 +262,7 @@ const getDisciplinePDF = async (req, res) => {
     if (!doc) return res.status(404).json({ error: 'Not found' });
     const imageBuffers = (doc.attachments || []).map(att => ({
       filename: att.filename,
-      buffer: fs.readFileSync(att.path),
+      buffer: att.data,
       mimetype: att.mimetype
     }));
     const buf = await generateDisciplinePdf(doc, imageBuffers);
