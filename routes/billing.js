@@ -1874,9 +1874,12 @@ router.get('/company-invoices-all', async (req, res) => {
 // Mark a company invoice as paid
 router.patch('/company-invoice-pay/:id', async (req, res) => {
   try {
+    const { payMethod } = req.body;
+    const set = { payStatus: 'paid' };
+    if (payMethod) set.payMethod = payMethod;
     const record = await CompanyInvoice.findByIdAndUpdate(
       req.params.id,
-      { $set: { payStatus: 'paid' } },
+      { $set: set },
       { new: true }
     ).select('-invoicePdfData -workOrderPdfData -remitData').lean();
     if (!record) return res.status(404).json({ message: 'Record not found' });
