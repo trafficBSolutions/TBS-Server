@@ -2008,13 +2008,17 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
   { name: 'remit', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { to, company, payStatus, payMethod, cardNumber, checkNumber, invoiceNumber, additionalEmails } = req.body;
+    const { to, company, payStatus, payMethod, cardNumber, checkNumber, invoiceNumber, additionalEmails, lineItems } = req.body;
     if (!to) return res.status(400).json({ message: 'Recipient email required' });
 
     // Parse additional emails
     let extraEmails = [];
     if (additionalEmails) {
       try { extraEmails = JSON.parse(additionalEmails); } catch { extraEmails = []; }
+    }
+    let parsedLineItems = [];
+    if (lineItems) {
+      try { parsedLineItems = JSON.parse(lineItems); } catch { parsedLineItems = []; }
     }
     const allRecipients = [to, ...extraEmails].filter(e => e && e.trim());
 
@@ -2079,6 +2083,7 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
       company, invoiceNumber: invoiceNumber || '', sentTo: to,
       additionalEmails: extraEmails,
       payStatus, payMethod,
+      lineItems: parsedLineItems,
       invoicePdfName, invoicePdfData,
       workOrderPdfName, workOrderPdfData,
       remitName, remitData,
