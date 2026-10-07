@@ -388,9 +388,13 @@ const upload = multer({
       cb(new Error('Only PDF files are allowed'), false);
     }
   },
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  }
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+// Permissive multer for company invoices — accepts PDFs and images (remit can be either)
+const uploadCompanyInvoice = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 }
 });
 
 
@@ -1886,7 +1890,7 @@ router.get('/company-invoice-pdf/:id/:type', async (req, res) => {
 });
 
 // Send invoice/work order PDFs for a company profile (from Leah's email)
-router.post('/send-company-invoice', upload.fields([
+router.post('/send-company-invoice', uploadCompanyInvoice.fields([
   { name: 'invoicePdf', maxCount: 1 },
   { name: 'workOrderPdf', maxCount: 1 },
   { name: 'remit', maxCount: 1 }
