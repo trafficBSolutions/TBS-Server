@@ -30,7 +30,7 @@ const DisciplineSchema = new mongoose.Schema({
   acknowledged:      { type: Boolean, default: false },
   acknowledgedAt:    { type: Date },
   acknowledgedName:  { type: String },
-  attachments:       [{ filename: String, path: String, mimetype: String }]
+  attachments:       [{ filename: String, data: Buffer, mimetype: String }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Discipline', DisciplineSchema);
