@@ -1852,6 +1852,39 @@ router.get('/receipt/:workOrderId/pdf', async (req, res) => {
   }
 });
 
+const CompanyInvoice = require('../models/companyInvoice');
+
+// Get saved invoice records for a company (exclude binary PDF data from list)
+router.get('/company-invoices/:company', async (req, res) => {
+  try {
+    const company = decodeURIComponent(req.params.company);
+    const records = await CompanyInvoice.find({ company })
+      .select('-invoicePdfData -workOrderPdfData -remitData')
+      .sort({ sentAt: -1 }).lean();
+    res.json(records);
+  } catch (e) {
+    console.error('[company-invoices GET] error:', e);
+    res.status(500).json({ message: 'Failed to fetch company invoices', error: e.message });
+  }
+});
+
+// Get saved invoice PDF by record ID and file type
+router.get('/company-invoice-pdf/:id/:type', async (req, res) => {
+  try {
+    const { id, type } = req.params;
+    const record = await CompanyInvoice.findById(id).lean();
+    if (!record) return res.status(404).json({ message: 'Record not found' });
+    const fieldMap = { invoice: ['invoicePdfData', 'invoicePdfName'], workorder: ['workOrderPdfData', 'workOrderPdfName'], remit: ['remitData', 'remitName'] };
+    const [dataField, nameField] = fieldMap[type] || [];
+    if (!dataField || !record[dataField]) return res.status(404).json({ message: 'PDF not found' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${record[nameField] || 'document.pdf'}"`);
+    res.send(record[dataField]);
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to fetch PDF', error: e.message });
+  }
+});
+
 // Send invoice/work order PDFs for a company profile (from Leah's email)
 router.post('/send-company-invoice', upload.fields([
   { name: 'invoicePdf', maxCount: 1 },
@@ -1859,21 +1892,38 @@ router.post('/send-company-invoice', upload.fields([
   { name: 'remit', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { to, company, payStatus, payMethod, cardNumber, checkNumber } = req.body;
+    const { to, company, payStatus, payMethod, cardNumber, checkNumber, invoiceNumber, additionalEmails } = req.body;
     if (!to) return res.status(400).json({ message: 'Recipient email required' });
 
+    // Parse additional emails
+    let extraEmails = [];
+    if (additionalEmails) {
+      try { extraEmails = JSON.parse(additionalEmails); } catch { extraEmails = []; }
+    }
+    const allRecipients = [to, ...extraEmails].filter(e => e && e.trim());
+
     const attachments = [];
+    let invoicePdfName = null, invoicePdfData = null;
+    let workOrderPdfName = null, workOrderPdfData = null;
+    let remitName = null, remitData = null;
+
     if (req.files?.invoicePdf?.[0]) {
       const f = req.files.invoicePdf[0];
-      attachments.push({ filename: f.originalname || 'invoice.pdf', content: f.buffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
+      invoicePdfName = f.originalname || 'invoice.pdf';
+      invoicePdfData = f.buffer;
+      attachments.push({ filename: invoicePdfName, content: f.buffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
     }
     if (req.files?.workOrderPdf?.[0]) {
       const f = req.files.workOrderPdf[0];
-      attachments.push({ filename: f.originalname || 'work-order.pdf', content: f.buffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
+      workOrderPdfName = f.originalname || 'work-order.pdf';
+      workOrderPdfData = f.buffer;
+      attachments.push({ filename: workOrderPdfName, content: f.buffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
     }
     if (req.files?.remit?.[0]) {
       const f = req.files.remit[0];
-      attachments.push({ filename: f.originalname || 'remit.pdf', content: f.buffer, contentType: f.mimetype || 'application/pdf', contentDisposition: 'attachment' });
+      remitName = f.originalname || 'remit.pdf';
+      remitData = f.buffer;
+      attachments.push({ filename: remitName, content: f.buffer, contentType: f.mimetype || 'application/pdf', contentDisposition: 'attachment' });
     }
 
     const paymentLine = payStatus === 'paid'
@@ -1887,6 +1937,7 @@ router.post('/send-company-invoice', upload.fields([
           <h1 style="text-align:center;background:#17365D;color:white;padding:15px;border-radius:6px;margin:0 0 20px 0">Invoice — ${company}</h1>
           <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-bottom:20px">
             <p style="margin:5px 0"><strong>Company:</strong> ${company}</p>
+            ${invoiceNumber ? `<p style="margin:5px 0"><strong>Invoice #:</strong> ${invoiceNumber}</p>` : ''}
             ${paymentLine}
             <p style="margin:5px 0"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
           </div>
@@ -1901,10 +1952,20 @@ router.post('/send-company-invoice', upload.fields([
 
     await transporter7.sendMail({
       from: process.env.EMAIL_USER_7,
-      to,
-      subject: `Invoice — ${company}`,
+      to: allRecipients,
+      subject: `Invoice — ${company}${invoiceNumber ? ` #${invoiceNumber}` : ''}`,
       html,
       attachments,
+    });
+
+    // Save metadata + PDF buffers to MongoDB
+    await CompanyInvoice.create({
+      company, invoiceNumber: invoiceNumber || '', sentTo: to,
+      additionalEmails: extraEmails,
+      payStatus, payMethod,
+      invoicePdfName, invoicePdfData,
+      workOrderPdfName, workOrderPdfData,
+      remitName, remitData,
     });
 
     res.json({ ok: true });
