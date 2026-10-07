@@ -1886,14 +1886,14 @@ router.patch('/company-invoice-pay/:id', async (req, res) => {
   }
 });
 
-// Edit a company invoice (metadata + optional PDF replacements)
+// Edit a company invoice (metadata + optional PDF replacements + optional resend)
 router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
   { name: 'invoicePdf', maxCount: 1 },
   { name: 'workOrderPdf', maxCount: 1 },
   { name: 'remit', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { invoiceNumber, payStatus, payMethod, sentTo, additionalEmails } = req.body;
+    const { invoiceNumber, payStatus, payMethod, sentTo, additionalEmails, resend } = req.body;
     const set = {};
     if (invoiceNumber !== undefined) set.invoiceNumber = invoiceNumber;
     if (payStatus !== undefined) set.payStatus = payStatus;
@@ -1914,11 +1914,55 @@ router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
       set.remitName = req.files.remit[0].originalname || 'remit.pdf';
       set.remitData = req.files.remit[0].buffer;
     }
+
     const record = await CompanyInvoice.findByIdAndUpdate(
       req.params.id, { $set: set }, { new: true }
-    ).select('-invoicePdfData -workOrderPdfData -remitData').lean();
+    ).lean();
     if (!record) return res.status(404).json({ message: 'Record not found' });
-    res.json(record);
+
+    // Resend email if requested
+    if (resend === 'true') {
+      const attachments = [];
+      const invoicePdfData = set.invoicePdfData || record.invoicePdfData;
+      const workOrderPdfData = set.workOrderPdfData || record.workOrderPdfData;
+      const remitData = set.remitData || record.remitData;
+      if (invoicePdfData) attachments.push({ filename: record.invoicePdfName || 'invoice.pdf', content: invoicePdfData, contentType: 'application/pdf', contentDisposition: 'attachment' });
+      if (workOrderPdfData) attachments.push({ filename: record.workOrderPdfName || 'work-order.pdf', content: workOrderPdfData, contentType: 'application/pdf', contentDisposition: 'attachment' });
+      if (remitData) attachments.push({ filename: record.remitName || 'remit.pdf', content: remitData, contentType: 'application/pdf', contentDisposition: 'attachment' });
+
+      const recipients = [record.sentTo, ...(record.additionalEmails || [])].filter(Boolean);
+      const company = record.company || '';
+      const invNum = record.invoiceNumber || '';
+      const html = `
+        <html><body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e7e7e7;color:#000">
+          <div style="max-width:600px;margin:auto;background:#fff;padding:20px;border-radius:8px">
+            <h1 style="text-align:center;background:#17365D;color:white;padding:15px;border-radius:6px;margin:0 0 20px 0">Updated Invoice — ${company}</h1>
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-bottom:20px">
+              <p style="margin:5px 0"><strong>Company:</strong> ${company}</p>
+              ${invNum ? `<p style="margin:5px 0"><strong>Invoice #:</strong> ${invNum}</p>` : ''}
+              <p style="margin:5px 0"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+            </div>
+            <p style="text-align:center;font-size:16px;margin:30px 0">Please find the updated invoice PDF(s) attached. Thank you!</p>
+            <div style="text-align:center;border-top:2px solid #17365D;padding-top:15px;margin-top:30px">
+              <p style="margin:5px 0;font-weight:bold">Traffic &amp; Barrier Solutions, LLC</p>
+              <p style="margin:5px 0">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+              <p style="margin:5px 0">Phone: (706) 263-0175</p>
+            </div>
+          </div>
+        </body></html>`;
+
+      await transporter7.sendMail({
+        from: process.env.EMAIL_USER_7,
+        to: recipients,
+        subject: `Updated Invoice — ${company}${invNum ? ` #${invNum}` : ''}`,
+        html,
+        attachments,
+      });
+    }
+
+    // Strip binary fields before returning
+    const { invoicePdfData: _a, workOrderPdfData: _b, remitData: _c, ...safe } = record;
+    res.json(safe);
   } catch (e) {
     console.error('[company-invoice PATCH] error:', e);
     res.status(500).json({ message: 'Failed to update invoice', error: e.message });
