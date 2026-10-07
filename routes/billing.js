@@ -1996,9 +1996,13 @@ router.get('/company-invoice-pdf/:id/:type', async (req, res) => {
     const fieldMap = { invoice: ['invoicePdfData', 'invoicePdfName'], workorder: ['workOrderPdfData', 'workOrderPdfName'], remit: ['remitData', 'remitName'] };
     const [dataField, nameField] = fieldMap[type] || [];
     if (!dataField || !record[dataField]) return res.status(404).json({ message: 'PDF not found' });
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${record[nameField] || 'document.pdf'}"`);
-    res.send(record[dataField]);
+    const buf = Buffer.from(record[dataField].buffer || record[dataField]);
+    const filename = record[nameField] || 'document.pdf';
+    const ext = filename.split('.').pop().toLowerCase();
+    const mime = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'application/pdf';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.send(buf);
   } catch (e) {
     res.status(500).json({ message: 'Failed to fetch PDF', error: e.message });
   }
