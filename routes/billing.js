@@ -1886,6 +1886,45 @@ router.patch('/company-invoice-pay/:id', async (req, res) => {
   }
 });
 
+// Edit a company invoice (metadata + optional PDF replacements)
+router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
+  { name: 'invoicePdf', maxCount: 1 },
+  { name: 'workOrderPdf', maxCount: 1 },
+  { name: 'remit', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { invoiceNumber, payStatus, payMethod, sentTo, additionalEmails } = req.body;
+    const set = {};
+    if (invoiceNumber !== undefined) set.invoiceNumber = invoiceNumber;
+    if (payStatus !== undefined) set.payStatus = payStatus;
+    if (payMethod !== undefined) set.payMethod = payMethod;
+    if (sentTo !== undefined) set.sentTo = sentTo;
+    if (additionalEmails !== undefined) {
+      try { set.additionalEmails = JSON.parse(additionalEmails); } catch { set.additionalEmails = []; }
+    }
+    if (req.files?.invoicePdf?.[0]) {
+      set.invoicePdfName = req.files.invoicePdf[0].originalname || 'invoice.pdf';
+      set.invoicePdfData = req.files.invoicePdf[0].buffer;
+    }
+    if (req.files?.workOrderPdf?.[0]) {
+      set.workOrderPdfName = req.files.workOrderPdf[0].originalname || 'work-order.pdf';
+      set.workOrderPdfData = req.files.workOrderPdf[0].buffer;
+    }
+    if (req.files?.remit?.[0]) {
+      set.remitName = req.files.remit[0].originalname || 'remit.pdf';
+      set.remitData = req.files.remit[0].buffer;
+    }
+    const record = await CompanyInvoice.findByIdAndUpdate(
+      req.params.id, { $set: set }, { new: true }
+    ).select('-invoicePdfData -workOrderPdfData -remitData').lean();
+    if (!record) return res.status(404).json({ message: 'Record not found' });
+    res.json(record);
+  } catch (e) {
+    console.error('[company-invoice PATCH] error:', e);
+    res.status(500).json({ message: 'Failed to update invoice', error: e.message });
+  }
+});
+
 // Get saved invoice records for a company (exclude binary PDF data from list)
 router.get('/company-invoices/:company', async (req, res) => {
   try {
