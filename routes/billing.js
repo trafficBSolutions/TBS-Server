@@ -1858,6 +1858,34 @@ router.get('/receipt/:workOrderId/pdf', async (req, res) => {
 
 const CompanyInvoice = require('../models/companyInvoice');
 
+// Get all company invoice records (exclude binary PDF data)
+router.get('/company-invoices-all', async (req, res) => {
+  try {
+    const records = await CompanyInvoice.find()
+      .select('-invoicePdfData -workOrderPdfData -remitData')
+      .sort({ sentAt: -1 }).lean();
+    res.json(records);
+  } catch (e) {
+    console.error('[company-invoices-all GET] error:', e);
+    res.status(500).json({ message: 'Failed to fetch company invoices', error: e.message });
+  }
+});
+
+// Mark a company invoice as paid
+router.patch('/company-invoice-pay/:id', async (req, res) => {
+  try {
+    const record = await CompanyInvoice.findByIdAndUpdate(
+      req.params.id,
+      { $set: { payStatus: 'paid' } },
+      { new: true }
+    ).select('-invoicePdfData -workOrderPdfData -remitData').lean();
+    if (!record) return res.status(404).json({ message: 'Record not found' });
+    res.json(record);
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to update pay status', error: e.message });
+  }
+});
+
 // Get saved invoice records for a company (exclude binary PDF data from list)
 router.get('/company-invoices/:company', async (req, res) => {
   try {
