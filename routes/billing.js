@@ -2120,8 +2120,46 @@ router.post('/company-invoices-import', async (req, res) => {
       return isNaN(n) ? undefined : n;
     };
 
+    const COMPANY_MAP = {
+      'agl southern co': 'Atlanta Gas Light',
+      'agl': 'Atlanta Gas Light',
+      'btr': 'Broadband Technical Resources',
+      'broadband technical resources': 'Broadband Technical Resources',
+      'broadband of indiana, llc': 'Broadband of Indiana',
+      'broadband of indiana': 'Broadband of Indiana',
+      'ga power': 'Georgia Power',
+      'georgia power': 'Georgia Power',
+      'carmichael development': 'Carmichael Development LLC',
+      'carmichael development llc': 'Carmichael Development LLC',
+      'fairway electric': 'Fairway Electric',
+      'h and h paving and concrete': 'H and H Paving and Concrete',
+      'h&h paving': 'H and H Paving and Concrete',
+      'magnum paving': 'Magnum Paving',
+      'magnum paving llc': 'Magnum Paving',
+      'perman construction': 'Perman Construction',
+      'pike electric': 'Pike Electric',
+      'pike electric corporation': 'Pike Electric',
+      'service electric': 'Service Electric',
+      'source one': 'Source One',
+      'the surface masters': 'The Surface Masters',
+      'tindall': 'Tindall',
+      'tindall corporation': 'Tindall',
+      'wilson boys enterprises': 'Wilson Boys Enterprises',
+      'wilson boys enterprises, llc': 'Wilson Boys Enterprises',
+      'global infrastructure': 'Global Infrastructure',
+      'linetec services': 'Linetec Services',
+      'desoto': 'Desoto',
+      'j and a grading': 'J and A Grading',
+      'hasbun construction, llc': 'Hasbun Construction, LLC',
+      'hd excavations & utilities': 'HD Excavations & Utilities',
+    };
+    const normalizeCompany = (name) => {
+      if (!name) return 'Unknown';
+      return COMPANY_MAP[name.trim().toLowerCase()] || name.trim();
+    };
+
     const docs = records.map(r => ({
-      company: r.company || r.billedTo || 'Unknown',
+      company: normalizeCompany(r.company || r.billedTo),
       invoiceNumber: r.invoiceNumber || r.invNumber || '',
       isHistorical: true,
       dateBilled: toDate(r.dateBilled),
