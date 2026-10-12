@@ -23,6 +23,24 @@ const companyInvoiceSchema = new mongoose.Schema({
   workOrderPdfData: { type: Buffer },
   remitName: { type: String },
   remitData: { type: Buffer },
+  // Historical ledger fields
+  isHistorical: { type: Boolean, default: false },
+  dateBilled: { type: Date },
+  dueDate: { type: Date },
+  amount: { type: Number },
+  streetNum: { type: String },
+  streetName: { type: String },
+  city: { type: String },
+  state: { type: String },
+  workOrder: { type: String },
+  amountReceived: { type: Number },
+  dateOfDeposit: { type: Date },
+  ckOrEft: { type: String },
+  checkOrEftDate: { type: Date },
+  officerOrAb: { type: String },
+  abSignsLightsCones: { type: String },
+  mileage: { type: String },
+  extra: { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.model('CompanyInvoice', companyInvoiceSchema);
