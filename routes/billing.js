@@ -2103,4 +2103,54 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
   }
 });
 
+// Bulk import historical ledger records
+router.post('/company-invoices-import', async (req, res) => {
+  try {
+    const { records } = req.body;
+    if (!Array.isArray(records) || !records.length)
+      return res.status(400).json({ message: 'records array required' });
+
+    const toDate = (v) => {
+      if (!v) return undefined;
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? undefined : d;
+    };
+    const toNum = (v) => {
+      const n = Number(String(v || '').replace(/[$,]/g, ''));
+      return isNaN(n) ? undefined : n;
+    };
+
+    const docs = records.map(r => ({
+      company: r.company || r.billedTo || 'Unknown',
+      invoiceNumber: r.invoiceNumber || r.invNumber || '',
+      isHistorical: true,
+      dateBilled: toDate(r.dateBilled),
+      sentAt: toDate(r.dateBilled) || new Date(),
+      dueDate: toDate(r.dueDate),
+      amount: toNum(r.amount),
+      streetNum: r.streetNum || '',
+      streetName: r.streetName || '',
+      city: r.city || '',
+      state: r.state || '',
+      workOrder: r.workOrder || '',
+      amountReceived: toNum(r.amountReceived),
+      dateOfDeposit: toDate(r.dateOfDeposit),
+      ckOrEft: r.ckOrEft || '',
+      checkOrEftDate: toDate(r.checkOrEftDate),
+      officerOrAb: r.officerOrAb || '',
+      abSignsLightsCones: r.abSignsLightsCones || '',
+      mileage: r.mileage || '',
+      extra: r.extra || '',
+      payStatus: (toNum(r.amountReceived) > 0) ? 'paid' : 'unpaid',
+      payMethod: r.ckOrEft || '',
+    }));
+
+    const inserted = await CompanyInvoice.insertMany(docs, { ordered: false });
+    res.json({ ok: true, inserted: inserted.length });
+  } catch (e) {
+    console.error('[company-invoices-import] error:', e);
+    res.status(500).json({ message: 'Import failed', error: e.message });
+  }
+});
+
 module.exports = router;
