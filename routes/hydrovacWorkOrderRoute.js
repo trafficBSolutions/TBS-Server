@@ -5,6 +5,13 @@ const { transporter } = require('../utils/emailConfig');
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
+const { v2: cloudinary } = require('cloudinary');
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com', 'tbsolutions.work.orders@gmail.com'];
 
@@ -200,6 +207,33 @@ router.post('/hydrovac-work-order', async (req, res) => {
   } catch (e) {
     console.error('Hydrovac work order submission error:', e);
     res.status(500).json({ error: 'Internal Server Error', details: e.message });
+  }
+});
+
+// POST /hydrovac-work-order/:id/pdf-cloudinary — generate PDF, upload to Cloudinary, return URL
+router.post('/hydrovac-work-order/:id/pdf-cloudinary', async (req, res) => {
+  try {
+    const wo = await HydrovacWorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ error: 'Work order not found.' });
+
+    const html = renderHydrovacWorkOrderHTML(wo);
+    const pdfBuffer = await generatePdf(html);
+
+    const uploadResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { resource_type: 'raw', folder: 'hydrovac-work-orders', public_id: `hydrovac-wo-${wo._id}`, overwrite: true },
+        (err, result) => err ? reject(err) : resolve(result)
+      );
+      stream.end(pdfBuffer);
+    });
+
+    wo.pdfUrl = uploadResult.secure_url;
+    await wo.save();
+
+    res.json({ url: uploadResult.secure_url });
+  } catch (e) {
+    console.error('Hydrovac WO Cloudinary upload error:', e);
+    res.status(500).json({ error: 'Failed to upload PDF.' });
   }
 });
 
