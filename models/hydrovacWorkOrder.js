@@ -35,8 +35,9 @@ const HydrovacWorkOrderSchema = new mongoose.Schema({
   tcEndTime: { type: String, default: '' },
   tcTrucks: [{ type: String }],
 
-  // Signature
+  // Signatures
   foremanSignature: { type: String, required: true },
+  tbsForemanSignature: { type: String, default: '' },
 
   notes: { type: String, default: '' },
   pdfUrl: { type: String, default: '' },
