@@ -39,6 +39,7 @@ const HydrovacWorkOrderSchema = new mongoose.Schema({
   foremanSignature: { type: String, required: true },
 
   notes: { type: String, default: '' },
+  pdfUrl: { type: String, default: '' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('HydrovacWorkOrder', HydrovacWorkOrderSchema);
