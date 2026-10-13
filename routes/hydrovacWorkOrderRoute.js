@@ -40,6 +40,10 @@ function renderHydrovacWorkOrderHTML(wo) {
     ? `<div class="sig-block"><div class="sig-label">Foreman Signature</div><img class="sig-img" src="data:image/png;base64,${wo.foremanSignature}" alt="Signature"/></div>`
     : '';
 
+  const tbsSigSection = wo.tbsForemanSignature
+    ? `<div class="sig-block"><div class="sig-label">TBS Foreman Signature</div><img class="sig-img" src="data:image/png;base64,${wo.tbsForemanSignature}" alt="TBS Signature"/></div>`
+    : '';
+
   return `<!doctype html>
 <html><head><meta charset="utf-8"/><title>Hydrovac Work Order</title>
 <style>
@@ -109,6 +113,7 @@ function renderHydrovacWorkOrderHTML(wo) {
   ${wo.notes ? `<div class="section-title">Notes</div><div class="notes-box">${wo.notes}</div>` : ''}
 
   ${sigSection}
+  ${tbsSigSection}
 </body></html>`;
 }
 
@@ -144,7 +149,9 @@ router.post('/hydrovac-work-order', async (req, res) => {
       arrivalAtLocate, arrivalBackAtShop,
       greasePointsChecked, truckCleanedOut, filterCleaned, waterRefill,
       trafficControlUsed, tcStartTime, tcEndTime, tcTrucks,
-      foremanSignature, notes,
+      foremanSignature,
+      tbsForemanSignature,
+      notes,
     } = req.body;
 
     if (!date || !coordinator || !cdlDriver ||
@@ -172,6 +179,7 @@ router.post('/hydrovac-work-order', async (req, res) => {
       tcEndTime: trafficControlUsed ? (tcEndTime || '') : '',
       tcTrucks: trafficControlUsed ? (tcTrucks || []) : [],
       foremanSignature,
+      tbsForemanSignature: tbsForemanSignature || '',
       notes: notes || '',
     });
 
