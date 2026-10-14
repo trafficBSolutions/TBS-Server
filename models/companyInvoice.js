@@ -33,7 +33,6 @@ const companyInvoiceSchema = new mongoose.Schema({
   city: { type: String },
   state: { type: String },
   workOrder: { type: String },
-  coordinator: { type: String },
   amountReceived: { type: Number },
   dateOfDeposit: { type: Date },
   ckOrEft: { type: String },
