@@ -1902,7 +1902,7 @@ router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
     if (payStatus !== undefined) set.payStatus = payStatus;
     if (payMethod !== undefined) set.payMethod = payMethod;
     if (sentTo !== undefined) set.sentTo = sentTo;
-    if (coordinator !== undefined) set.coordinator = coordinator;
+    if (coordinator !== undefined) set.workOrder = coordinator;
     if (amountReceived !== undefined && amountReceived !== '') set.amountReceived = Number(amountReceived);
     if (dateOfDeposit) set.dateOfDeposit = new Date(dateOfDeposit);
     if (additionalEmails !== undefined) {
@@ -2093,7 +2093,7 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
       company, invoiceNumber: invoiceNumber || '', sentTo: to,
       additionalEmails: extraEmails,
       payStatus, payMethod,
-      coordinator: coordinator || '',
+      workOrder: coordinator || '',
       lineItems: parsedLineItems,
       invoicePdfName, invoicePdfData,
       workOrderPdfName, workOrderPdfData,
