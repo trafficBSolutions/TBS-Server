@@ -137,8 +137,8 @@ function renderV42Document({
     <div class="company">
       <div class="name">TBS</div>
       <div>Traffic and Barrier Solutions, LLC</div>
-      <div>1999 Dews Pond Rd SE</div>
-      <div>Calhoun, GA 30701</div>
+      <div>P.O. Box 155</div>
+      <div>Calhoun, GA 30703</div>
       <div>Cell: 706-263-0175</div>
       <div>Email: tbsolutions3@gmail.com</div>
       <div class="site">Website: www.TrafficBarrierSolutions.com</div>
