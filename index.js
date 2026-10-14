@@ -36,7 +36,18 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Higher limit for internal read-only endpoints
+const readLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use(limiter);
+app.use('/print-costs', readLimiter);
+app.use('/print-cost-logs', readLimiter);
 
 const cookieParser = require('cookie-parser');
 app.use(express.json({ limit: '10mb' }));
