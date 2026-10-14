@@ -1896,12 +1896,14 @@ router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
   { name: 'remit', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { invoiceNumber, payStatus, payMethod, sentTo, additionalEmails, resend } = req.body;
+    const { invoiceNumber, payStatus, payMethod, sentTo, additionalEmails, resend, amountReceived, dateOfDeposit } = req.body;
     const set = {};
     if (invoiceNumber !== undefined) set.invoiceNumber = invoiceNumber;
     if (payStatus !== undefined) set.payStatus = payStatus;
     if (payMethod !== undefined) set.payMethod = payMethod;
     if (sentTo !== undefined) set.sentTo = sentTo;
+    if (amountReceived !== undefined && amountReceived !== '') set.amountReceived = Number(amountReceived);
+    if (dateOfDeposit) set.dateOfDeposit = new Date(dateOfDeposit);
     if (additionalEmails !== undefined) {
       try { set.additionalEmails = JSON.parse(additionalEmails); } catch { set.additionalEmails = []; }
     }
