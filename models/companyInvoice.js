@@ -41,6 +41,7 @@ const companyInvoiceSchema = new mongoose.Schema({
   abSignsLightsCones: { type: String },
   mileage: { type: String },
   extra: { type: String },
+  notes: { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.model('CompanyInvoice', companyInvoiceSchema);
