@@ -1896,13 +1896,14 @@ router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
   { name: 'remit', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { invoiceNumber, payStatus, payMethod, sentTo, additionalEmails, resend, amountReceived, dateOfDeposit, coordinator } = req.body;
+    const { invoiceNumber, payStatus, payMethod, sentTo, additionalEmails, resend, amountReceived, dateOfDeposit, coordinator, notes } = req.body;
     const set = {};
     if (invoiceNumber !== undefined) set.invoiceNumber = invoiceNumber;
     if (payStatus !== undefined) set.payStatus = payStatus;
     if (payMethod !== undefined) set.payMethod = payMethod;
     if (sentTo !== undefined) set.sentTo = sentTo;
     if (coordinator !== undefined) set.workOrder = coordinator;
+    if (notes !== undefined) set.notes = notes;
     if (amountReceived !== undefined && amountReceived !== '') set.amountReceived = Number(amountReceived);
     if (dateOfDeposit) set.dateOfDeposit = new Date(dateOfDeposit);
     if (additionalEmails !== undefined) {
@@ -1949,6 +1950,7 @@ router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
               ${invNum ? `<p style="margin:5px 0"><strong>Invoice #:</strong> ${invNum}</p>` : ''}
               <p style="margin:5px 0"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
             </div>
+            ${record.notes ? `<div style="margin:16px 0;padding:14px 16px;background:#fffbe6;border-left:4px solid #f0ad4e;border-radius:0 6px 6px 0"><strong style="color:#856404;font-size:14px;">📝 Additional Notes:</strong><p style="margin:6px 0 0;color:#495057;line-height:1.5;font-style:italic">${record.notes}</p></div>` : ''}
             <p style="text-align:center;font-size:16px;margin:30px 0">Please find the updated invoice PDF(s) attached. Thank you!</p>
             <div style="text-align:center;border-top:2px solid #17365D;padding-top:15px;margin-top:30px">
               <p style="margin:5px 0;font-weight:bold">Traffic &amp; Barrier Solutions, LLC</p>
@@ -2018,7 +2020,7 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
   { name: 'remit', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { to, company, payStatus, payMethod, cardNumber, checkNumber, invoiceNumber, additionalEmails, lineItems, coordinator } = req.body;
+    const { to, company, payStatus, payMethod, cardNumber, checkNumber, invoiceNumber, additionalEmails, lineItems, coordinator, notes } = req.body;
     if (!to) return res.status(400).json({ message: 'Recipient email required' });
 
     // Parse additional emails
@@ -2056,6 +2058,12 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
       attachments.push({ filename: remitName, content: f.buffer, contentType: f.mimetype || 'application/pdf', contentDisposition: 'attachment' });
     }
 
+    const notesHtml = notes ? `
+      <div style="margin:16px 0;padding:14px 16px;background:#fffbe6;border-left:4px solid #f0ad4e;border-radius:0 6px 6px 0">
+        <strong style="color:#856404;font-size:14px;">📝 Additional Notes:</strong>
+        <p style="margin:6px 0 0;color:#495057;line-height:1.5;font-style:italic">${notes}</p>
+      </div>` : '';
+
     const paymentLine = payStatus === 'paid'
       ? `<p style="margin:5px 0"><strong>Payment Status:</strong> <span style="color:#28a745;font-weight:bold">PAID</span></p>
          <p style="margin:5px 0"><strong>Payment Method:</strong> ${payMethod === 'card' ? `Card${cardNumber ? ` — ${cardNumber}` : ''}` : payMethod === 'check' ? `Check${checkNumber ? ` #${checkNumber}` : ''}` : 'Remit (see attachment)'}</p>`
@@ -2071,6 +2079,7 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
             ${paymentLine}
             <p style="margin:5px 0"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
           </div>
+          ${notesHtml}
           <p style="text-align:center;font-size:16px;margin:30px 0">Please find the attached invoice and/or work order PDF(s). Thank you for your business!</p>
           <div style="text-align:center;border-top:2px solid #17365D;padding-top:15px;margin-top:30px">
             <p style="margin:5px 0;font-weight:bold">Traffic &amp; Barrier Solutions, LLC</p>
@@ -2094,6 +2103,7 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
       additionalEmails: extraEmails,
       payStatus, payMethod,
       workOrder: coordinator || '',
+      notes: notes || '',
       lineItems: parsedLineItems,
       invoicePdfName, invoicePdfData,
       workOrderPdfName, workOrderPdfData,
