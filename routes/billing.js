@@ -2195,4 +2195,36 @@ router.post('/company-invoices-import', async (req, res) => {
   }
 });
 
+// ── Billing Drafts ──────────────────────────────────────────────────────────
+const BillingDraft = require('../models/billingDraft');
+
+router.post('/drafts', async (req, res) => {
+  try {
+    const { type = 'companyInvoice', data } = req.body;
+    if (!data) return res.status(400).json({ message: 'data required' });
+    const draft = await BillingDraft.create({ type, data });
+    res.json(draft);
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to save draft', error: e.message });
+  }
+});
+
+router.get('/drafts', async (req, res) => {
+  try {
+    const drafts = await BillingDraft.find().sort({ createdAt: -1 }).lean();
+    res.json(drafts);
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to fetch drafts', error: e.message });
+  }
+});
+
+router.delete('/drafts/:id', async (req, res) => {
+  try {
+    await BillingDraft.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to delete draft', error: e.message });
+  }
+});
+
 module.exports = router;
