@@ -27,7 +27,13 @@ const controlUserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    coordinatorEmail: {
+        type: String,
+    },
     siteContact: {
+        type: String,
+    },
+    siteContactEmail: {
         type: String,
     },
     site: {
