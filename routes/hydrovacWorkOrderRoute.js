@@ -232,7 +232,7 @@ router.post('/hydrovac-work-order/:id/pdf-cloudinary', async (req, res) => {
 
     const uploadResult = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { resource_type: 'raw', folder: 'hydrovac-work-orders', public_id: `hydrovac-wo-${wo._id}`, overwrite: true },
+        { resource_type: 'image', format: 'pdf', folder: 'hydrovac-work-orders', public_id: `hydrovac-wo-${wo._id}`, overwrite: true },
         (err, result) => err ? reject(err) : resolve(result)
       );
       stream.end(pdfBuffer);
