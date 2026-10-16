@@ -7,7 +7,7 @@ const controlUserSchema = new mongoose.Schema({
     },
     email: {
         type: String,
-        required: true
+        required: true  // coordinator email — primary recipient for job confirmation
     },
     phone: {
         type: String,
@@ -26,9 +26,6 @@ const controlUserSchema = new mongoose.Schema({
     coordinator: {
         type: String,
         required: true
-    },
-    coordinatorEmail: {
-        type: String,
     },
     siteContact: {
         type: String,
