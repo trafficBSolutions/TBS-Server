@@ -21,6 +21,7 @@ const submitTrafficControlJob = async (req, res) => {
             company,
             coordinator,
             siteContact,
+            siteContactEmail,
             site,
             time,
             project,
@@ -149,6 +150,7 @@ const jobCount = result[0]?.count || 0;
             company,
             coordinator,
             siteContact,
+            siteContactEmail,
             site,
             time,
             project,
@@ -191,9 +193,10 @@ const jobCount = result[0]?.count || 0;
           ? `<p style="background-color: #e3f2fd; padding: 10px; border-left: 4px solid #2196F3; margin: 15px 0;"><strong>🚔 Police Officer Needed:</strong> This job requires a police officer on site.</p>`
           : '';
         
+        const extraTo = [siteContactEmail].filter(Boolean);
         const mailOptions = {
             from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-            to: email,
+            to: [email, ...extraTo].join(','),
             bcc: [{ name: 'Traffic & Barrier Solutions, LLC', address: myEmail },
                   
               { name: 'Carson Speer', address: userEmail }, // Add the second Gmail address to BCC
@@ -225,8 +228,10 @@ const jobCount = result[0]?.count || 0;
                     <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
                       <li><strong>Company:</strong> ${company}</li>
                       <li><strong>Coordinator:</strong> ${coordinator}</li>
+                      <li><strong>Coordinator Email:</strong> ${email}</li>
                       <li><strong>Coordinator Phone:</strong> ${phone}</li>
                       <li><strong>On-Site Contact:</strong> ${siteContact}</li>
+                      <li><strong>On-Site Contact Email:</strong> ${siteContactEmail || 'N/A'}</li>
                       <li><strong>On-Site Phone:</strong> ${site}</li>
                     </ul>
                     <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
