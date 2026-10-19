@@ -25,7 +25,7 @@ const controlUserSchema = new mongoose.Schema({
     companyKey: { type: String, index: true },   // NEW
     coordinator: {
         type: String,
-        required: true
+        required: false
     },
     siteContact: {
         type: String,
