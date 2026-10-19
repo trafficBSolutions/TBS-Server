@@ -227,7 +227,7 @@ const jobCount = result[0]?.count || 0;
                   <div style="display: flex; flex-wrap: wrap; gap: 10px;">
                     <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
                       <li><strong>Company:</strong> ${company}</li>
-                      <li><strong>Coordinator:</strong> ${coordinator}</li>
+                      <li><strong>Coordinator:</strong> ${name}</li>
                       <li><strong>Coordinator Email:</strong> ${email}</li>
                       <li><strong>Coordinator Phone:</strong> ${phone}</li>
                       <li><strong>On-Site Contact:</strong> ${siteContact}</li>
