@@ -148,7 +148,7 @@ const jobCount = result[0]?.count || 0;
             email,
             phone,
             company,
-            coordinator,
+            coordinator: name,
             siteContact,
             siteContactEmail,
             site,
