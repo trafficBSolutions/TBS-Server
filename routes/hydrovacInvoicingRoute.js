@@ -267,9 +267,17 @@ router.post('/send', async (req, res) => {
       });
     }
 
+    const CC_EMAILS = [
+      process.env.EMAIL_USER_7,  // trafficandbarriersolutions.ap
+      process.env.EMAIL_USER_2,  // tbsolutions1999
+      process.env.EMAIL_USER_3,  // tbsolutions1995
+      process.env.EMAIL_USER_4,  // tbsolutions4
+    ].filter(Boolean).join(',');
+
     await transporter.sendMail({
       from: FROM_EMAIL,
       to: clientEmail,
+      cc: CC_EMAILS || undefined,
       subject: `Hydrovac Invoice ${invoiceNumber} — ${client}`,
       html,
       attachments,
