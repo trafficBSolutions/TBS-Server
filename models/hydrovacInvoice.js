@@ -1,0 +1,23 @@
+const mongoose = require('mongoose');
+
+const hydrovacInvoiceSchema = new mongoose.Schema({
+  workOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'HydrovacWorkOrder', required: true },
+  invoiceNumber: { type: String, required: true },
+  invoiceDate: { type: String },
+  client: { type: String, required: true },
+  clientEmail: { type: String, required: true },
+  rows: [{
+    _id: false,
+    description: { type: String },
+    amount: { type: Number, default: 0 },
+  }],
+  total: { type: Number, default: 0 },
+  notes: { type: String, default: '' },
+  woPdfUrl: { type: String, default: '' },
+  woData: { type: mongoose.Schema.Types.Mixed },
+  payStatus: { type: String, enum: ['paid', 'unpaid'], default: 'unpaid' },
+  payMethod: { type: String, default: '' },
+  sentAt: { type: Date, default: Date.now },
+}, { timestamps: true });
+
+module.exports = mongoose.model('HydrovacInvoice', hydrovacInvoiceSchema);
