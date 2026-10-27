@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const HydrovacInvoice = require('../models/hydrovacInvoice');
-const { transporter7 } = require('../utils/emailConfig');
+const { transporter } = require('../utils/emailConfig');
 
-const FROM_EMAIL = process.env.EMAIL_USER_7 || 'trafficandbarriersolutions.ap@gmail.com';
+const FROM_EMAIL = process.env.EMAIL_USER || 'tbsolutions9@gmail.com';
 
 // ── POST /api/hydrovac-invoicing/send ────────────────────────────────────────
 // Creates invoice record and emails client with invoice + WO PDF link
@@ -110,7 +110,7 @@ router.post('/send', async (req, res) => {
 </body>
 </html>`;
 
-    await transporter7.sendMail({
+    await transporter.sendMail({
       from: FROM_EMAIL,
       to: clientEmail,
       subject: `Hydrovac Invoice ${invoiceNumber} — ${client}`,
