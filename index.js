@@ -110,6 +110,7 @@ startAutoClockOut();
 app.use('/', workOrdersRouter);
 app.use('/', require('./routes/shopWorkOrderRoute'));
 app.use('/', require('./routes/hydrovacWorkOrderRoute'));
+app.use('/api/hydrovac-invoicing', require('./routes/hydrovacInvoicingRoute'));
 app.use('/', require('./routes/leaveRequestRoute'));
 app.use('/', require('./routes/followUpRoute'));
 app.use('/', require('./routes/safetyRoute'));
