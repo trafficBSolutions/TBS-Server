@@ -117,7 +117,7 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, rows, total, not
 ${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
 
 <div class="footer">
-  Traffic &amp; Barrier Solutions, LLC &nbsp;|&nbsp; P.O. Box 155, Calhoun, GA 30701 &nbsp;|&nbsp; (706) 263-0175
+  Traffic &amp; Barrier Solutions, LLC &nbsp;|&nbsp; P.O. Box 155, Calhoun, GA 30701
 </div>
 </body></html>`;
 }
