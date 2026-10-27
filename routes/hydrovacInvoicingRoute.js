@@ -1,10 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
 const HydrovacInvoice = require('../models/hydrovacInvoice');
 const { transporter } = require('../utils/emailConfig');
 const puppeteer = require('puppeteer');
 const https = require('https');
 const http = require('http');
+
+const TBS_LOGO_SVG = (() => {
+  try {
+    return fs.readFileSync(path.join(__dirname, '../public/TBS New logo.svg'), 'utf8');
+  } catch { return null; }
+})();
 
 const FROM_EMAIL = process.env.EMAIL_USER || 'tbsolutions9@gmail.com';
 
@@ -97,7 +105,7 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, rows, total, not
 
 <div class="header">
   <div>
-    <h1>🚛 Hydrovac Invoice</h1>
+    ${TBS_LOGO_SVG ? `<div style="width:220px;margin-bottom:6px;">${TBS_LOGO_SVG}</div>` : '<h1>🚛 Hydrovac Invoice</h1>'}
     <div class="company">
       Traffic &amp; Barrier Solutions, LLC<br/>
       P.O. Box 155, Calhoun, GA 30701<br/>
