@@ -84,8 +84,7 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, rows, total, not
     <h1>🚛 Hydrovac Invoice</h1>
     <div class="company">
       Traffic &amp; Barrier Solutions, LLC<br/>
-      1999 Dews Pond Rd SE, Calhoun, GA 30701<br/>
-      Phone: (706) 263-0175
+      P.O. Box 155, Calhoun, GA 30701<br/>
     </div>
   </div>
   <div class="meta">
@@ -118,7 +117,7 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, rows, total, not
 ${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
 
 <div class="footer">
-  Traffic &amp; Barrier Solutions, LLC &nbsp;|&nbsp; 1999 Dews Pond Rd SE, Calhoun, GA 30701 &nbsp;|&nbsp; (706) 263-0175
+  Traffic &amp; Barrier Solutions, LLC &nbsp;|&nbsp; P.O. Box 155, Calhoun, GA 30701 &nbsp;|&nbsp; (706) 263-0175
 </div>
 </body></html>`;
 }
@@ -221,8 +220,7 @@ router.post('/send', async (req, res) => {
 
     <div style="text-align:center;border-top:2px solid #1a1a1a;padding-top:16px;margin-top:24px;">
       <p style="margin:4px 0;font-weight:bold;">Traffic &amp; Barrier Solutions, LLC</p>
-      <p style="margin:4px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
-      <p style="margin:4px 0;">Phone: (706) 263-0175</p>
+      <p style="margin:4px 0;">P.O. Box 155, Calhoun, GA 30701</p>
     </div>
   </div>
 </body>
