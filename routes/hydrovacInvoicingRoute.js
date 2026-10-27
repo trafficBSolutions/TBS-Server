@@ -117,7 +117,7 @@ ${woSectionsHtml}
 
 <div class="section-title">Invoice Line Items</div>
 <table>
-  <thead><tr><th>Description</th><th class="num">Qty / Hours</th><th class="num">$ Per Unit</th><th class="num">Amount</th></tr></thead>
+  <thead><tr><th>Description</th><th class="num">Quantity</th><th class="num">Per Unit</th><th class="num">Amount</th></tr></thead>
   <tbody>${rowsHtml}</tbody>
   <tfoot><tr><td colspan="3" style="text-align:right;">TOTAL DUE</td><td>$${Number(total || 0).toFixed(2)}</td></tr></tfoot>
 </table>
@@ -196,8 +196,8 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, rows, total, notes
       <thead>
         <tr style="background:#17365D;color:#fff;">
           <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:left;">Description</th>
-          <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:right;width:80px;">Qty / Hours</th>
-          <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:right;width:90px;">$ Per Unit</th>
+          <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:right;width:80px;">Quantity</th>
+          <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:right;width:90px;">Per Unit</th>
           <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:right;width:110px;">Amount</th>
         </tr>
       </thead>
