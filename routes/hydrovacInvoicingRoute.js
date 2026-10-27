@@ -221,6 +221,7 @@ router.post('/send', async (req, res) => {
       workOrderIds, wosData, woPdfUrls,   // multi-WO
       workOrderId,  woData,  woPdfUrl,    // legacy single-WO
       client, clientEmail, invoiceNumber, invoiceDate, notes, rows, total,
+      images,  // [{ name, dataUrl }] — optional image attachments
     } = req.body;
 
     // Normalise to arrays
@@ -281,6 +282,22 @@ router.post('/send', async (req, res) => {
       } catch (fetchErr) {
         console.error(`[hydrovac-invoicing] WO PDF fetch failed (${url}):`, fetchErr.message);
       }
+    }
+
+    // ── Attach images ─────────────────────────────────────────────────────
+    if (Array.isArray(images)) {
+      images.forEach((img, i) => {
+        if (!img?.dataUrl) return;
+        // dataUrl format: "data:<mime>;base64,<data>"
+        const match = img.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!match) return;
+        attachments.push({
+          filename: img.name || `image-${i + 1}.jpg`,
+          content: Buffer.from(match[2], 'base64'),
+          contentType: match[1],
+          contentDisposition: 'attachment',
+        });
+      });
     }
 
     const CC_EMAILS = [
