@@ -25,24 +25,28 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // handle preflight for all routes
 
-app.use(helmet()); // Secure headers
+app.use(helmet({
+  crossOriginResourcePolicy: false,       // don't block cross-origin responses
+  crossOriginOpenerPolicy: false,
+}));
 app.use(xss()); // Prevent XSS
 app.use(compression()); // GZIP compression
 
-// Limit repeated requests
+// Limit repeated requests — skip OPTIONS preflights so CORS headers are never blocked
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 mins
-  max: 100, // 100 requests per IP
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
 });
 
-// Higher limit for internal read-only endpoints
 const readLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 500,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
 });
 
 app.use(limiter);
