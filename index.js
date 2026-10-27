@@ -15,15 +15,29 @@ const employeeHandbook = require('./routes/employeeHandbook');
 // Create Express app
 const app = express();
 
-// ✅ Middleware
+// ✅ CORS — must be first, before helmet/limiter/everything
 const corsOptions = {
   origin: ['http://127.0.0.1:5173', 'https://www.trafficbarriersolutions.com'],
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
 };
+
+// Explicitly set CORS headers on every response before any other middleware
+app.use((req, res, next) => {
+  const allowed = corsOptions.origin;
+  const origin = req.headers.origin;
+  if (allowed.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // handle preflight for all routes
 
 app.use(helmet({
   crossOriginResourcePolicy: false,       // don't block cross-origin responses
