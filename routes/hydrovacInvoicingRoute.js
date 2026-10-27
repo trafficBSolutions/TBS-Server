@@ -15,6 +15,7 @@ const TBS_LOGO_SVG = (() => {
 })();
 
 const FROM_EMAIL = process.env.EMAIL_USER || 'tbsolutions9@gmail.com';
+const FROM_DISPLAY = `Traffic & Barrier Solutions, LLC <${FROM_EMAIL}>`;
 
 // Fetch a remote URL into a Buffer
 function fetchBuffer(url) {
@@ -325,10 +326,12 @@ router.post('/send', async (req, res) => {
 
     const html = buildEmailHtml({ invoiceNumber, invoiceDate, client, rows, total, notes, wosArr, pdfUrls });
 
+    const ccList = [FROM_EMAIL, CC_EMAILS].filter(Boolean).join(',');
+
     await transporter.sendMail({
-      from: FROM_EMAIL,
+      from: FROM_DISPLAY,
       to: clientEmail,
-      cc: CC_EMAILS || undefined,
+      cc: ccList || undefined,
       subject: `Hydrovac Invoice ${invoiceNumber} — ${client}`,
       html,
       attachments,
