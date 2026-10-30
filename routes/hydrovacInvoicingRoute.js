@@ -116,16 +116,9 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, cli
   </div>
   <div class="meta">
     <strong>INVOICE</strong><br/>
-    Invoice #: ${invoiceNumber}<br/>
+    TBS Invoice #: ${invoiceNumber}<br/>
     ${projectNumber ? `Project/Task #: ${projectNumber}<br/>` : ''}
     Date: ${invoiceDate || new Date().toLocaleDateString()}<br/>
-    <br/>
-    <strong>Bill To:</strong><br/>
-    ${client}<br/>
-    ${clientEmail}<br/>
-    ${clientAddress ? `<br/><strong>Job Site:</strong> ${clientAddress}<br/>` : ''}
-    ${(clientCity || clientZip) ? `${clientCity || ''}${clientCity && clientZip ? ', ' : ''}${clientZip || ''}<br/>` : ''}
-    ${description ? `<br/><em>${description}</em>` : ''}
   </div>
 </div>
 
@@ -139,6 +132,27 @@ ${woSectionsHtml}
 </table>
 
 ${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
+
+<table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:12px;">
+  <tr>
+    <td style="width:50%;vertical-align:top;padding-right:16px;">
+      <div style="background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 14px;">
+        <strong>Bill To:</strong><br/>
+        ${client}<br/>
+        ${clientEmail}
+      </div>
+    </td>
+    <td style="width:50%;vertical-align:top;">
+      ${clientAddress ? `
+      <div style="background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 14px;">
+        <strong>Job Site:</strong><br/>
+        ${clientAddress}<br/>
+        ${(clientCity || clientZip) ? `${clientCity || ''}${clientCity && clientZip ? ', ' : ''}${clientZip || ''}` : ''}
+        ${description ? `<br/><em style="color:#555;">${description}</em>` : ''}
+      </div>` : ''}
+    </td>
+  </tr>
+</table>
 
 <div class="footer">
   Traffic &amp; Barrier Solutions, LLC &nbsp;|&nbsp; P.O. Box 155, Calhoun, GA 30701
@@ -200,7 +214,7 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientAddress, cli
     </h1>
 
     <div style="background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:20px;">
-      <p style="margin:4px 0;"><strong>Invoice #:</strong> ${invoiceNumber}</p>
+      <p style="margin:4px 0;"><strong>TBS Invoice #:</strong> ${invoiceNumber}</p>
       ${projectNumber ? `<p style="margin:4px 0;"><strong>Project/Task #:</strong> ${projectNumber}</p>` : ''}
       <p style="margin:4px 0;"><strong>Invoice Date:</strong> ${invoiceDate || new Date().toLocaleDateString()}</p>
       <p style="margin:4px 0;"><strong>Client:</strong> ${client}</p>
