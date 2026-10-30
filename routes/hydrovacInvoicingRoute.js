@@ -48,7 +48,7 @@ async function generateInvoicePdf(html) {
 }
 
 // Build invoice PDF HTML — supports multiple WOs
-function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, rows, total, notes, wosArr }) {
+function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, rows, total, notes, wosArr }) {
   const fmtTime = (t) => {
     if (!t) return '';
     const [h, m] = t.split(':');
@@ -264,7 +264,7 @@ router.post('/send', async (req, res) => {
     });
 
     // ── Generate invoice PDF ──────────────────────────────────────────────
-    const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, rows, total, notes, wosArr });
+    const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, rows, total, notes, wosArr });
     let invoicePdfBuffer = null;
     try {
       invoicePdfBuffer = await generateInvoicePdf(invoiceHtml);
