@@ -6,7 +6,13 @@ const hydrovacInvoiceSchema = new mongoose.Schema({
   invoiceNumber: { type: String, required: true },
   invoiceDate: { type: String },
   client: { type: String, required: true },
+  clientCompany: { type: String, default: '' },
   clientEmail: { type: String, required: true },
+  clientAddress: { type: String, default: '' },
+  clientCity: { type: String, default: '' },
+  clientZip: { type: String, default: '' },
+  description: { type: String, default: '' },
+  projectNumber: { type: String, default: '' },
   rows: [{
     _id: false,
     description: { type: String },
