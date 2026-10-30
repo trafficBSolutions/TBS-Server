@@ -117,7 +117,6 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, cli
   <div class="meta">
     <strong>INVOICE</strong><br/>
     TBS Invoice #: ${invoiceNumber}<br/>
-    ${projectNumber ? `Project/Task #: ${projectNumber}<br/>` : ''}
     Date: ${invoiceDate || new Date().toLocaleDateString()}<br/>
   </div>
 </div>
@@ -140,6 +139,7 @@ ${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
         <strong>Bill To:</strong><br/>
         ${client}<br/>
         ${clientEmail}
+        ${projectNumber ? `<br/><br/><strong>Project/Task #:</strong> ${projectNumber}` : ''}
       </div>
     </td>
     <td style="width:50%;vertical-align:top;">
