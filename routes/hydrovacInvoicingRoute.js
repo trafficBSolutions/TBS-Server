@@ -241,7 +241,8 @@ router.post('/send', async (req, res) => {
       workOrderIds, wosData, woPdfUrls,   // multi-WO
       workOrderId,  woData,  woPdfUrl,    // legacy single-WO
       client, clientEmail, invoiceNumber, invoiceDate, notes, rows, total,
-      images,  // [{ name, dataUrl }] — optional image attachments
+      images,     // [{ name, dataUrl }] — optional image attachments
+      extraPdfs,  // [{ name, dataUrl }] — optional PDF attachments
     } = req.body;
 
     // Normalise to arrays
@@ -315,6 +316,21 @@ router.post('/send', async (req, res) => {
           filename: img.name || `image-${i + 1}.jpg`,
           content: Buffer.from(match[2], 'base64'),
           contentType: match[1],
+          contentDisposition: 'attachment',
+        });
+      });
+    }
+
+    // ── Attach extra PDFs ──────────────────────────────────────────────────
+    if (Array.isArray(extraPdfs)) {
+      extraPdfs.forEach((pdf, i) => {
+        if (!pdf?.dataUrl) return;
+        const match = pdf.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!match) return;
+        attachments.push({
+          filename: pdf.name || `attachment-${i + 1}.pdf`,
+          content: Buffer.from(match[2], 'base64'),
+          contentType: 'application/pdf',
           contentDisposition: 'attachment',
         });
       });
