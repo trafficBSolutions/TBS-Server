@@ -50,7 +50,7 @@ async function generateInvoicePdf(html) {
 }
 
 // Build invoice PDF HTML — supports multiple WOs
-function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, rows, total, notes, wosArr }) {
+function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr }) {
   const fmtTime = (t) => {
     if (!t) return '';
     const [h, m] = t.split(':');
@@ -117,11 +117,15 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, row
   <div class="meta">
     <strong>INVOICE</strong><br/>
     Invoice #: ${invoiceNumber}<br/>
+    ${projectNumber ? `Project/Task #: ${projectNumber}<br/>` : ''}
     Date: ${invoiceDate || new Date().toLocaleDateString()}<br/>
     <br/>
     <strong>Bill To:</strong><br/>
     ${client}<br/>
-    ${clientEmail}
+    ${clientEmail}<br/>
+    ${clientAddress ? `${clientAddress}<br/>` : ''}
+    ${(clientCity || clientZip) ? `${clientCity || ''}${clientCity && clientZip ? ', ' : ''}${clientZip || ''}<br/>` : ''}
+    ${description ? `<br/><em>${description}</em>` : ''}
   </div>
 </div>
 
@@ -240,7 +244,7 @@ router.post('/send', async (req, res) => {
     const {
       workOrderIds, wosData, woPdfUrls,   // multi-WO
       workOrderId,  woData,  woPdfUrl,    // legacy single-WO
-      client, clientEmail, invoiceNumber, invoiceDate, notes, rows, total,
+      client, clientEmail, clientAddress, clientCity, clientZip, description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total,
       images,     // [{ name, dataUrl }] — optional image attachments
       extraPdfs,  // [{ name, dataUrl }] — optional PDF attachments
     } = req.body;
@@ -267,7 +271,7 @@ router.post('/send', async (req, res) => {
     });
 
     // ── Generate invoice PDF ──────────────────────────────────────────────
-    const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, rows, total, notes, wosArr });
+    const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr });
     let invoicePdfBuffer = null;
     try {
       invoicePdfBuffer = await generateInvoicePdf(invoiceHtml);
