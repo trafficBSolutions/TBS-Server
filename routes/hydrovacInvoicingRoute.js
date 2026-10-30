@@ -106,7 +106,7 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, rows, total, not
 
 <div class="header">
   <div>
-    ${TBS_LOGO_SVG ? `<div style="width:220px;margin-bottom:6px;">${TBS_LOGO_SVG}</div>` : '<h1>🚛 Hydrovac Invoice</h1>'}
+    ${TBS_LOGO_SVG ? `<div style="width:120px;margin-bottom:6px;">${TBS_LOGO_SVG}</div>` : '<h1>🚛 Hydrovac Invoice</h1>'}
     <div class="company">
       Traffic &amp; Barrier Solutions, LLC<br/>
       P.O. Box 155, Calhoun, GA 30701<br/>
@@ -118,7 +118,8 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, rows, total, not
     Date: ${invoiceDate || new Date().toLocaleDateString()}<br/>
     <br/>
     <strong>Bill To:</strong><br/>
-    ${client}
+    ${client}<br/>
+    ${clientEmail}
   </div>
 </div>
 
