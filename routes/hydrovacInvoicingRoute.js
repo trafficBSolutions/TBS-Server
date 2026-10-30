@@ -282,7 +282,8 @@ router.post('/send', async (req, res) => {
 
     const invoice = await HydrovacInvoice.create({
       workOrderId: woIds[0], workOrderIds: woIds,
-      invoiceNumber, invoiceDate, client, clientEmail,
+      invoiceNumber, invoiceDate, client, clientCompany, clientEmail,
+      clientAddress, clientCity, clientZip, description, projectNumber,
       rows: rows || [], total: Number(total) || 0,
       notes: notes || '',
       woPdfUrl: pdfUrls[0] || '', woPdfUrls: pdfUrls,
