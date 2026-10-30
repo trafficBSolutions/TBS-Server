@@ -147,7 +147,7 @@ ${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
 }
 
 // Build email body HTML — supports multiple WOs
-function buildEmailHtml({ invoiceNumber, invoiceDate, client, rows, total, notes, wosArr, pdfUrls }) {
+function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls }) {
   const fmtTime = (t) => {
     if (!t) return '';
     const [h, m] = t.split(':');
@@ -201,8 +201,11 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, rows, total, notes
 
     <div style="background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:20px;">
       <p style="margin:4px 0;"><strong>Invoice #:</strong> ${invoiceNumber}</p>
+      ${projectNumber ? `<p style="margin:4px 0;"><strong>Project/Task #:</strong> ${projectNumber}</p>` : ''}
       <p style="margin:4px 0;"><strong>Invoice Date:</strong> ${invoiceDate || new Date().toLocaleDateString()}</p>
       <p style="margin:4px 0;"><strong>Client:</strong> ${client}</p>
+      ${clientAddress ? `<p style="margin:4px 0;"><strong>Job Site:</strong> ${clientAddress}${clientCity || clientZip ? ', ' + [clientCity, clientZip].filter(Boolean).join(' ') : ''}</p>` : ''}
+      ${description ? `<p style="margin:4px 0;"><strong>Description:</strong> ${description}</p>` : ''}
     </div>
 
     ${woTablesHtml}
@@ -347,7 +350,7 @@ router.post('/send', async (req, res) => {
       process.env.EMAIL_USER_8,
     ].filter(Boolean).join(',');
 
-    const html = buildEmailHtml({ invoiceNumber, invoiceDate, client, rows, total, notes, wosArr, pdfUrls });
+    const html = buildEmailHtml({ invoiceNumber, invoiceDate, client, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls });
 
     const ccList = [FROM_EMAIL, CC_EMAILS].filter(Boolean).join(',');
 
