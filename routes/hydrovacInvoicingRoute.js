@@ -50,7 +50,7 @@ async function generateInvoicePdf(html) {
 }
 
 // Build invoice PDF HTML — supports multiple WOs
-function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr }) {
+function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr }) {
   const fmtTime = (t) => {
     if (!t) return '';
     const [h, m] = t.split(':');
@@ -137,8 +137,9 @@ ${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
     <td style="width:50%;vertical-align:top;padding-right:16px;">
       <div style="background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 14px;">
         <strong>Bill To:</strong><br/>
-        ${client}<br/>
-        ${clientEmail}
+        ${clientCompany ? `<strong>Company:</strong> ${clientCompany}<br/>` : ''}
+        <strong>Representative:</strong> ${client}<br/>
+        <strong>Email:</strong> ${clientEmail}
         ${projectNumber ? `<br/><br/><strong>Project/Task #:</strong> ${projectNumber}` : ''}
       </div>
     </td>
@@ -161,7 +162,7 @@ ${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
 }
 
 // Build email body HTML — supports multiple WOs
-function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls }) {
+function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls }) {
   const fmtTime = (t) => {
     if (!t) return '';
     const [h, m] = t.split(':');
@@ -217,7 +218,8 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientAddress, cli
       <p style="margin:4px 0;"><strong>TBS Invoice #:</strong> ${invoiceNumber}</p>
       ${projectNumber ? `<p style="margin:4px 0;"><strong>Project/Task #:</strong> ${projectNumber}</p>` : ''}
       <p style="margin:4px 0;"><strong>Invoice Date:</strong> ${invoiceDate || new Date().toLocaleDateString()}</p>
-      <p style="margin:4px 0;"><strong>Client:</strong> ${client}</p>
+      ${clientCompany ? `<p style="margin:4px 0;"><strong>Company:</strong> ${clientCompany}</p>` : ''}
+      <p style="margin:4px 0;"><strong>Representative:</strong> ${client}</p>
       ${clientAddress ? `<p style="margin:4px 0;"><strong>Job Site:</strong> ${clientAddress}${clientCity || clientZip ? ', ' + [clientCity, clientZip].filter(Boolean).join(' ') : ''}</p>` : ''}
       ${description ? `<p style="margin:4px 0;"><strong>Description:</strong> ${description}</p>` : ''}
     </div>
@@ -261,7 +263,7 @@ router.post('/send', async (req, res) => {
     const {
       workOrderIds, wosData, woPdfUrls,   // multi-WO
       workOrderId,  woData,  woPdfUrl,    // legacy single-WO
-      client, clientEmail, clientAddress, clientCity, clientZip, description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total,
+      client, clientEmail, clientCompany, clientAddress, clientCity, clientZip, description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total,
       images,     // [{ name, dataUrl }] — optional image attachments
       extraPdfs,  // [{ name, dataUrl }] — optional PDF attachments
     } = req.body;
@@ -288,7 +290,7 @@ router.post('/send', async (req, res) => {
     });
 
     // ── Generate invoice PDF ──────────────────────────────────────────────
-    const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr });
+    const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr });
     let invoicePdfBuffer = null;
     try {
       invoicePdfBuffer = await generateInvoicePdf(invoiceHtml);
@@ -364,7 +366,7 @@ router.post('/send', async (req, res) => {
       process.env.EMAIL_USER_8,
     ].filter(Boolean).join(',');
 
-    const html = buildEmailHtml({ invoiceNumber, invoiceDate, client, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls });
+    const html = buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls });
 
     const ccList = [FROM_EMAIL, CC_EMAILS].filter(Boolean).join(',');
 
