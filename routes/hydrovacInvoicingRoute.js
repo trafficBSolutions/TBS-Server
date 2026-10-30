@@ -123,7 +123,7 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientEmail, cli
     <strong>Bill To:</strong><br/>
     ${client}<br/>
     ${clientEmail}<br/>
-    ${clientAddress ? `${clientAddress}<br/>` : ''}
+    ${clientAddress ? `<br/><strong>Job Site:</strong> ${clientAddress}<br/>` : ''}
     ${(clientCity || clientZip) ? `${clientCity || ''}${clientCity && clientZip ? ', ' : ''}${clientZip || ''}<br/>` : ''}
     ${description ? `<br/><em>${description}</em>` : ''}
   </div>
