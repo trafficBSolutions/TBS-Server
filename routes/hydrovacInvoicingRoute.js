@@ -78,7 +78,7 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, c
 
   const rowsHtml = (rows || []).map(r =>
     `<tr>
-      <td style="padding:8px 12px;border:1px solid #ddd;">${r.description || ''}</td>
+      <td style="padding:8px 12px;border:1px solid #ddd;word-break:break-word;white-space:normal;max-width:280px;">${r.description || ''}</td>
       <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.hours != null && r.hours !== '' ? Number(r.hours).toFixed(2) : '\u2014'}</td>
       <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.rate != null && r.rate !== '' ? '$' + Number(r.rate).toFixed(2) : '\u2014'}</td>
       <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">$${Number(r.amount || 0).toFixed(2)}</td>
