@@ -10,7 +10,9 @@ const http = require('http');
 
 const TBS_LOGO_SVG = (() => {
   try {
-    return fs.readFileSync(path.join(__dirname, '../public/TBS New logo.svg'), 'utf8');
+    const raw = fs.readFileSync(path.join(__dirname, '../public/TBS New logo.svg'), 'utf8');
+    // Strip hardcoded width/height so the SVG scales to its container
+    return raw.replace(/(<svg[^>]*?)\s+width="[^"]*"/, '$1').replace(/(<svg[^>]*?)\s+height="[^"]*"/, '$1');
   } catch { return null; }
 })();
 
