@@ -398,6 +398,78 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ── PUT /api/hydrovac-invoicing/:id ─────────────────────────────────────────
+router.put('/:id', async (req, res) => {
+  try {
+    const { client, clientEmail, clientCompany, clientAddress, clientCity, clientZip,
+            description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total } = req.body;
+    const invoice = await HydrovacInvoice.findByIdAndUpdate(
+      req.params.id,
+      { $set: { client, clientEmail, clientCompany, clientAddress, clientCity, clientZip,
+                description, invoiceNumber, projectNumber, invoiceDate, notes,
+                rows: rows || [], total: Number(total) || 0 } },
+      { new: true }
+    ).lean();
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+    res.json(invoice);
+  } catch (e) {
+    console.error('[hydrovac-invoicing PUT] error:', e);
+    res.status(500).json({ message: 'Failed to update invoice', error: e.message });
+  }
+});
+
+// ── POST /api/hydrovac-invoicing/:id/resend ───────────────────────────────────
+router.post('/:id/resend', async (req, res) => {
+  try {
+    const invoice = await HydrovacInvoice.findById(req.params.id).lean();
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+
+    // Allow overriding email at resend time
+    const clientEmail = req.body.clientEmail || invoice.clientEmail;
+    const { invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity,
+            clientZip, description, projectNumber, rows, total, notes, wosData, woPdfUrls } = invoice;
+    const wosArr  = wosData  || [];
+    const pdfUrls = woPdfUrls || [];
+
+    const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail,
+      clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr });
+    let invoicePdfBuffer = null;
+    try { invoicePdfBuffer = await generateInvoicePdf(invoiceHtml); } catch (e) { console.error('[resend] PDF err:', e.message); }
+
+    const safeClient = (client || 'client').replace(/[^a-z0-9]+/gi, '-');
+    const attachments = [];
+    if (invoicePdfBuffer) {
+      attachments.push({ filename: `hydrovac-invoice-${invoiceNumber}-${safeClient}.pdf`, content: invoicePdfBuffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
+    }
+    for (let i = 0; i < pdfUrls.length; i++) {
+      if (!pdfUrls[i]) continue;
+      try {
+        const buf = await fetchBuffer(pdfUrls[i]);
+        attachments.push({ filename: `hydrovac-work-order-${(wosArr[i] || {}).date || `wo${i+1}`}-${safeClient}.pdf`, content: buf, contentType: 'application/pdf', contentDisposition: 'attachment' });
+      } catch (e) { console.error('[resend] WO PDF fetch err:', e.message); }
+    }
+
+    const CC_EMAILS = [process.env.EMAIL_USER_7, process.env.EMAIL_USER_2, process.env.EMAIL_USER_9, process.env.EMAIL_USER_8].filter(Boolean).join(',');
+    const html = buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls });
+    await transporter.sendMail({
+      from: FROM_DISPLAY, to: clientEmail,
+      cc: [FROM_EMAIL, CC_EMAILS].filter(Boolean).join(',') || undefined,
+      subject: `Hydrovac Invoice ${invoiceNumber} — ${client} (Resent)`,
+      html, attachments,
+    });
+
+    // Update stored email if it changed
+    if (clientEmail !== invoice.clientEmail) {
+      await HydrovacInvoice.findByIdAndUpdate(req.params.id, { $set: { clientEmail } });
+    }
+
+    res.json({ message: `Invoice resent to ${clientEmail}` });
+  } catch (e) {
+    console.error('[hydrovac-invoicing/resend] error:', e);
+    res.status(500).json({ message: 'Failed to resend invoice', error: e.message });
+  }
+});
+
 // ── PATCH /api/hydrovac-invoicing/:id/pay ────────────────────────────────────
 router.patch('/:id/pay', async (req, res) => {
   try {
