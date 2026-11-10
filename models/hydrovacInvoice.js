@@ -16,6 +16,8 @@ const hydrovacInvoiceSchema = new mongoose.Schema({
   rows: [{
     _id: false,
     description: { type: String },
+    hours: { type: mongoose.Schema.Types.Mixed, default: '' },
+    rate: { type: mongoose.Schema.Types.Mixed, default: '' },
     amount: { type: Number, default: 0 },
   }],
   total: { type: Number, default: 0 },
