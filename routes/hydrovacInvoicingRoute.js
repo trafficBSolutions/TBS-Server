@@ -284,7 +284,7 @@ router.post('/send', async (req, res) => {
       workOrderId: woIds[0], workOrderIds: woIds,
       invoiceNumber, invoiceDate, client, clientCompany, clientEmail,
       clientAddress, clientCity, clientZip, description, projectNumber,
-      rows: rows || [], total: Number(total) || 0,
+      rows: (rows || []).map(r => ({ description: r.description || '', hours: r.hours ?? '', rate: r.rate ?? '', amount: Number(r.amount) || 0 })),
       notes: notes || '',
       woPdfUrl: pdfUrls[0] || '', woPdfUrls: pdfUrls,
       woData: primaryWo, wosData: wosArr,
@@ -407,7 +407,7 @@ router.put('/:id', async (req, res) => {
       req.params.id,
       { $set: { client, clientEmail, clientCompany, clientAddress, clientCity, clientZip,
                 description, invoiceNumber, projectNumber, invoiceDate, notes,
-                rows: rows || [], total: Number(total) || 0 } },
+                rows: (rows || []).map(r => ({ description: r.description || '', hours: r.hours ?? '', rate: r.rate ?? '', amount: Number(r.amount) || 0 })), total: Number(total) || 0 } },
       { new: true }
     ).lean();
     if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
