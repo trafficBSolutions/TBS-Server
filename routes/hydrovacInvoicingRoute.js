@@ -1,490 +1,1059 @@
-const express = require('express');
-const router = express.Router();
-const path = require('path');
-const fs = require('fs');
-const HydrovacInvoice = require('../models/hydrovacInvoice');
-const { transporter } = require('../utils/emailConfig');
-const puppeteer = require('puppeteer');
-const https = require('https');
-const http = require('http');
+import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../../utils/api';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
+import { toast } from 'react-hot-toast';
+import '../../css/invoice.css';
 
-const TBS_LOGO_SVG = (() => {
-  try {
-    const raw = fs.readFileSync(path.join(__dirname, '../public/TBS New logo.svg'), 'utf8');
-    // Strip hardcoded width/height so the SVG scales to its container
-    return raw.replace(/(<svg[^>]*?)\s+width="[^"]*"/, '$1').replace(/(<svg[^>]*?)\s+height="[^"]*"/, '$1');
-  } catch { return null; }
-})();
+const ALLOWED_EMAILS = new Set([
+  'tbsolutions9@gmail.com',
+  'tbsolutions1999@gmail.com',
+  'trafficandbarriersolutions.ap@gmail.com',
+  'tbsellen@gmail.com',
+  'tbsolutions1995@gmail.com',
+  'materialworx2@gmail.com',
+  'tbsolutions4@gmail.com',
+]);
 
-const FROM_EMAIL = process.env.EMAIL_USER || 'tbsolutions9@gmail.com';
-const FROM_DISPLAY = `Traffic & Barrier Solutions, LLC <${FROM_EMAIL}>`;
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : '—';
+const fmtTime = (t) => {
+  if (!t) return '';
+  const [h, m] = t.split(':');
+  const hr = parseInt(h);
+  return `${hr > 12 ? hr - 12 : hr || 12}:${m}${hr >= 12 ? 'PM' : 'AM'}`;
+};
 
-// Fetch a remote URL into a Buffer
-function fetchBuffer(url) {
-  return new Promise((resolve, reject) => {
-    const mod = url.startsWith('https') ? https : http;
-    mod.get(url, (res) => {
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
-      res.on('end', () => resolve(Buffer.concat(chunks)));
-      res.on('error', reject);
-    }).on('error', reject);
-  });
-}
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-// Generate invoice PDF buffer from HTML via puppeteer
-async function generateInvoicePdf(html) {
-  const opts = {
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  };
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) opts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  const browser = await puppeteer.launch(opts);
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    return await page.pdf({ format: 'Letter', printBackground: true, margin: { top: '12mm', right: '12mm', bottom: '12mm', left: '12mm' } });
-  } finally {
-    await browser.close();
-  }
-}
+// Status badge config
+const STATUS_BADGE = {
+  paid:   { bg: '#27ae60', color: '#fff', label: '✓ Paid' },
+  unpaid: { bg: 'rgba(236,77,7,0.85)', color: '#fff', label: '● Sent/Unpaid' },
+};
 
-// Build invoice PDF HTML — supports multiple WOs
-function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr }) {
-  const fmtTime = (t) => {
-    if (!t) return '';
-    const [h, m] = t.split(':');
-    const hr = parseInt(h);
-    return `${hr > 12 ? hr - 12 : hr || 12}:${m}${hr >= 12 ? 'PM' : 'AM'}`;
+// Orange admin theme tokens (matches admin.css --adm-accent)
+const ORANGE = 'rgb(236,77,7)';
+const ORANGE_LIGHT = 'rgba(236,77,7,0.12)';
+const ORANGE_MED = 'rgba(236,77,7,0.28)';
+const ORANGE_BORDER = 'rgba(236,77,7,0.45)';
+
+function InvoiceForm({ wos, onSent, onCancel }) {
+  const draftKey = `hv-draft-${wos.map(w => w._id).join('-')}`;
+
+  const loadDraft = () => {
+    try { return JSON.parse(localStorage.getItem(draftKey) || 'null'); } catch { return null; }
   };
 
-  const woSectionsHtml = (wosArr || []).map((wo, i) => {
-    const engineHrs = wo.engineHoursStart != null && wo.engineHoursEnd != null
-      ? (wo.engineHoursEnd - wo.engineHoursStart).toFixed(1) : '—';
-    const miles = wo.mileageStart != null && wo.mileageEnd != null
-      ? wo.mileageEnd - wo.mileageStart : '—';
-    return `
-<div class="section-title">Work Order ${wosArr.length > 1 ? `#${i + 1} — ` : '— '}${wo.date || ''}</div>
-<table>
-  <tr><td class="label">CDL Driver</td><td>${wo.cdlDriver || '—'}</td><td class="label">Second Worker</td><td>${wo.secondWorker || '—'}</td></tr>
-  <tr><td class="label">Coordinator</td><td>${wo.coordinator || '—'}</td><td class="label">Date</td><td>${wo.date || '—'}</td></tr>
-  <tr><td class="label">Engine Hours</td><td>${wo.engineHoursStart} → ${wo.engineHoursEnd} (${engineHrs} hrs)</td><td class="label">Mileage</td><td>${wo.mileageStart} → ${wo.mileageEnd} (${miles} mi)</td></tr>
-  <tr><td class="label">Arrival at Locate</td><td>${fmtTime(wo.arrivalAtLocate)}</td><td class="label">Back at Shop</td><td>${fmtTime(wo.arrivalBackAtShop)}</td></tr>
-  <tr><td class="label">Times Dumped</td><td>${wo.timesDumped}</td><td class="label">Utilities Found</td><td>${wo.utilitiesFound}</td></tr>
-  ${wo.trafficControlUsed ? `<tr><td class="label">Traffic Control</td><td colspan="3">${wo.tcStartTime || ''} – ${wo.tcEndTime || ''}${wo.tcTrucks?.length ? ' | Trucks: ' + wo.tcTrucks.join(', ') : ''}</td></tr>` : ''}
-  ${wo.notes ? `<tr><td class="label">Notes</td><td colspan="3">${wo.notes}</td></tr>` : ''}
-</table>`;
-  }).join('');
+  const draft = loadDraft();
 
-  const rowsHtml = (rows || []).map(r =>
-    `<tr>
-      <td style="padding:8px 12px;border:1px solid #ddd;word-break:break-word;white-space:normal;max-width:280px;">${r.description || ''}</td>
-      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.hours != null && r.hours !== '' ? Number(r.hours).toFixed(2) : '\u2014'}</td>
-      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.rate != null && r.rate !== '' ? '$' + Number(r.rate).toFixed(2) : '\u2014'}</td>
-      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">$${Number(r.amount || 0).toFixed(2)}</td>
-    </tr>`
-  ).join('');
+  const [client, setClient] = useState(draft?.client || '');
+  const [clientCompany, setClientCompany] = useState(draft?.clientCompany || '');
+  const [clientEmail, setClientEmail] = useState(draft?.clientEmail || '');
+  const [clientAddress, setClientAddress] = useState(draft?.clientAddress || '');
+  const [clientCity, setClientCity] = useState(draft?.clientCity || '');
+  const [clientZip, setClientZip] = useState(draft?.clientZip || '');
+  const [description, setDescription] = useState(draft?.description || '');
+  const [invoiceNumber, setInvoiceNumber] = useState(draft?.invoiceNumber || '');
+  const [projectNumber, setProjectNumber] = useState(draft?.projectNumber || '');
+  const [invoiceDate, setInvoiceDate] = useState(draft?.invoiceDate || new Date().toISOString().slice(0, 10));
+  const [notes, setNotes] = useState(draft?.notes || '');
+  const [rows, setRows] = useState(draft?.rows || [{ id: 1, description: 'Hydrovac Services', hours: '', rate: '', amount: 0 }]);
+  const [sending, setSending] = useState(false);
+  const [woPdfUrls, setWoPdfUrls] = useState({});
+  const [loadingPdfs, setLoadingPdfs] = useState(false);
+  const [images, setImages] = useState([]); // [{ name, dataUrl }]
+  const [extraPdfs, setExtraPdfs] = useState([]); // [{ name, dataUrl }]
+  const [draftSaved, setDraftSaved] = useState(false);
 
-  return `<!doctype html><html><head><meta charset="utf-8"/>
-<style>
-  @page { size: Letter; margin: 12mm; }
-  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; margin: 0; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1a1a1a; padding-bottom: 10px; margin-bottom: 16px; }
-  .company { font-size: 11px; color: #555; line-height: 1.5; }
-  .meta { text-align: right; font-size: 12px; }
-  .meta strong { font-size: 14px; }
-  .section-title { background: #1a1a1a; color: #fff; padding: 5px 10px; font-size: 12px; font-weight: bold; margin: 14px 0 6px; border-radius: 3px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
-  td.label { font-weight: bold; width: 200px; color: #444; }
-  thead th { background: #ec4d07; color: #fff; padding: 8px 12px; text-align: left; }
-  thead th.num { text-align: right; width: 90px; }
-  tfoot td { font-weight: bold; background: #f5f5f5; padding: 8px 12px; border-top: 2px solid #ec4d07; }
-  tfoot td:last-child { text-align: right; }
-  .notes { margin-top: 14px; padding: 10px 14px; background: #fffbe6; border-left: 4px solid #f0ad4e; font-style: italic; font-size: 11px; }
-  .footer { margin-top: 24px; border-top: 2px solid #1a1a1a; padding-top: 12px; text-align: center; font-size: 11px; color: #555; }
-</style></head><body>
-
-<div class="header">
-  <div>
-    ${TBS_LOGO_SVG ? `<div style="width:120px;margin-bottom:6px;">${TBS_LOGO_SVG}</div>` : '<h1>🚛 Hydrovac Invoice</h1>'}
-    <div class="company">
-      Traffic &amp; Barrier Solutions, LLC<br/>
-      P.O. Box 155, Calhoun, GA 30701<br/>
-    </div>
-  </div>
-  <div class="meta">
-    <strong>INVOICE</strong><br/>
-    TBS Invoice #: ${invoiceNumber}<br/>
-    Date: ${invoiceDate || new Date().toLocaleDateString()}<br/>
-  </div>
-</div>
-
-${woSectionsHtml}
-
-<div class="section-title">Invoice Line Items</div>
-<table>
-  <thead><tr><th>Description</th><th class="num">Quantity</th><th class="num">Per Unit</th><th class="num">Amount</th></tr></thead>
-  <tbody>${rowsHtml}</tbody>
-  <tfoot><tr><td colspan="3" style="text-align:right;">TOTAL DUE</td><td>$${Number(total || 0).toFixed(2)}</td></tr></tfoot>
-</table>
-
-${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
-
-<table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:12px;">
-  <tr>
-    <td style="width:50%;vertical-align:top;padding-right:16px;">
-      <div style="background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 14px;">
-        <strong>Bill To:</strong><br/>
-        ${clientCompany ? `<strong>Company:</strong> ${clientCompany}<br/>` : ''}
-        <strong>Representative:</strong> ${client}<br/>
-        <strong>Email:</strong> ${clientEmail}
-        ${projectNumber ? `<br/><br/><strong>Project/Task #:</strong> ${projectNumber}` : ''}
-      </div>
-    </td>
-    <td style="width:50%;vertical-align:top;">
-      ${clientAddress ? `
-      <div style="background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 14px;">
-        <strong>Job Site:</strong><br/>
-        ${clientAddress}<br/>
-        ${(clientCity || clientZip) ? `${clientCity || ''}${clientCity && clientZip ? ', ' : ''}${clientZip || ''}` : ''}
-        ${description ? `<br/><em style="color:#555;">${description}</em>` : ''}
-      </div>` : ''}
-    </td>
-  </tr>
-</table>
-
-<div class="footer">
-  Traffic &amp; Barrier Solutions, LLC &nbsp;|&nbsp; P.O. Box 155, Calhoun, GA 30701
-</div>
-</body></html>`;
-}
-
-// Build email body HTML — supports multiple WOs
-function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls }) {
-  const fmtTime = (t) => {
-    if (!t) return '';
-    const [h, m] = t.split(':');
-    const hr = parseInt(h);
-    return `${hr > 12 ? hr - 12 : hr || 12}:${m}${hr >= 12 ? 'PM' : 'AM'}`;
+  const saveDraft = () => {
+    localStorage.setItem(draftKey, JSON.stringify({ client, clientCompany, clientEmail, clientAddress, clientCity, clientZip, description, invoiceNumber, projectNumber, invoiceDate, notes, rows }));
+    setDraftSaved(true);
+    setTimeout(() => setDraftSaved(false), 2000);
   };
 
-  const woTablesHtml = (wosArr || []).map((wo, i) => {
-    const engineHrs = wo.engineHoursStart != null && wo.engineHoursEnd != null
-      ? (wo.engineHoursEnd - wo.engineHoursStart).toFixed(1) : '—';
-    const miles = wo.mileageStart != null && wo.mileageEnd != null
-      ? wo.mileageEnd - wo.mileageStart : '—';
-    const pdfUrl = pdfUrls && pdfUrls[i];
-    return `
-    <h3 style="background:#ec4d07;color:#fff;padding:8px 12px;border-radius:4px;margin:0 0 10px;">
-      Work Order ${wosArr.length > 1 ? `#${i + 1} — ` : '— '}${wo.date || ''}
-    </h3>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:${pdfUrl ? '8px' : '20px'};">
-      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;width:50%;">CDL Driver</td><td style="padding:6px 10px;border:1px solid #ddd;">${wo.cdlDriver || '—'}</td></tr>
-      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Second Worker</td><td style="padding:6px 10px;border:1px solid #ddd;">${wo.secondWorker || '—'}</td></tr>
-      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Coordinator</td><td style="padding:6px 10px;border:1px solid #ddd;">${wo.coordinator || '—'}</td></tr>
-      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Engine Hours</td><td style="padding:6px 10px;border:1px solid #ddd;">${wo.engineHoursStart} → ${wo.engineHoursEnd} (${engineHrs} hrs)</td></tr>
-      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Mileage</td><td style="padding:6px 10px;border:1px solid #ddd;">${wo.mileageStart} → ${wo.mileageEnd} (${miles} mi)</td></tr>
-      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Arrival at Locate</td><td style="padding:6px 10px;border:1px solid #ddd;">${fmtTime(wo.arrivalAtLocate)}</td></tr>
-      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Back at Shop</td><td style="padding:6px 10px;border:1px solid #ddd;">${fmtTime(wo.arrivalBackAtShop)}</td></tr>
-      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Times Dumped</td><td style="padding:6px 10px;border:1px solid #ddd;">${wo.timesDumped}</td></tr>
-      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Utilities Found</td><td style="padding:6px 10px;border:1px solid #ddd;">${wo.utilitiesFound}</td></tr>
-      ${wo.trafficControlUsed ? `<tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Traffic Control</td><td style="padding:6px 10px;border:1px solid #ddd;">${wo.tcStartTime || ''} – ${wo.tcEndTime || ''}${wo.tcTrucks?.length ? ' | Trucks: ' + wo.tcTrucks.join(', ') : ''}</td></tr>` : ''}
-      ${wo.notes ? `<tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Notes</td><td style="padding:6px 10px;border:1px solid #ddd;">${wo.notes}</td></tr>` : ''}
-    </table>
-    ${pdfUrl ? `<div style="margin-bottom:20px;"><a href="${pdfUrl}" style="font-size:12px;color:#1565c0;">📄 View Work Order PDF</a></div>` : ''}`;
-  }).join('');
+  const clearDraft = () => localStorage.removeItem(draftKey);
 
-  const rowsHtml = (rows || []).map(r =>
-    `<tr>
-      <td style="padding:8px 12px;border:1px solid #ddd;">${r.description || ''}</td>
-      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.hours != null && r.hours !== '' ? Number(r.hours).toFixed(2) : '\u2014'}</td>
-      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.rate != null && r.rate !== '' ? '$' + Number(r.rate).toFixed(2) : '\u2014'}</td>
-      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">$${Number(r.amount || 0).toFixed(2)}</td>
-    </tr>`
-  ).join('');
+  const total = useMemo(() => rows.reduce((s, r) => s + (Number(r.amount) || 0), 0), [rows]);
 
-  return `
-<html>
-<body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e7e7e7;color:#000;">
-  <div style="max-width:640px;margin:auto;background:#fff;padding:24px;border-radius:8px;">
+  // Fetch PDF URLs for all WOs
+  useEffect(() => {
+    if (!wos?.length) return;
+    setLoadingPdfs(true);
+    Promise.all(
+      wos.map(wo =>
+        api.post(`/hydrovac-work-order/${wo._id}/pdf-cloudinary`)
+          .then(res => ({ id: wo._id, url: res.data.url }))
+          .catch(() => ({ id: wo._id, url: null }))
+      )
+    ).then(results => {
+      const map = {};
+      results.forEach(r => { map[r.id] = r.url; });
+      setWoPdfUrls(map);
+    }).finally(() => setLoadingPdfs(false));
+  }, [wos?.map(w => w._id).join(',')]);
 
-    <h1 style="text-align:center;background:#1a1a1a;color:#fff;padding:16px;border-radius:6px;margin:0 0 20px;">
-      🚛 Hydrovac Invoice — ${client}
-    </h1>
-
-    <div style="background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:20px;">
-      <p style="margin:4px 0;"><strong>TBS Invoice #:</strong> ${invoiceNumber}</p>
-      ${projectNumber ? `<p style="margin:4px 0;"><strong>Project/Task #:</strong> ${projectNumber}</p>` : ''}
-      <p style="margin:4px 0;"><strong>Invoice Date:</strong> ${invoiceDate || new Date().toLocaleDateString()}</p>
-      ${clientCompany ? `<p style="margin:4px 0;"><strong>Company:</strong> ${clientCompany}</p>` : ''}
-      <p style="margin:4px 0;"><strong>Representative:</strong> ${client}</p>
-      ${clientAddress ? `<p style="margin:4px 0;"><strong>Job Site:</strong> ${clientAddress}${clientCity || clientZip ? ', ' + [clientCity, clientZip].filter(Boolean).join(' ') : ''}</p>` : ''}
-      ${description ? `<p style="margin:4px 0;"><strong>Description:</strong> ${description}</p>` : ''}
-    </div>
-
-    ${woTablesHtml}
-
-    <h3 style="background:#17365D;color:#fff;padding:8px 12px;border-radius:4px;margin:0 0 10px;">Invoice Line Items</h3>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px;">
-      <thead>
-        <tr style="background:#17365D;color:#fff;">
-          <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:left;">Description</th>
-          <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:right;width:80px;">Quantity</th>
-          <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:right;width:90px;">Per Unit</th>
-          <th style="padding:8px 12px;border:1px solid #4a6fa5;text-align:right;width:110px;">Amount</th>
-        </tr>
-      </thead>
-      <tbody>${rowsHtml}</tbody>
-      <tfoot>
-        <tr style="background:#f0f0f0;font-weight:bold;">
-          <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;" colspan="3">TOTAL</td>
-          <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">$${Number(total || 0).toFixed(2)}</td>
-        </tr>
-      </tfoot>
-    </table>
-
-    ${notes ? `<div style="margin-bottom:20px;padding:12px 16px;background:#fffbe6;border-left:4px solid #f0ad4e;border-radius:0 6px 6px 0;"><strong>Notes:</strong><p style="margin:6px 0 0;font-style:italic;">${notes}</p></div>` : ''}
-
-    <div style="text-align:center;border-top:2px solid #1a1a1a;padding-top:16px;margin-top:24px;">
-      <p style="margin:4px 0;font-weight:bold;">Traffic &amp; Barrier Solutions, LLC</p>
-      <p style="margin:4px 0;">P.O. Box 155, Calhoun, GA 30701</p>
-    </div>
-  </div>
-</body>
-</html>`;
-}
-
-// ── POST /api/hydrovac-invoicing/send ────────────────────────────────────────
-// Accepts single WO (workOrderId/woData/woPdfUrl) OR multiple WOs (workOrderIds[]/wosData[]/woPdfUrls[])
-router.post('/send', async (req, res) => {
-  try {
-    const {
-      workOrderIds, wosData, woPdfUrls,   // multi-WO
-      workOrderId,  woData,  woPdfUrl,    // legacy single-WO
-      client, clientEmail, clientCompany, clientAddress, clientCity, clientZip, description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total,
-      images,     // [{ name, dataUrl }] — optional image attachments
-      extraPdfs,  // [{ name, dataUrl }] — optional PDF attachments
-    } = req.body;
-
-    // Normalise to arrays
-    const woIds   = workOrderIds || (workOrderId ? [workOrderId] : []);
-    const wosArr  = wosData      || (woData      ? [woData]      : []);
-    const pdfUrls = woPdfUrls    || (woPdfUrl    ? [woPdfUrl]    : []);
-
-    if (!woIds.length)  return res.status(400).json({ message: 'workOrderId(s) required' });
-    if (!client)        return res.status(400).json({ message: 'client required' });
-    if (!clientEmail)   return res.status(400).json({ message: 'clientEmail required' });
-    if (!invoiceNumber) return res.status(400).json({ message: 'invoiceNumber required' });
-
-    const primaryWo = wosArr[0] || {};
-
-    const invoice = await HydrovacInvoice.create({
-      workOrderId: woIds[0], workOrderIds: woIds,
-      invoiceNumber, invoiceDate, client, clientCompany, clientEmail,
-      clientAddress, clientCity, clientZip, description, projectNumber,
-      rows: (rows || []).map(r => ({ description: r.description || '', hours: r.hours ?? '', rate: r.rate ?? '', amount: Number(r.amount) || 0 })),
-      notes: notes || '',
-      woPdfUrl: pdfUrls[0] || '', woPdfUrls: pdfUrls,
-      woData: primaryWo, wosData: wosArr,
+  // Auto-add TC line items for WOs with traffic control
+  useEffect(() => {
+    const tcRows = [];
+    wos.forEach(wo => {
+      if (!wo.trafficControlUsed) return;
+      const tcHrs = (() => {
+        if (!wo.tcStartTime || !wo.tcEndTime) return '';
+        const toMins = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+        const diff = (toMins(wo.tcEndTime) - toMins(wo.tcStartTime)) / 60;
+        return diff > 0 ? diff.toFixed(2) : '';
+      })();
+      const trucks = wo.tcTrucks?.length ? ` (${wo.tcTrucks.join(', ')})` : '';
+      tcRows.push({
+        id: `tc-${wo._id}`,
+        description: `Traffic Control — ${wo.date}${trucks}`,
+        hours: tcHrs,
+        rate: '',
+        amount: 0,
+      });
     });
+    if (tcRows.length > 0) {
+      setRows(prev => {
+        const existingIds = new Set(prev.map(r => r.id));
+        const newTc = tcRows.filter(r => !existingIds.has(r.id));
+        return [...prev, ...newTc];
+      });
+    }
+  }, [wos.map(w => w._id).join(',')]);
 
-    // ── Generate invoice PDF ──────────────────────────────────────────────
-    const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr });
-    let invoicePdfBuffer = null;
+  const handleImageAdd = (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setImages(prev => [...prev, { name: file.name, dataUrl: ev.target.result }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const handlePdfAdd = (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setExtraPdfs(prev => [...prev, { name: file.name, dataUrl: ev.target.result }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const handleSend = async () => {
+    if (!client.trim()) return toast.error('Client name is required');
+    if (!clientEmail.trim()) return toast.error('Client email is required');
+    if (!invoiceNumber.trim()) return toast.error('Invoice number is required');
+    setSending(true);
     try {
-      invoicePdfBuffer = await generateInvoicePdf(invoiceHtml);
-    } catch (pdfErr) {
-      console.error('[hydrovac-invoicing] invoice PDF generation failed:', pdfErr.message);
-    }
-
-    // ── Fetch all WO PDFs from Cloudinary ────────────────────────────────
-    const safeClient = (client || 'client').replace(/[^a-z0-9]+/gi, '-');
-    const attachments = [];
-
-    if (invoicePdfBuffer) {
-      attachments.push({
-        filename: `hydrovac-invoice-${invoiceNumber}-${safeClient}.pdf`,
-        content: invoicePdfBuffer,
-        contentType: 'application/pdf',
-        contentDisposition: 'attachment',
+      await api.post('/api/hydrovac-invoicing/send', {
+        workOrderIds: wos.map(w => w._id),
+        wosData: wos.map(wo => ({
+          date: wo.date, cdlDriver: wo.cdlDriver, secondWorker: wo.secondWorker,
+          coordinator: wo.coordinator, engineHoursStart: wo.engineHoursStart,
+          engineHoursEnd: wo.engineHoursEnd, mileageStart: wo.mileageStart,
+          mileageEnd: wo.mileageEnd, timesDumped: wo.timesDumped,
+          utilitiesFound: wo.utilitiesFound, arrivalAtLocate: wo.arrivalAtLocate,
+          arrivalBackAtShop: wo.arrivalBackAtShop, notes: wo.notes,
+          trafficControlUsed: wo.trafficControlUsed, tcStartTime: wo.tcStartTime,
+          tcEndTime: wo.tcEndTime, tcTrucks: wo.tcTrucks,
+        })),
+        woPdfUrls: wos.map(wo => woPdfUrls[wo._id] || null),
+        client, clientEmail, clientCompany, clientAddress, clientCity, clientZip, description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total,
+        images: images.map(img => ({ name: img.name, dataUrl: img.dataUrl })),
+        extraPdfs: extraPdfs.map(p => ({ name: p.name, dataUrl: p.dataUrl })),
       });
+      toast.success(`Invoice sent to ${clientEmail}!`);
+      clearDraft();
+      onSent();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to send invoice');
+    } finally {
+      setSending(false);
     }
+  };
 
-    for (let i = 0; i < pdfUrls.length; i++) {
-      const url = pdfUrls[i];
-      if (!url) continue;
-      try {
-        const buf = await fetchBuffer(url);
-        const woDate = (wosArr[i] || {}).date || `wo${i + 1}`;
-        attachments.push({
-          filename: `hydrovac-work-order-${woDate}-${safeClient}.pdf`,
-          content: buf,
-          contentType: 'application/pdf',
-          contentDisposition: 'attachment',
-        });
-      } catch (fetchErr) {
-        console.error(`[hydrovac-invoicing] WO PDF fetch failed (${url}):`, fetchErr.message);
-      }
+  const dateRange = wos.length === 1
+    ? wos[0].date
+    : `${wos[0].date} – ${wos[wos.length - 1].date}`;
+
+  return (
+    <div style={{ padding: 20, border: `1px solid ${ORANGE_BORDER}`, borderRadius: 10, background: '#fff', boxShadow: '0 4px 16px rgba(236,77,7,0.08)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <h3 style={{ margin: 0, fontSize: 15 }}>📄 Invoice — {dateRange} · {wos.length} Work Order{wos.length > 1 ? 's' : ''}</h3>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {draft && <span style={{ fontSize: 11, color: '#888' }}>Draft loaded</span>}
+          <button onClick={saveDraft} style={{ fontSize: 11, padding: '4px 12px', background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, color: ORANGE, borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}>
+            {draftSaved ? '✓ Saved!' : '💾 Save Draft'}
+          </button>
+          <button onClick={onCancel} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#888' }}>✕</button>
+        </div>
+      </div>
+
+      {/* WO Summaries */}
+      {wos.map((wo, i) => (
+        <div key={wo._id} style={{ background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, borderRadius: 8, padding: 12, marginBottom: 10, fontSize: 13 }}>
+          <strong>Work Order {wos.length > 1 ? `#${i + 1} — ` : ''}{wo.date}</strong>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 6 }}>
+            <span>CDL Driver: <strong>{wo.cdlDriver}</strong></span>
+            <span>2nd Worker: <strong>{wo.secondWorker || '—'}</strong></span>
+            <span>Coordinator: <strong>{wo.coordinator}</strong></span>
+            <span>Engine Hrs: <strong>{wo.engineHoursStart}→{wo.engineHoursEnd}</strong></span>
+            <span>Miles: <strong>{wo.mileageStart}→{wo.mileageEnd}</strong></span>
+            <span>Times Dumped: <strong>{wo.timesDumped}</strong></span>
+          </div>
+          {woPdfUrls[wo._id] && (
+            <a href={woPdfUrls[wo._id]} target="_blank" rel="noreferrer"
+              style={{ display: 'inline-block', marginTop: 8, fontSize: 12, color: '#1565c0' }}>
+              📄 View Work Order PDF
+            </a>
+          )}
+        </div>
+      ))}
+      {loadingPdfs && <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>Loading WO PDFs…</div>}
+
+      {/* Invoice Fields */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+        {[
+          { label: 'TBS Invoice #*', value: invoiceNumber, onChange: e => setInvoiceNumber(e.target.value.toUpperCase()), placeholder: 'e.g. 2026HV001' },
+          { label: 'Project / Task #', value: projectNumber, onChange: e => setProjectNumber(e.target.value.toUpperCase()), placeholder: 'e.g. PROJ-001' },
+          { label: 'Invoice Date', value: invoiceDate, onChange: e => setInvoiceDate(e.target.value), type: 'date' },
+          { label: 'Representative*', value: client, onChange: e => setClient(e.target.value), placeholder: 'Contact name' },
+          { label: 'Company', value: clientCompany, onChange: e => setClientCompany(e.target.value), placeholder: 'Company name' },
+          { label: 'Client Email*', value: clientEmail, onChange: e => setClientEmail(e.target.value), placeholder: 'client@example.com', type: 'email' },
+          { label: 'Job Site Address', value: clientAddress, onChange: e => setClientAddress(e.target.value), placeholder: '123 Main St' },
+          { label: 'Job Site City', value: clientCity, onChange: e => setClientCity(e.target.value), placeholder: 'City' },
+          { label: 'Job Site Zip', value: clientZip, onChange: e => setClientZip(e.target.value), placeholder: '00000' },
+        ].map(({ label, ...props }) => (
+          <div key={label}>
+            <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 3 }}>{label}</label>
+            <input {...props} style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #ced4da', fontSize: 13, boxSizing: 'border-box' }} />
+          </div>
+        ))}
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 3 }}>Description</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Brief description of work performed…"
+          style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #ced4da', fontSize: 13, boxSizing: 'border-box' }} />
+      </div>
+
+      {/* Line Items */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 700 }}>Line Items</label>
+          <button type="button" className="btn" style={{ fontSize: 11, padding: '3px 10px' }}
+            onClick={() => setRows(r => [...r, { id: Date.now(), description: '', hours: '', rate: '', amount: 0 }])}>+ Add Line</button>
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: `linear-gradient(135deg, ${ORANGE}, rgba(243,156,18,0.9))`, color: '#fff' }}>
+              <th style={{ padding: '6px 8px', border: '1px solid rgba(255,255,255,0.2)', textAlign: 'left' }}>Description</th>
+              <th style={{ padding: '6px 8px', border: '1px solid rgba(255,255,255,0.2)', width: 80, textAlign: 'right' }}>Quantity</th>
+              <th style={{ padding: '6px 8px', border: '1px solid rgba(255,255,255,0.2)', width: 100, textAlign: 'right' }}>Per Unit</th>
+              <th style={{ padding: '6px 8px', border: '1px solid rgba(255,255,255,0.2)', width: 110, textAlign: 'right' }}>Amount</th>
+              <th style={{ padding: '6px 8px', border: '1px solid rgba(255,255,255,0.2)', width: 36 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.id}>
+                <td style={{ padding: 4, border: '1px solid #ddd' }}>
+                  <input value={r.description} onChange={e => setRows(p => p.map(x => x.id === r.id ? { ...x, description: e.target.value } : x))}
+                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3 }} />
+                </td>
+                <td style={{ padding: 4, border: '1px solid #ddd' }}>
+                  <input type="number" step="0.25" min="0" value={r.hours} placeholder="—"
+                    onChange={e => {
+                      const hours = e.target.value;
+                      setRows(p => p.map(x => {
+                        if (x.id !== r.id) return x;
+                        const amt = hours !== '' && x.rate !== '' ? Number(hours) * Number(x.rate) : x.amount;
+                        return { ...x, hours, amount: amt };
+                      }));
+                    }}
+                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3, textAlign: 'right' }} />
+                </td>
+                <td style={{ padding: 4, border: '1px solid #ddd' }}>
+                  <input type="number" step="0.01" min="0" value={r.rate} placeholder="—"
+                    onChange={e => {
+                      const rate = e.target.value;
+                      setRows(p => p.map(x => {
+                        if (x.id !== r.id) return x;
+                        const amt = rate !== '' && x.hours !== '' ? Number(x.hours) * Number(rate) : x.amount;
+                        return { ...x, rate, amount: amt };
+                      }));
+                    }}
+                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3, textAlign: 'right' }} />
+                </td>
+                <td style={{ padding: 4, border: '1px solid #ddd' }}>
+                  <input type="number" step="0.01" min="0" value={r.amount}
+                    onChange={e => setRows(p => p.map(x => x.id === r.id ? { ...x, amount: Number(e.target.value), hours: '', rate: '' } : x))}
+                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3, textAlign: 'right' }} />
+                </td>
+                <td style={{ padding: 4, border: '1px solid #ddd', textAlign: 'center' }}>
+                  <button type="button" onClick={() => setRows(p => p.filter(x => x.id !== r.id))}
+                    style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: '#f0f0f0', fontWeight: 700 }}>
+              <td style={{ padding: '6px 8px', border: '1px solid #ddd', textAlign: 'right' }} colSpan={3}>TOTAL</td>
+              <td style={{ padding: '6px 8px', border: '1px solid #ddd', textAlign: 'right' }}>${total.toFixed(2)}</td>
+              <td style={{ border: '1px solid #ddd' }}></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* Extra PDFs */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 700 }}>📎 Attach PDFs (optional)</label>
+          <label style={{ fontSize: 11, padding: '3px 10px', background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, color: ORANGE, borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}>
+            + Add PDFs
+            <input type="file" accept="application/pdf" multiple onChange={handlePdfAdd} style={{ display: 'none' }} />
+          </label>
+        </div>
+        {extraPdfs.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {extraPdfs.map((pdf, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f5f5f5', border: '1px solid #ddd', borderRadius: 6, padding: '6px 10px' }}>
+                <span style={{ fontSize: 13 }}>📄</span>
+                <span style={{ fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pdf.name}</span>
+                <button onClick={() => setExtraPdfs(prev => prev.filter((_, j) => j !== i))}
+                  style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontWeight: 700, fontSize: 14, lineHeight: 1 }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Images */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 700 }}>📷 Attach Images (optional)</label>
+          <label style={{ fontSize: 11, padding: '3px 10px', background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, color: ORANGE, borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}>
+            + Add Images
+            <input type="file" accept="image/*" multiple onChange={handleImageAdd} style={{ display: 'none' }} />
+          </label>
+        </div>
+        {images.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {images.map((img, i) => (
+              <div key={i} style={{ position: 'relative', border: `1px solid ${ORANGE_BORDER}`, borderRadius: 6, overflow: 'hidden', width: 90, height: 90, flexShrink: 0 }}>
+                <img src={img.dataUrl} alt={img.name} style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', userSelect: 'none' }} />
+                <button
+                  onClick={e => { e.stopPropagation(); setImages(prev => prev.filter((_, j) => j !== i)); }}
+                  style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 18, height: 18, color: '#fff', cursor: 'pointer', fontSize: 11, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                >✕</button>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 9, padding: '2px 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{img.name}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>Notes</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+          style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #ced4da', fontSize: 13, boxSizing: 'border-box' }} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button onClick={handleSend} disabled={sending} style={{ fontSize: 13, padding: '8px 20px', background: `linear-gradient(135deg, ${ORANGE}, rgba(243,156,18,0.9))`, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1 }}>
+          {sending ? 'Sending…' : `📧 Send Invoice + ${wos.length} WO PDF${wos.length > 1 ? 's' : ''}`}
+        </button>
+        {loadingPdfs && <span style={{ fontSize: 12, color: '#888' }}>Loading PDFs…</span>}
+      </div>
+    </div>
+  );
+}
+
+function EditInvoiceModal({ inv, onClose, onSaved }) {
+  const [client, setClient] = useState(inv.client || '');
+  const [clientCompany, setClientCompany] = useState(inv.clientCompany || '');
+  const [clientEmail, setClientEmail] = useState(inv.clientEmail || '');
+  const [clientAddress, setClientAddress] = useState(inv.clientAddress || '');
+  const [clientCity, setClientCity] = useState(inv.clientCity || '');
+  const [clientZip, setClientZip] = useState(inv.clientZip || '');
+  const [description, setDescription] = useState(inv.description || '');
+  const [invoiceNumber, setInvoiceNumber] = useState(inv.invoiceNumber || '');
+  const [projectNumber, setProjectNumber] = useState(inv.projectNumber || '');
+  const [invoiceDate, setInvoiceDate] = useState(inv.invoiceDate || '');
+  const [notes, setNotes] = useState(inv.notes || '');
+  const [rows, setRows] = useState(inv.rows?.length ? inv.rows.map((r, i) => ({ ...r, id: i, hours: r.hours ?? '', rate: r.rate ?? '' })) : [{ id: 0, description: '', hours: '', rate: '', amount: 0 }]);
+  const [resendEmail, setResendEmail] = useState(inv.clientEmail || '');
+  const [saving, setSaving] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const total = useMemo(() => rows.reduce((s, r) => s + (Number(r.amount) || 0), 0), [rows]);
+
+  const handleSave = async () => {
+    if (!client.trim() || !clientEmail.trim() || !invoiceNumber.trim()) return toast.error('Name, email, and invoice # required');
+    setSaving(true);
+    try {
+      await api.put(`/api/hydrovac-invoicing/${inv._id}`, { client, clientEmail, clientCompany, clientAddress, clientCity, clientZip, description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total });
+      toast.success('Invoice updated!');
+      onSaved();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to save');
+    } finally { setSaving(false); }
+  };
+
+  const handleResend = async () => {
+    if (!resendEmail.trim()) return toast.error('Email required');
+    setResending(true);
+    try {
+      await api.post(`/api/hydrovac-invoicing/${inv._id}/resend`, { clientEmail: resendEmail });
+      toast.success(`Invoice resent to ${resendEmail}!`);
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to resend');
+    } finally { setResending(false); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 24, width: '100%', maxWidth: 700, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 16 }}>✏️ Edit Invoice — {inv.invoiceNumber}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#888' }}>✕</button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+          {[
+            { label: 'TBS Invoice #*', value: invoiceNumber, onChange: e => setInvoiceNumber(e.target.value.toUpperCase()) },
+            { label: 'Project / Task #', value: projectNumber, onChange: e => setProjectNumber(e.target.value.toUpperCase()) },
+            { label: 'Invoice Date', value: invoiceDate, onChange: e => setInvoiceDate(e.target.value), type: 'date' },
+            { label: 'Representative*', value: client, onChange: e => setClient(e.target.value) },
+            { label: 'Company', value: clientCompany, onChange: e => setClientCompany(e.target.value) },
+            { label: 'Client Email*', value: clientEmail, onChange: e => setClientEmail(e.target.value), type: 'email' },
+            { label: 'Job Site Address', value: clientAddress, onChange: e => setClientAddress(e.target.value) },
+            { label: 'Job Site City', value: clientCity, onChange: e => setClientCity(e.target.value) },
+            { label: 'Job Site Zip', value: clientZip, onChange: e => setClientZip(e.target.value) },
+          ].map(({ label, ...props }) => (
+            <div key={label}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 3 }}>{label}</label>
+              <input {...props} style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #ced4da', fontSize: 13, boxSizing: 'border-box' }} />
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 3 }}>Description</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
+            style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #ced4da', fontSize: 13, boxSizing: 'border-box' }} />
+        </div>
+
+        {/* Line Items */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700 }}>Line Items</label>
+            <button type="button" className="btn" style={{ fontSize: 11, padding: '3px 10px' }}
+              onClick={() => setRows(r => [...r, { id: Date.now(), description: '', hours: '', rate: '', amount: 0 }])}>+ Add Line</button>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: `linear-gradient(135deg, ${ORANGE}, rgba(243,156,18,0.9))`, color: '#fff' }}>
+                {['Description','Qty','Per Unit','Amount',''].map(h => <th key={h} style={{ padding: '6px 8px', border: '1px solid rgba(255,255,255,0.2)', textAlign: h === 'Description' ? 'left' : 'right', width: h === '' ? 36 : h === 'Description' ? undefined : 90 }}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.id}>
+                  <td style={{ padding: 4, border: '1px solid #ddd' }}>
+                    <input value={r.description} onChange={e => setRows(p => p.map(x => x.id === r.id ? { ...x, description: e.target.value } : x))}
+                      style={{ width: '100%', padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3 }} />
+                  </td>
+                  <td style={{ padding: 4, border: '1px solid #ddd' }}>
+                    <input type="number" step="0.25" min="0" value={r.hours} placeholder="—"
+                      onChange={e => { const hours = e.target.value; setRows(p => p.map(x => x.id !== r.id ? x : { ...x, hours, amount: hours !== '' && x.rate !== '' ? Number(hours) * Number(x.rate) : Number(hours) || x.amount })); }}
+                      style={{ width: '100%', padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3, textAlign: 'right' }} />
+                  </td>
+                  <td style={{ padding: 4, border: '1px solid #ddd' }}>
+                    <input type="number" step="0.01" min="0" value={r.rate} placeholder="—"
+                      onChange={e => { const rate = e.target.value; setRows(p => p.map(x => x.id !== r.id ? x : { ...x, rate, amount: rate !== '' && x.hours !== '' ? Number(x.hours) * Number(rate) : Number(rate) || x.amount })); }}
+                      style={{ width: '100%', padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3, textAlign: 'right' }} />
+                  </td>
+                  <td style={{ padding: 4, border: '1px solid #ddd' }}>
+                    <input type="number" step="0.01" min="0" value={r.amount}
+                      onChange={e => setRows(p => p.map(x => x.id === r.id ? { ...x, amount: Number(e.target.value) } : x))}
+                      style={{ width: '100%', padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3, textAlign: 'right' }} />
+                  </td>
+                  <td style={{ padding: 4, border: '1px solid #ddd', textAlign: 'center' }}>
+                    <button type="button" onClick={() => setRows(p => p.filter(x => x.id !== r.id))}
+                      style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: '#f0f0f0', fontWeight: 700 }}>
+                <td colSpan={3} style={{ padding: '6px 8px', border: '1px solid #ddd', textAlign: 'right' }}>TOTAL</td>
+                <td style={{ padding: '6px 8px', border: '1px solid #ddd', textAlign: 'right' }}>${total.toFixed(2)}</td>
+                <td style={{ border: '1px solid #ddd' }}></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>Notes</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+            style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #ced4da', fontSize: 13, boxSizing: 'border-box' }} />
+        </div>
+
+        {/* Resend section */}
+        <div style={{ background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>📧 Resend Invoice To</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="email" value={resendEmail} onChange={e => setResendEmail(e.target.value)}
+              placeholder="client@example.com"
+              style={{ flex: 1, padding: '6px 8px', borderRadius: 4, border: '1px solid #ced4da', fontSize: 13 }} />
+            <button onClick={handleResend} disabled={resending}
+              style={{ padding: '6px 16px', background: `linear-gradient(135deg, ${ORANGE}, rgba(243,156,18,0.9))`, color: '#fff', border: 'none', borderRadius: 6, fontWeight: 700, cursor: resending ? 'not-allowed' : 'pointer', opacity: resending ? 0.7 : 1, fontSize: 13, whiteSpace: 'nowrap' }}>
+              {resending ? 'Sending…' : '📤 Resend'}
+            </button>
+          </div>
+          <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>You can change the email before resending. Saves the new email automatically.</div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '8px 18px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving}
+            style={{ padding: '8px 20px', background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontSize: 13 }}>
+            {saving ? 'Saving…' : '💾 Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Calendar({ year, month, wosByDate, invoicesByWoId, onDayClick, selectedDates }) {
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const pad = (n) => String(n).padStart(2, '0');
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  return (
+    <div>
+      {/* Day headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 6 }}>
+        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+          <div key={d} style={{
+            textAlign: 'center', fontSize: 12, fontWeight: 700,
+            color: ORANGE, padding: '6px 0',
+            borderBottom: `2px solid ${ORANGE_BORDER}`,
+          }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+        {cells.map((day, idx) => {
+          if (!day) return <div key={`e${idx}`} style={{ minHeight: 72 }} />;
+          const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+          const wos = wosByDate[dateStr] || [];
+          const hasWo = wos.length > 0;
+          const statuses = wos.map(wo => invoicesByWoId[wo._id]?.payStatus || null);
+          const allPaid = statuses.length > 0 && statuses.every(s => s === 'paid');
+          const anySent = statuses.some(s => s === 'unpaid');
+          const isSelected = selectedDates.has(dateStr);
+          const isToday = dateStr === todayStr;
+
+          let bg = '#fafafa';
+          let borderColor = '#e8e8e8';
+          if (allPaid)       { bg = '#eafaf1'; borderColor = '#a9dfbf'; }
+          else if (anySent)  { bg = ORANGE_LIGHT; borderColor = ORANGE_BORDER; }
+          else if (hasWo)    { bg = 'rgba(236,77,7,0.06)'; borderColor = 'rgba(236,77,7,0.25)'; }
+          if (isSelected)    { borderColor = ORANGE; }
+
+          return (
+            <div key={day} onClick={() => hasWo && onDayClick(dateStr)}
+              style={{
+                minHeight: 72, padding: '6px 7px', borderRadius: 8,
+                background: bg,
+                border: `${isSelected ? '2px' : '1px'} solid ${borderColor}`,
+                cursor: hasWo ? 'pointer' : 'default',
+                boxShadow: isSelected ? `0 0 0 3px ${ORANGE_MED}` : hasWo ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+                transition: 'box-shadow 0.15s, border-color 0.15s',
+              }}>
+              {/* Day number */}
+              <div style={{
+                fontSize: 13, fontWeight: 700,
+                color: isToday ? '#fff' : hasWo ? ORANGE : '#555',
+                background: isToday ? ORANGE : 'transparent',
+                borderRadius: '50%', width: 22, height: 22,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 3,
+              }}>{day}</div>
+
+              {/* WO entries */}
+              {wos.map(wo => {
+                const inv = invoicesByWoId[wo._id];
+                const badge = inv ? STATUS_BADGE[inv.payStatus] : null;
+                return (
+                  <div key={wo._id} style={{ marginBottom: 3 }}>
+                    <div style={{ fontSize: 10, color: '#333', fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      🚛 {wo.cdlDriver}
+                    </div>
+                    <span style={{
+                      display: 'inline-block', fontSize: 9, padding: '1px 5px', borderRadius: 3, marginTop: 1, fontWeight: 700,
+                      background: badge ? badge.bg : '#e0e0e0',
+                      color: badge ? badge.color : '#666',
+                    }}>{badge ? badge.label : 'Not Billed'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 16, marginTop: 14, fontSize: 12, flexWrap: 'wrap', paddingTop: 10, borderTop: `1px solid ${ORANGE_BORDER}` }}>
+        {[
+          { bg: 'rgba(236,77,7,0.06)', border: `1px solid rgba(236,77,7,0.25)`, label: 'Has WO — Not Billed' },
+          { bg: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, label: 'Invoice Sent (Unpaid)' },
+          { bg: '#eafaf1', border: '1px solid #a9dfbf', label: 'All Paid' },
+        ].map(({ bg, border, label }) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 16, height: 16, borderRadius: 4, background: bg, border, flexShrink: 0 }} />
+            <span style={{ color: '#555', fontWeight: 600 }}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function HydrovacInvoicing() {
+  const navigate = useNavigate();
+  const now = new Date();
+  const [calYear, setCalYear] = useState(now.getFullYear());
+  const [calMonth, setCalMonth] = useState(now.getMonth()); // 0-indexed
+  const [woList, setWoList] = useState([]);
+  const [loadingWo, setLoadingWo] = useState(false);
+  const [invoices, setInvoices] = useState([]);
+  const [loadingInv, setLoadingInv] = useState(false);
+  const [selectedDates, setSelectedDates] = useState(new Set());
+  const [selectedWos, setSelectedWos] = useState([]);
+  const [payingId, setPayingId] = useState(null);
+  const [payMethod, setPayMethod] = useState('check');
+  const [invFilter, setInvFilter] = useState({ search: '', status: '' });
+  const [editingInv, setEditingInv] = useState(null);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    if (!ALLOWED_EMAILS.has(user.email)) navigate('/admin-dashboard');
+  }, [navigate]);
+
+  const fetchWo = async () => {
+    setLoadingWo(true);
+    try {
+      const res = await api.get(`/hydrovac-work-orders?month=${calMonth + 1}&year=${calYear}`);
+      setWoList(res.data || []);
+    } catch {
+      setWoList([]);
+    } finally {
+      setLoadingWo(false);
     }
+  };
 
-    // ── Attach images ─────────────────────────────────────────────────────
-    if (Array.isArray(images)) {
-      images.forEach((img, i) => {
-        if (!img?.dataUrl) return;
-        // dataUrl format: "data:<mime>;base64,<data>"
-        const match = img.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-        if (!match) return;
-        attachments.push({
-          filename: img.name || `image-${i + 1}.jpg`,
-          content: Buffer.from(match[2], 'base64'),
-          contentType: match[1],
-          contentDisposition: 'attachment',
-        });
-      });
+  const fetchInvoices = async () => {
+    setLoadingInv(true);
+    try {
+      const res = await api.get('/api/hydrovac-invoicing');
+      setInvoices(res.data || []);
+    } catch {
+      setInvoices([]);
+    } finally {
+      setLoadingInv(false);
     }
+  };
 
-    // ── Attach extra PDFs ──────────────────────────────────────────────────
-    if (Array.isArray(extraPdfs)) {
-      extraPdfs.forEach((pdf, i) => {
-        if (!pdf?.dataUrl) return;
-        const match = pdf.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-        if (!match) return;
-        attachments.push({
-          filename: pdf.name || `attachment-${i + 1}.pdf`,
-          content: Buffer.from(match[2], 'base64'),
-          contentType: 'application/pdf',
-          contentDisposition: 'attachment',
-        });
-      });
-    }
+  useEffect(() => { fetchInvoices(); }, []);
+  useEffect(() => { fetchWo(); }, [calYear, calMonth]);
 
-    const CC_EMAILS = [
-      process.env.EMAIL_USER_7,
-      process.env.EMAIL_USER_2,
-      process.env.EMAIL_USER_9,
-      process.env.EMAIL_USER_8,
-    ].filter(Boolean).join(',');
-
-    const html = buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls });
-
-    const ccList = [FROM_EMAIL, CC_EMAILS].filter(Boolean).join(',');
-
-    await transporter.sendMail({
-      from: FROM_DISPLAY,
-      to: clientEmail,
-      cc: ccList || undefined,
-      subject: `Hydrovac Invoice ${invoiceNumber} — ${client}`,
-      html,
-      attachments,
+  // Group WOs by date string
+  const wosByDate = useMemo(() => {
+    const map = {};
+    woList.forEach(wo => {
+      if (!map[wo.date]) map[wo.date] = [];
+      map[wo.date].push(wo);
     });
+    return map;
+  }, [woList]);
 
-    res.status(201).json(invoice);
-  } catch (e) {
-    console.error('[hydrovac-invoicing/send] error:', e);
-    res.status(500).json({ message: 'Failed to send invoice', error: e.message });
-  }
-});
-
-// ── GET /api/hydrovac-invoicing ──────────────────────────────────────────────
-router.get('/', async (req, res) => {
-  try {
-    const invoices = await HydrovacInvoice.find().sort({ createdAt: -1 }).lean();
-    res.json(invoices);
-  } catch (e) {
-    console.error('[hydrovac-invoicing GET] error:', e);
-    res.status(500).json({ message: 'Failed to fetch invoices', error: e.message });
-  }
-});
-
-// ── PUT /api/hydrovac-invoicing/:id ─────────────────────────────────────────
-router.put('/:id', async (req, res) => {
-  try {
-    const { client, clientEmail, clientCompany, clientAddress, clientCity, clientZip,
-            description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total } = req.body;
-    const invoice = await HydrovacInvoice.findByIdAndUpdate(
-      req.params.id,
-      { $set: { client, clientEmail, clientCompany, clientAddress, clientCity, clientZip,
-                description, invoiceNumber, projectNumber, invoiceDate, notes,
-                rows: (rows || []).map(r => ({ description: r.description || '', hours: r.hours ?? '', rate: r.rate ?? '', amount: Number(r.amount) || 0 })), total: Number(total) || 0 } },
-      { new: true }
-    ).lean();
-    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
-    res.json(invoice);
-  } catch (e) {
-    console.error('[hydrovac-invoicing PUT] error:', e);
-    res.status(500).json({ message: 'Failed to update invoice', error: e.message });
-  }
-});
-
-// ── POST /api/hydrovac-invoicing/:id/resend ───────────────────────────────────
-router.post('/:id/resend', async (req, res) => {
-  try {
-    const invoice = await HydrovacInvoice.findById(req.params.id).lean();
-    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
-
-    // Allow overriding email at resend time
-    const clientEmail = req.body.clientEmail || invoice.clientEmail;
-    const { invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity,
-            clientZip, description, projectNumber, rows, total, notes, wosData, woPdfUrls } = invoice;
-    const wosArr  = wosData  || [];
-    const pdfUrls = woPdfUrls || [];
-
-    const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail,
-      clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr });
-    let invoicePdfBuffer = null;
-    try { invoicePdfBuffer = await generateInvoicePdf(invoiceHtml); } catch (e) { console.error('[resend] PDF err:', e.message); }
-
-    const safeClient = (client || 'client').replace(/[^a-z0-9]+/gi, '-');
-    const attachments = [];
-    if (invoicePdfBuffer) {
-      attachments.push({ filename: `hydrovac-invoice-${invoiceNumber}-${safeClient}.pdf`, content: invoicePdfBuffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
-    }
-    for (let i = 0; i < pdfUrls.length; i++) {
-      if (!pdfUrls[i]) continue;
-      try {
-        const buf = await fetchBuffer(pdfUrls[i]);
-        attachments.push({ filename: `hydrovac-work-order-${(wosArr[i] || {}).date || `wo${i+1}`}-${safeClient}.pdf`, content: buf, contentType: 'application/pdf', contentDisposition: 'attachment' });
-      } catch (e) { console.error('[resend] WO PDF fetch err:', e.message); }
-    }
-
-    const CC_EMAILS = [process.env.EMAIL_USER_7, process.env.EMAIL_USER_2, process.env.EMAIL_USER_9, process.env.EMAIL_USER_8].filter(Boolean).join(',');
-    const html = buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr, pdfUrls });
-    await transporter.sendMail({
-      from: FROM_DISPLAY, to: clientEmail,
-      cc: [FROM_EMAIL, CC_EMAILS].filter(Boolean).join(',') || undefined,
-      subject: `Hydrovac Invoice ${invoiceNumber} — ${client} (Resent)`,
-      html, attachments,
+  // Map workOrderId -> invoice (covers all WOs in multi-WO invoices)
+  const invoicesByWoId = useMemo(() => {
+    const map = {};
+    invoices.forEach(inv => {
+      const ids = inv.workOrderIds?.length ? inv.workOrderIds : (inv.workOrderId ? [inv.workOrderId] : []);
+      ids.forEach(id => { map[id] = inv; });
     });
+    return map;
+  }, [invoices]);
 
-    // Update stored email if it changed
-    if (clientEmail !== invoice.clientEmail) {
-      await HydrovacInvoice.findByIdAndUpdate(req.params.id, { $set: { clientEmail } });
+  const wosOnSelectedDates = useMemo(() => {
+    const all = [];
+    selectedDates.forEach(d => (wosByDate[d] || []).forEach(wo => all.push(wo)));
+    return all.sort((a, b) => a.date.localeCompare(b.date));
+  }, [selectedDates, wosByDate]);
+
+  const handleDayClick = (dateStr) => {
+    setSelectedDates(prev => new Set([...prev, dateStr]));
+  };
+
+  const toggleWoSelection = (wo) => {
+    setSelectedWos(prev =>
+      prev.find(w => w._id === wo._id)
+        ? prev.filter(w => w._id !== wo._id)
+        : [...prev, wo]
+    );
+  };
+
+  const handleMarkPaid = async (id) => {
+    try {
+      await api.patch(`/api/hydrovac-invoicing/${id}/pay`, { payMethod });
+      toast.success('Marked as paid!');
+      setPayingId(null);
+      fetchInvoices();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to mark paid');
     }
+  };
 
-    res.json({ message: `Invoice resent to ${clientEmail}` });
-  } catch (e) {
-    console.error('[hydrovac-invoicing/resend] error:', e);
-    res.status(500).json({ message: 'Failed to resend invoice', error: e.message });
-  }
-});
+  const prevMonth = () => {
+    if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
+    else setCalMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
+    else setCalMonth(m => m + 1);
+  };
 
-// ── PATCH /api/hydrovac-invoicing/:id/pay ────────────────────────────────────
-router.patch('/:id/pay', async (req, res) => {
-  try {
-    const { payMethod } = req.body;
-    const invoice = await HydrovacInvoice.findByIdAndUpdate(
-      req.params.id,
-      { $set: { payStatus: 'paid', payMethod: payMethod || 'check' } },
-      { new: true }
-    ).lean();
-    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
-    res.json(invoice);
-  } catch (e) {
-    console.error('[hydrovac-invoicing PATCH pay] error:', e);
-    res.status(500).json({ message: 'Failed to mark paid', error: e.message });
-  }
-});
+  const filtered = useMemo(() => invoices.filter(inv => {
+    if (invFilter.status === 'paid' && inv.payStatus !== 'paid') return false;
+    if (invFilter.status === 'unpaid' && inv.payStatus !== 'unpaid') return false;
+    if (invFilter.search) {
+      const s = invFilter.search.toLowerCase();
+      if (!(inv.invoiceNumber || '').toLowerCase().includes(s) &&
+          !(inv.client || '').toLowerCase().includes(s)) return false;
+    }
+    return true;
+  }), [invoices, invFilter]);
 
-module.exports = router;
+  const totalUnpaid = useMemo(() =>
+    invoices.filter(i => i.payStatus !== 'paid').reduce((s, i) => s + (i.total || 0), 0),
+    [invoices]
+  );
+
+  const lastHvInvoice = useMemo(() => {
+    const hvNums = invoices
+      .map(i => i.invoiceNumber || '')
+      .filter(n => /^2026HV/i.test(n));
+    if (!hvNums.length) return null;
+    hvNums.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    return hvNums[hvNums.length - 1];
+  }, [invoices]);
+
+  return (
+    <div>
+      <Header activePage="/admin-dashboard" />
+      <div className="invoice-page" style={{ maxWidth: 1300, margin: '0 auto', padding: '24px 16px' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h1 style={{ margin: 0, fontSize: '2.2rem', color: '#1a1a1a' }}>🚛 Hydrovac Invoicing</h1>
+          <button className="btn" onClick={() => navigate('/admin-dashboard')}
+            style={{ fontSize: 13, background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, color: ORANGE, borderRadius: 8, padding: '7px 16px', fontWeight: 700, cursor: 'pointer' }}>
+            ← Dashboard
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Total Invoices', value: invoices.length, color: '#1a1a1a', bg: ORANGE_LIGHT, border: ORANGE_BORDER },
+            { label: 'Outstanding', value: `$${totalUnpaid.toFixed(2)}`, color: ORANGE, bg: 'rgba(236,77,7,0.06)', border: ORANGE_BORDER },
+            { label: 'Paid', value: invoices.filter(i => i.payStatus === 'paid').length, color: '#27ae60', bg: '#eafaf1', border: '#a9dfbf' },
+            { label: 'Unpaid', value: invoices.filter(i => i.payStatus !== 'paid').length, color: '#888', bg: '#f5f5f5', border: '#ddd' },
+            ...(lastHvInvoice ? [{ label: 'Last 2026HV Inv #', value: lastHvInvoice, color: '#1565c0', bg: '#e8f0fe', border: '#90b4f5' }] : []),
+          ].map(({ label, value, color, bg, border }) => (
+            <div key={label} style={{
+              background: bg, border: `1px solid ${border}`,
+              borderRadius: 10, padding: '14px 22px', minWidth: 130,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ fontSize: 12, color: '#666', fontWeight: 600, marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color }}>{value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Calendar — full width */}
+        <div style={{
+          background: '#fff', borderRadius: 12,
+          border: `1px solid ${ORANGE_BORDER}`,
+          boxShadow: '0 4px 16px rgba(236,77,7,0.08)',
+          padding: '20px 20px 16px',
+          marginBottom: 20,
+        }}>
+          {/* Month Nav */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <button onClick={prevMonth} style={{
+              background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`,
+              borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontSize: 18,
+              color: ORANGE, fontWeight: 700, transition: 'background 0.15s',
+            }}>‹</button>
+            <div style={{ fontWeight: 800, fontSize: 20, color: '#1a1a1a', letterSpacing: '0.02em' }}>
+              {MONTH_NAMES[calMonth]} {calYear}
+            </div>
+            <button onClick={nextMonth} style={{
+              background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`,
+              borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontSize: 18,
+              color: ORANGE, fontWeight: 700, transition: 'background 0.15s',
+            }}>›</button>
+          </div>
+          {loadingWo && <p style={{ color: '#888', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Loading work orders…</p>}
+          {!loadingWo && (
+            <Calendar
+              year={calYear} month={calMonth}
+              wosByDate={wosByDate} invoicesByWoId={invoicesByWoId}
+              onDayClick={handleDayClick} selectedDates={selectedDates}
+            />
+          )}
+        </div>
+
+        {/* Day Detail Panel */}
+        {selectedDates.size > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: `linear-gradient(135deg, ${ORANGE}, rgba(243,156,18,0.9))`,
+              color: '#fff', borderRadius: '10px 10px 0 0', padding: '12px 20px',
+            }}>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>
+                📅 {selectedDates.size === 1
+                  ? `Work Orders — ${[...selectedDates][0]}`
+                  : `Work Orders — ${selectedDates.size} days selected`}
+                <span style={{ fontSize: 12, fontWeight: 400, marginLeft: 10, opacity: 0.85 }}>
+                  (click more days to add)
+                </span>
+              </div>
+              <button onClick={() => { setSelectedDates(new Set()); setSelectedWos([]); }}
+                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, padding: '4px 10px', color: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700 }}>✕</button>
+            </div>
+
+            <div style={{
+              background: '#fff', border: `1px solid ${ORANGE_BORDER}`, borderTop: 'none',
+              borderRadius: '0 0 10px 10px', padding: 16,
+            }}>
+              {/* WO cards */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.min(wosOnSelectedDates.length || 1, 3)}, 1fr)`,
+                gap: 12, marginBottom: selectedWos.length > 0 ? 16 : 0,
+              }}>
+                {wosOnSelectedDates.length === 0 && (
+                  <p style={{ color: '#888', fontSize: 13, margin: 0 }}>No work orders on selected days.</p>
+                )}
+                {wosOnSelectedDates.map(wo => {
+                  const inv = invoicesByWoId[wo._id];
+                  const badge = inv ? STATUS_BADGE[inv.payStatus] : null;
+                  const isChecked = selectedWos.find(w => w._id === wo._id);
+                  return (
+                    <div key={wo._id}
+                      onClick={() => !inv && toggleWoSelection(wo)}
+                      style={{
+                        border: `2px solid ${isChecked ? ORANGE : inv ? '#a9dfbf' : '#e0e0e0'}`,
+                        borderRadius: 10, padding: '12px 14px',
+                        background: isChecked ? ORANGE_LIGHT : inv ? '#eafaf1' : '#fafafa',
+                        cursor: inv ? 'default' : 'pointer',
+                        boxShadow: isChecked ? `0 0 0 3px ${ORANGE_MED}` : '0 1px 4px rgba(0,0,0,0.06)',
+                        transition: 'border-color 0.15s, box-shadow 0.15s',
+                      }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {!inv && (
+                            <input type="checkbox" checked={!!isChecked} onChange={() => toggleWoSelection(wo)}
+                              onClick={e => e.stopPropagation()}
+                              style={{ width: 16, height: 16, accentColor: ORANGE, cursor: 'pointer', flexShrink: 0 }} />
+                          )}
+                          <div style={{ fontWeight: 700, fontSize: 14, color: '#1a1a1a' }}>
+                            🚛 {wo.date} · {wo.cdlDriver}{wo.secondWorker ? ` & ${wo.secondWorker}` : ''}
+                          </div>
+                        </div>
+                        <span style={{
+                          fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 700, flexShrink: 0, marginLeft: 6,
+                          background: badge ? badge.bg : '#e0e0e0',
+                          color: badge ? badge.color : '#666',
+                        }}>{badge ? badge.label : 'Not Billed'}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#555', lineHeight: 1.6 }}>
+                        <div>Coordinator: <strong>{wo.coordinator}</strong></div>
+                        <div>Engine Hrs: <strong>{wo.engineHoursStart}→{wo.engineHoursEnd}</strong> · Miles: <strong>{wo.mileageStart}→{wo.mileageEnd}</strong></div>
+                        <div>Dumped: <strong>{wo.timesDumped}x</strong> · Utilities: <strong>{wo.utilitiesFound}</strong></div>
+                      </div>
+                      {inv && (
+                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #e0e0e0', fontSize: 12, color: '#555' }}>
+                          <strong>Inv #{inv.invoiceNumber}</strong> · {inv.client} · <strong>${Number(inv.total || 0).toFixed(2)}</strong>
+                          {inv.woPdfUrl && <a href={inv.woPdfUrl} target="_blank" rel="noreferrer" style={{ marginLeft: 8, color: ORANGE, fontWeight: 600 }}>📄 WO PDF</a>}
+                        </div>
+                      )}
+                      {!inv && (
+                        <div style={{ marginTop: 6, fontSize: 12, color: ORANGE, fontWeight: 600 }}>
+                          {isChecked ? '✓ Selected for invoice' : 'Click to select for invoice'}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Select all unbilled button */}
+              {wosOnSelectedDates.some(wo => !invoicesByWoId[wo._id]) && (
+                <div style={{ display: 'flex', gap: 8, marginBottom: selectedWos.length > 0 ? 16 : 0 }}>
+                  <button
+                    onClick={() => setSelectedWos(wosOnSelectedDates.filter(wo => !invoicesByWoId[wo._id]))}
+                    style={{ fontSize: 12, padding: '5px 14px', background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, color: ORANGE, borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}>
+                    Select All Unbilled ({wosOnSelectedDates.filter(wo => !invoicesByWoId[wo._id]).length})
+                  </button>
+                  {selectedWos.length > 0 && (
+                    <button onClick={() => setSelectedWos([])}
+                      style={{ fontSize: 12, padding: '5px 14px', background: '#f5f5f5', border: '1px solid #ddd', color: '#666', borderRadius: 6, cursor: 'pointer' }}>
+                      Clear Selection
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Invoice Form */}
+              {selectedWos.length > 0 && (
+                <InvoiceForm
+                  wos={selectedWos}
+                  onCancel={() => setSelectedWos([])}
+                  onSent={() => { setSelectedWos([]); fetchInvoices(); }}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {editingInv && (
+          <EditInvoiceModal
+            inv={editingInv}
+            onClose={() => setEditingInv(null)}
+            onSaved={() => { setEditingInv(null); fetchInvoices(); }}
+          />
+        )}
+
+        {/* Sent Invoices Table */}
+        <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${ORANGE_BORDER}`, boxShadow: '0 4px 16px rgba(236,77,7,0.08)', padding: 20 }}>
+          <h2 style={{ fontSize: 17, marginBottom: 14, color: '#1a1a1a', fontWeight: 800 }}>Sent Invoices</h2>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <input placeholder="Search invoice # or client…" value={invFilter.search}
+              onChange={e => setInvFilter(f => ({ ...f, search: e.target.value }))}
+              style={{ flex: 1, minWidth: 200, padding: '6px 10px', borderRadius: 6, border: '1px solid #ccc', fontSize: 13 }} />
+            <select value={invFilter.status} onChange={e => setInvFilter(f => ({ ...f, status: e.target.value }))}
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #ccc', fontSize: 13 }}>
+              <option value="">All Status</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+            {(invFilter.search || invFilter.status) && (
+              <button onClick={() => setInvFilter({ search: '', status: '' })}
+                style={{ padding: '6px 12px', background: '#888', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                Clear
+              </button>
+            )}
+          </div>
+
+          {loadingInv && <p style={{ color: '#888' }}>Loading invoices…</p>}
+          <div className="inv-table-wrap">
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800 }}>
+              <thead>
+                <tr style={{ background: `linear-gradient(135deg, ${ORANGE}, rgba(243,156,18,0.9))`, color: '#fff' }}>
+                  {['Date Sent','Inv #','Representative','Company','WO Date','Driver','Total','Status','Actions'].map(h => (
+                    <th key={h} style={{ padding: '8px 8px', border: '1px solid #4a6fa5', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((inv, idx) => (
+                  <tr key={inv._id || idx} style={{ background: idx % 2 === 0 ? '#fff' : '#f8f9fa' }}>
+                    <td style={{ padding: '7px 8px', border: '1px solid #ddd', whiteSpace: 'nowrap' }}>{fmtDate(inv.sentAt || inv.createdAt)}</td>
+                    <td style={{ padding: '7px 8px', border: '1px solid #ddd', fontWeight: 600 }}>{inv.invoiceNumber || '—'}</td>
+                    <td style={{ padding: '7px 8px', border: '1px solid #ddd' }}>{inv.client || '—'}</td>
+                    <td style={{ padding: '7px 8px', border: '1px solid #ddd' }}>{inv.clientCompany || '—'}</td>
+                    <td style={{ padding: '7px 8px', border: '1px solid #ddd' }}>{inv.woData?.date || '—'}</td>
+                    <td style={{ padding: '7px 8px', border: '1px solid #ddd' }}>{inv.woData?.cdlDriver || '—'}</td>
+                    <td style={{ padding: '7px 8px', border: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>${Number(inv.total || 0).toFixed(2)}</td>
+                    <td style={{ padding: '7px 8px', border: '1px solid #ddd' }}>
+                      {inv.payStatus === 'paid' ? (
+                        <span style={{ background: '#28a745', color: '#fff', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
+                          Paid {inv.payMethod ? `(${inv.payMethod})` : ''}
+                        </span>
+                      ) : (
+                        <span style={{ background: '#ffc107', color: '#000', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>Unpaid</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '7px 8px', border: '1px solid #ddd', whiteSpace: 'nowrap' }}>
+                      {inv.payStatus !== 'paid' && (
+                        payingId === inv._id ? (
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
+                              style={{ fontSize: 11, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc' }}>
+                              <option value="check">Check</option>
+                              <option value="card">Card</option>
+                              <option value="ach">ACH</option>
+                              <option value="cash">Cash</option>
+                            </select>
+                            <button onClick={() => handleMarkPaid(inv._id)}
+                              style={{ padding: '2px 8px', background: '#28a745', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>✓</button>
+                            <button onClick={() => setPayingId(null)}
+                              style={{ padding: '2px 6px', background: '#6c757d', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}>✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setPayingId(inv._id)}
+                            style={{ padding: '3px 8px', background: '#ffc107', color: '#000', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                            Mark Paid
+                          </button>
+                        )
+                      )}
+                      {inv.woPdfUrl && (
+                        <a href={inv.woPdfUrl} target="_blank" rel="noreferrer"
+                          style={{ marginLeft: 6, fontSize: 11, color: '#1565c0' }}>📄 WO</a>
+                      )}
+                      <button onClick={() => setEditingInv(inv)}
+                        style={{ marginLeft: 6, padding: '3px 8px', background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, color: ORANGE, borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                        ✏️ Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && !loadingInv && (
+                  <tr><td colSpan={8} style={{ padding: 20, textAlign: 'center', color: '#888' }}>No invoices found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+      <Footer />
+    </div>
+  );
+}
