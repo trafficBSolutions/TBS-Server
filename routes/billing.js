@@ -56,6 +56,7 @@ const WorkOrder = require('../models/workorder');
 
 // Interest bot control - set to false to disable
 const INTEREST_BOT_ENABLED = false;
+const CC_EMAIL = 'tbsolutions9@gmail.com';
 const PlanUser = require('../models/planuser');
 async function getPreviousTotal(workOrderId) {
   const WorkOrder = require('../models/workorder');
@@ -664,7 +665,7 @@ if (paymentMethod === 'card') {
               
               <div style="text-align: center; border-top: 2px solid #28a745; padding-top: 15px; margin-top: 30px;">
                 <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
-                <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                <p style="margin: 5px 0;">P.O. Box 155, Calhoun, GA 30703-0155</p>
                 <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
               </div>
             </div>
@@ -680,6 +681,7 @@ const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailList,
+  cc: CC_EMAIL,
   subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${workOrder.basic?.client} - PAYMENT RECEIPT`,
   html: receiptHtml,
   headers,
@@ -836,7 +838,7 @@ router.post('/process-late-fees', async (req, res) => {
                       
                       <div style="text-align: center; border-top: 2px solid #dc3545; padding-top: 15px; margin-top: 30px;">
                         <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
-                        <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                        <p style="margin: 5px 0;">P.O. Box 155, Calhoun, GA 30703-0155</p>
                         <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
                       </div>
                     </div>
@@ -985,7 +987,7 @@ console.log(`[update-invoice] previousTotal=${previousTotal}`);
               
               <div style="text-align: center; border-top: 2px solid #17365D; padding-top: 15px; margin-top: 30px;">
                 <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
-                <p style="margin: 5px 0;">1995 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                <p style="margin: 5px 0;">P.O. Box 155, Calhoun, GA 30703-0155</p>
                 <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
               </div>
             </div>
@@ -1003,6 +1005,7 @@ const safeClient = (workOrder.basic?.client || 'client').replace(/[^a-z0-9]+/gi,
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailList,
+  cc: CC_EMAIL,
   subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${workOrder.basic?.client} (UPDATED)`,
   html: emailHtml,
   attachments: [],
@@ -1186,7 +1189,7 @@ router.post('/bill-workorder', upload.array('attachments', 10), async (req, res)
               
               <div style="text-align: center; border-top: 2px solid #efad76; padding-top: 15px; margin-top: 30px;">
                 <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
-                <p style="margin: 5px 0;">1995 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                <p style="margin: 5px 0;">P.O. Box 155, Calhoun, GA 30703-0155</p>
                 <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
               </div>
             </div>
@@ -1200,6 +1203,7 @@ const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailList,
+  cc: CC_EMAIL,
   subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${workOrder.basic?.client}`,
   html: emailHtml,
   attachments: [],
@@ -1489,7 +1493,7 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
             
             <div style="text-align: center; border-top: 2px solid #efad76; padding-top: 15px; margin-top: 30px;">
               <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
-              <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+              <p style="margin: 5px 0;">P.O. Box 155, Calhoun, GA 30703-0155</p>
               <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
             </div>
           </div>
@@ -1500,6 +1504,7 @@ router.post('/bill-plan', upload.array('attachments', 10), async (req, res) => {
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
       to: emailList,
+      cc: CC_EMAIL,
       subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${plan.company} (Traffic Control Plan)`,
       html,
       attachments: [],
@@ -1600,7 +1605,7 @@ router.post('/update-plan', upload.array('attachments', 10), async (req, res) =>
             
             <div style="text-align: center; border-top: 2px solid #17365D; padding-top: 15px; margin-top: 30px;">
               <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
-              <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+              <p style="margin: 5px 0;">P.O. Box 155, Calhoun, GA 30703-0155</p>
               <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
             </div>
           </div>
@@ -1611,6 +1616,7 @@ router.post('/update-plan', upload.array('attachments', 10), async (req, res) =>
     const mailOptions = {
       from: 'trafficandbarriersolutions.ap@gmail.com',
       to: emailList,
+      cc: CC_EMAIL,
       subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${plan.company} (Traffic Control Plan - UPDATED)`,
       html,
       headers,
@@ -1695,7 +1701,7 @@ router.post('/mark-plan-paid', async (req, res) => {
               
               <div style="text-align: center; border-top: 2px solid #28a745; padding-top: 15px; margin-top: 30px;">
                 <p style="margin: 5px 0; font-weight: bold;">Traffic & Barrier Solutions, LLC</p>
-                <p style="margin: 5px 0;">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+                <p style="margin: 5px 0;">P.O. Box 155, Calhoun, GA 30703-0155</p>
                 <p style="margin: 5px 0;">Phone: (706) 263-0175</p>
               </div>
             </div>
@@ -1708,6 +1714,7 @@ const emailList = emailOverride.split(',').map(e => e.trim()).filter(e => e);
 const mailOptions = {
   from: 'trafficandbarriersolutions.ap@gmail.com',
   to: emailList,
+  cc: CC_EMAIL,
   subject: `Invoice: ${tbsInvoiceNumber || 'TBS'} - ${plan?.company || 'Traffic Control Plan'} - PAYMENT RECEIPT`,
   html: receiptHtml,
   headers,
@@ -1954,7 +1961,7 @@ router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
             <p style="text-align:center;font-size:16px;margin:30px 0">Please find the updated invoice PDF(s) attached. Thank you!</p>
             <div style="text-align:center;border-top:2px solid #17365D;padding-top:15px;margin-top:30px">
               <p style="margin:5px 0;font-weight:bold">Traffic &amp; Barrier Solutions, LLC</p>
-              <p style="margin:5px 0">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+              <p style="margin:5px 0">P.O. Box 155, Calhoun, GA 30703-0155</p>
               <p style="margin:5px 0">Phone: (706) 263-0175</p>
             </div>
           </div>
@@ -1963,6 +1970,7 @@ router.patch('/company-invoice/:id', uploadCompanyInvoice.fields([
       await transporter7.sendMail({
         from: process.env.EMAIL_USER_7,
         to: recipients,
+        cc: CC_EMAIL,
         subject: `Updated Invoice — ${company}${invNum ? ` #${invNum}` : ''}`,
         html,
         attachments,
@@ -2083,7 +2091,7 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
           <p style="text-align:center;font-size:16px;margin:30px 0">Please find the attached invoice and/or work order PDF(s). Thank you for your business!</p>
           <div style="text-align:center;border-top:2px solid #17365D;padding-top:15px;margin-top:30px">
             <p style="margin:5px 0;font-weight:bold">Traffic &amp; Barrier Solutions, LLC</p>
-            <p style="margin:5px 0">1999 Dews Pond Rd SE, Calhoun, GA 30701</p>
+            <p style="margin:5px 0">P.O. Box 155, Calhoun, GA 30703-0155</p>
             <p style="margin:5px 0">Phone: (706) 263-0175</p>
           </div>
         </div>
@@ -2092,6 +2100,7 @@ router.post('/send-company-invoice', uploadCompanyInvoice.fields([
     await transporter7.sendMail({
       from: process.env.EMAIL_USER_7,
       to: allRecipients,
+      cc: CC_EMAIL,
       subject: `Invoice — ${company}${invoiceNumber ? ` #${invoiceNumber}` : ''}`,
       html,
       attachments,
