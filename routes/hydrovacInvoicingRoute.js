@@ -111,7 +111,7 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, c
     ${TBS_LOGO_SVG ? `<div style="width:120px;margin-bottom:6px;">${TBS_LOGO_SVG}</div>` : '<h1>🚛 Hydrovac Invoice</h1>'}
     <div class="company">
       Traffic &amp; Barrier Solutions, LLC<br/>
-      P.O. Box 155, Calhoun, GA 30701<br/>
+      P.O. Box 155, Calhoun, GA 30703-0155<br/>
     </div>
   </div>
   <div class="meta">
@@ -156,7 +156,7 @@ ${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
 </table>
 
 <div class="footer">
-  Traffic &amp; Barrier Solutions, LLC &nbsp;|&nbsp; P.O. Box 155, Calhoun, GA 30701
+  Traffic &amp; Barrier Solutions, LLC &nbsp;|&nbsp; P.O. Box 155, Calhoun, GA 30703-0155
 </div>
 </body></html>`;
 }
@@ -249,7 +249,7 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, cli
 
     <div style="text-align:center;border-top:2px solid #1a1a1a;padding-top:16px;margin-top:24px;">
       <p style="margin:4px 0;font-weight:bold;">Traffic &amp; Barrier Solutions, LLC</p>
-      <p style="margin:4px 0;">P.O. Box 155, Calhoun, GA 30701</p>
+      <p style="margin:4px 0;">P.O. Box 155, Calhoun, GA 30703-0155</p>
     </div>
   </div>
 </body>
