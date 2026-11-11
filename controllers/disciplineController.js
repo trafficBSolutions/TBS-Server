@@ -14,7 +14,7 @@ const addEmployee = async (req, res) => {
   try {
     const { name, position, totalPoints } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
-    const pts = Math.min(Math.max(parseFloat(totalPoints) || 0, 0), 5);
+    const pts = Math.max(parseFloat(totalPoints) || 0, 0);
     const doc = await DisciplineEmployee.create({ name: name.trim(), position: position?.trim() || '', totalPoints: pts, terminated: false });
     res.status(201).json(doc);
   } catch (e) {
@@ -51,7 +51,7 @@ const adjustPoints = async (req, res) => {
     const emp = await DisciplineEmployee.findById(req.params.id);
     if (!emp) return res.status(404).json({ error: 'Employee not found' });
     const previousPoints = emp.totalPoints;
-    emp.totalPoints = Math.min(Math.max(previousPoints + deltaNum, 0), 5);
+    emp.totalPoints = Math.max(previousPoints + deltaNum, 0);
     await emp.save();
     // Log the adjustment as a discipline record
     await Discipline.create({
@@ -111,7 +111,7 @@ const submitDiscipline = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const pointsNum = Math.min(Math.max(parseFloat(points) || 0, 0), 5);
+    const pointsNum = Math.max(parseFloat(points) || 0, 0);
 
     let previousPoints = 0;
     let emp = null;
@@ -120,7 +120,7 @@ const submitDiscipline = async (req, res) => {
       if (emp) previousPoints = emp.totalPoints;
     }
 
-    const newTotal = Math.min(previousPoints + pointsNum, 5);
+    const newTotal = previousPoints + pointsNum;
 
     const doc = await Discipline.create({
       ...req.body,
