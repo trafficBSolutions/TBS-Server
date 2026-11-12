@@ -106,6 +106,7 @@ app.use('/tasks', require('./routes/taskRoute'));
 app.use('/signshop-jobs', require('./routes/signShopRoute'));
 app.use('/discipline', require('./routes/disciplineRoute'));
 app.use('/timeclock', require('./routes/timeClockRoute'));
+app.use('/employee-schedule', require('./routes/employeeScheduleRoute'));
 // ✅ Static file routes
 app.use('/forms', express.static(path.join(__dirname, 'forms')));
 app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
