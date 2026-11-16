@@ -164,19 +164,31 @@ router.get('/check/:employeeId', async (req, res) => {
   }
 });
 
-// POST /employee-schedule/notify-late  — called by kiosk after 15 min past scheduled time
+// POST /employee-schedule/notify-late  — called by kiosk after 15 min past scheduled time OR on actual late clock-in
 router.post('/notify-late', async (req, res) => {
   try {
-    const { employeeName, scheduledTime, date } = req.body;
-    await transporter.sendMail({
-      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
-      to: NOTIFY_EMAILS.join(','),
-      subject: `⚠️ LATE: ${employeeName} has not clocked in`,
-      html: `<h2>Late Clock-In Notice</h2>
+    const { employeeName, scheduledTime, date, actualClockIn } = req.body;
+    const didClockIn = !!actualClockIn;
+    const subject = didClockIn
+      ? `⚠️ LATE CLOCK-IN: ${employeeName} clocked in at ${actualClockIn} (scheduled ${scheduledTime})`
+      : `⚠️ LATE: ${employeeName} has not clocked in`;
+    const body = didClockIn
+      ? `<h2>Late Clock-In Notice</h2>
+        <p><strong>Employee:</strong> ${employeeName}</p>
+        <p><strong>Scheduled Clock-In:</strong> ${scheduledTime}</p>
+        <p><strong>Actual Clock-In:</strong> ${actualClockIn}</p>
+        <p><strong>Date:</strong> ${date}</p>
+        <p>${employeeName} was scheduled at ${scheduledTime} but clocked in late at ${actualClockIn}.</p>`
+      : `<h2>Late Clock-In Notice</h2>
         <p><strong>Employee:</strong> ${employeeName}</p>
         <p><strong>Scheduled Clock-In:</strong> ${scheduledTime}</p>
         <p><strong>Date:</strong> ${date}</p>
-        <p>${employeeName} was scheduled to clock in at ${scheduledTime} and has not clocked in yet (15+ minutes late).</p>`,
+        <p>${employeeName} was scheduled to clock in at ${scheduledTime} and has not clocked in yet (15+ minutes late).</p>`;
+    await transporter.sendMail({
+      from: 'Traffic & Barrier Solutions LLC <tbsolutions9@gmail.com>',
+      to: NOTIFY_EMAILS.join(','),
+      subject,
+      html: body,
     });
     return res.json({ message: 'Late notice sent' });
   } catch (e) {
