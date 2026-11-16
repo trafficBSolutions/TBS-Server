@@ -26,17 +26,18 @@ const isWeekday = (dateStr) => {
 };
 
 // Inject Dasia into a schedule doc's assignments if it's a weekday
+// Always enforces the canonical clockInTime (09:00) even if DB has a stale value
 const injectDasia = async (dateStr, assignments) => {
   if (!isWeekday(dateStr)) return assignments;
-  // Find Dasia's employee record
   const dasia = await TimeClockEmployee.findOne({
     firstName: { $regex: /^dasia$/i },
     lastName: { $regex: /^diskey$/i },
     active: true,
   });
   if (!dasia) return assignments;
-  const alreadyIn = assignments.some(a => a.employeeId?.toString() === dasia._id.toString());
-  if (alreadyIn) return assignments;
+  const dasiaId = dasia._id.toString();
+  // Remove any existing Dasia entry (may have stale clockInTime from DB)
+  const others = assignments.filter(a => a.employeeId?.toString() !== dasiaId);
   return [
     {
       employeeId: dasia._id,
@@ -44,7 +45,7 @@ const injectDasia = async (dateStr, assignments) => {
       clockInTime: DASIA_SCHEDULE.clockInTime,
       purpose: DASIA_SCHEDULE.purpose,
     },
-    ...assignments,
+    ...others,
   ];
 };
 
