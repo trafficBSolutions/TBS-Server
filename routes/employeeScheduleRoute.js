@@ -7,10 +7,10 @@ const { transporter } = require('../utils/emailConfig');
 
 const NOTIFY_EMAILS = ['tbsolutions9@gmail.com', 'tbsolutions4@gmail.com'];
 
-// Dasia Diskey auto-schedule: M-F 8:45am Shop Work
+// Dasia Diskey auto-schedule: M-F 9:00am Shop Work (window opens 8:45)
 // This is injected at read-time so it doesn't need to be stored
 const DASIA_SCHEDULE = {
-  clockInTime: '08:45',
+  clockInTime: '09:00',
   purpose: 'Shop Work',
   employeeName: 'Dasia Diskey',
 };
