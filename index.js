@@ -49,7 +49,7 @@ app.use(compression()); // GZIP compression
 // Limit repeated requests — skip OPTIONS preflights so CORS headers are never blocked
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.method === 'OPTIONS',
