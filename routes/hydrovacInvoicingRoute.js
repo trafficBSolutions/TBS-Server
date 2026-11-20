@@ -470,6 +470,28 @@ router.post('/:id/resend', async (req, res) => {
   }
 });
 
+// ── GET /api/hydrovac-invoicing/:id/pdf ─────────────────────────────────────
+router.get('/:id/pdf', async (req, res) => {
+  try {
+    const invoice = await HydrovacInvoice.findById(req.params.id).lean();
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+    const { invoiceNumber, invoiceDate, client, clientCompany, clientEmail,
+            clientAddress, clientCity, clientZip, description, projectNumber,
+            rows, total, notes, wosData } = invoice;
+    const wosArr = wosData || [];
+    const html = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail,
+      clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr });
+    const pdfBuffer = await generateInvoicePdf(html);
+    const safeClient = (client || 'client').replace(/[^a-z0-9]+/gi, '-');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="hydrovac-invoice-${invoiceNumber}-${safeClient}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (e) {
+    console.error('[hydrovac-invoicing GET pdf] error:', e);
+    res.status(500).json({ message: 'Failed to generate invoice PDF', error: e.message });
+  }
+});
+
 // ── PATCH /api/hydrovac-invoicing/:id/pay ────────────────────────────────────
 router.patch('/:id/pay', async (req, res) => {
   try {
