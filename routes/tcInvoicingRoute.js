@@ -178,9 +178,18 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, cli
 <html>
 <body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e7e7e7;color:#000;">
   <div style="max-width:640px;margin:auto;background:#fff;padding:24px;border-radius:8px;">
-    <h1 style="text-align:center;background:#17365D;color:#fff;padding:16px;border-radius:6px;margin:0 0 20px;">
-      🚦 Traffic Control Invoice — ${client}
-    </h1>
+    <div style="background:#17365D;border-radius:6px;margin:0 0 20px;padding:14px 20px;display:table;width:100%;box-sizing:border-box;">
+      <div style="display:table-cell;vertical-align:middle;width:130px;">
+        ${TBS_LOGO_SVG
+          ? `<div style="width:120px;">${TBS_LOGO_SVG}</div>`
+          : `<span style="color:#fff;font-weight:900;font-size:18px;">TBS</span>`
+        }
+      </div>
+      <div style="display:table-cell;vertical-align:middle;text-align:right;">
+        <div style="color:#fff;font-size:18px;font-weight:800;">Traffic Control Invoice</div>
+        <div style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:4px;">${client}</div>
+      </div>
+    </div>
     <div style="background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:20px;">
       <p style="margin:4px 0;"><strong>TBS Invoice #:</strong> ${invoiceNumber}</p>
       ${projectNumber ? `<p style="margin:4px 0;"><strong>Project/Task #:</strong> ${projectNumber}</p>` : ''}
