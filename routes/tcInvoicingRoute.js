@@ -21,7 +21,8 @@ async function uploadPdfToCloudinary(buffer, publicId) {
       { resource_type: 'raw', public_id: publicId, format: 'pdf', overwrite: true },
       (err, result) => err ? reject(err) : resolve(result.secure_url)
     );
-    Readable.from(buffer).pipe(stream);
+    const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+    Readable.from(buf).pipe(stream);
   });
 }
 
