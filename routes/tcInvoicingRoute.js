@@ -14,13 +14,7 @@ const TBS_LOGO_SVG = (() => {
   } catch { return null; }
 })();
 
-const TBS_LOGO_PNG_PATH = (() => {
-  try {
-    const p = path.join(__dirname, '../public/TBSPDF7.png');
-    fs.accessSync(p);
-    return p;
-  } catch { return null; }
-})();
+const TBS_LOGO_URL = 'https://tbs-server.onrender.com/public/TBS%20New%20logo.svg';
 
 const FROM_EMAIL = 'trafficandbarriersolutions.ap@gmail.com';
 const CC_EMAIL = 'tbsolutions9@gmail.com';
@@ -188,10 +182,7 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, cli
   <div style="max-width:640px;margin:auto;background:#fff;padding:24px;border-radius:8px;">
     <div style="background:#17365D;border-radius:6px;margin:0 0 20px;padding:14px 20px;display:table;width:100%;box-sizing:border-box;">
       <div style="display:table-cell;vertical-align:middle;width:130px;">
-        ${TBS_LOGO_PNG_PATH
-          ? `<img src="cid:tbs-logo" alt="TBS" width="120" style="display:block;" />`
-          : `<span style="color:#fff;font-weight:900;font-size:18px;">TBS</span>`
-        }
+        <img src="${TBS_LOGO_URL}" alt="TBS" width="120" style="display:block;" />
       </div>
       <div style="display:table-cell;vertical-align:middle;text-align:right;">
         <div style="color:#fff;font-size:18px;font-weight:800;">Traffic Control Invoice</div>
@@ -297,10 +288,7 @@ router.post('/send', async (req, res) => {
       cc: CC_EMAIL,
       subject: `Traffic Control Invoice ${invoiceNumber} — ${client}`,
       html,
-      attachments: [
-        ...attachments,
-        ...(TBS_LOGO_PNG_PATH ? [{ filename: 'tbs-logo.png', path: TBS_LOGO_PNG_PATH, cid: 'tbs-logo' }] : []),
-      ],
+      attachments,
     });
 
     res.status(201).json(invoice);
@@ -365,11 +353,7 @@ router.post('/:id/resend', async (req, res) => {
     await transporter7.sendMail({
       from: FROM_EMAIL, to: clientEmail, cc: CC_EMAIL,
       subject: `Traffic Control Invoice ${invoiceNumber} — ${client} (Resent)`,
-      html,
-      attachments: [
-        ...attachments,
-        ...(TBS_LOGO_PNG_PATH ? [{ filename: 'tbs-logo.png', path: TBS_LOGO_PNG_PATH, cid: 'tbs-logo' }] : []),
-      ],
+      html, attachments,
     });
 
     if (clientEmail !== invoice.clientEmail) {
