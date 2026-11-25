@@ -14,7 +14,7 @@ const TBS_LOGO_SVG = (() => {
   } catch { return null; }
 })();
 
-const TBS_LOGO_URL = 'https://tbs-server.onrender.com/public/TBS%20New%20logo.svg';
+const TBS_LOGO_URL = 'https://tbs-server.onrender.com/public/TBS%20New%20logo%20White.svg';
 
 const FROM_EMAIL = 'trafficandbarriersolutions.ap@gmail.com';
 const CC_EMAIL = 'tbsolutions9@gmail.com';
