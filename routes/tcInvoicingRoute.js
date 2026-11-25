@@ -222,8 +222,7 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, cli
 // POST /api/tc-invoicing/send
 router.post('/send', async (req, res) => {
   try {
-    const {
-      workOrderIds, wosData,
+    const { workOrderIds, wosData, isPaperWorkOrder,
       client, clientEmail, clientCompany, clientAddress, clientCity, clientZip,
       description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total,
       images, extraPdfs,
@@ -236,7 +235,8 @@ router.post('/send', async (req, res) => {
 
     const invoice = await TcInvoice.create({
       workOrderId: workOrderIds?.[0] || null,
-      workOrderIds,
+      workOrderIds: workOrderIds || [],
+      isPaperWorkOrder: !!isPaperWorkOrder,
       invoiceNumber, invoiceDate, client, clientCompany, clientEmail,
       clientAddress, clientCity, clientZip, description, projectNumber,
       rows: (rows || []).map(r => ({ description: r.description || '', hours: r.hours ?? '', rate: r.rate ?? '', amount: Number(r.amount) || 0 })),
