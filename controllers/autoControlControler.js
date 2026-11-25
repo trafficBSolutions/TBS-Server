@@ -210,12 +210,12 @@ const jobCount = result[0]?.count || 0;
 <html>
 <body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e7e7e7;color:#000;">
   <div style="max-width:640px;margin:auto;background:#fff;padding:24px;border-radius:8px;">
-    <div style="background:#17365D;border-radius:6px;margin:0 0 20px;padding:14px 20px;display:table;width:100%;box-sizing:border-box;">
+    <div style="background:#efad76;border-radius:6px;margin:0 0 20px;padding:14px 20px;display:table;width:100%;box-sizing:border-box;">
       <div style="display:table-cell;vertical-align:middle;width:130px;">
         <img src="https://tbs-server.onrender.com/public/TBS%20New%20logo.svg" alt="TBS" width="120" style="display:block;" />
       </div>
       <div style="display:table-cell;vertical-align:middle;text-align:right;">
-        <div style="color:#fff;font-size:18px;font-weight:800;">TRAFFIC CONTROL JOB REQUEST</div>
+        <div style="color:#000;font-size:18px;font-weight:800;">TRAFFIC CONTROL JOB REQUEST</div>
         <div style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:4px;">${name}</div>
       </div>
     </div>
