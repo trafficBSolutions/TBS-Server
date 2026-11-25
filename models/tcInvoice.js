@@ -26,6 +26,7 @@ const tcInvoiceSchema = new mongoose.Schema({
   wosData: [{ type: mongoose.Schema.Types.Mixed }],
   payStatus: { type: String, enum: ['paid', 'unpaid'], default: 'unpaid' },
   payMethod: { type: String, default: '' },
+  invoicePdfUrl: { type: String, default: '' },
   sentAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
