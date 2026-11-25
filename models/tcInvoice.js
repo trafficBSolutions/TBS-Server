@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
 const tcInvoiceSchema = new mongoose.Schema({
-  workOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkOrder', required: true },
+  workOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkOrder', required: false, default: null },
+  isPaperWorkOrder: { type: Boolean, default: false },
   workOrderIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'WorkOrder' }],
   invoiceNumber: { type: String, required: true },
   invoiceDate: { type: String },
