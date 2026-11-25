@@ -3,7 +3,6 @@ const { transporter } = require('../utils/emailConfig'); // uses EMAIL_USER
 const { signQuery, verifyQuery } = require('../utils/linkToken');
 const { getRegionFromCity } = require('../utils/gaRegions');
 const myEmail = 'tbsolutions9@gmail.com';
-const path = require('path'); 
 
 const userEmail = 'tbsolutions4@gmail.com';
 const mainEmail = 'tbsolutions3@gmail.com';
@@ -208,63 +207,56 @@ const jobCount = result[0]?.count || 0;
              ],
             subject: emailSubject,
             html: `
-            <html>
-              <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
-                <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-                  <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB REQUEST</h1>
-                  
-                  ${additionalFlaggerNote}
-                  ${policeOfficerNote}
-                  
-                  <p>Hi <strong>${name}</strong>,</p>
-                  Your job has been scheduled on the following date(s):<br>
-                        <ul>
-                            ${newUser.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}
-                    </ul>
-                  If you have any questions or concerns regarding your job, please call (706) 263-0175.</p>
-          
-                  <h3>Summary:</h3>
-                  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Company:</strong> ${company}</li>
-                      <li><strong>Coordinator:</strong> ${name}</li>
-                      <li><strong>Coordinator Email:</strong> ${email}</li>
-                      <li><strong>Coordinator Phone:</strong> ${phone}</li>
-                      <li><strong>On-Site Contact:</strong> ${siteContact}</li>
-                      <li><strong>On-Site Contact Email:</strong> ${siteContactEmail || 'N/A'}</li>
-                      <li><strong>On-Site Phone:</strong> ${site}</li>
-                    </ul>
-                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Time:</strong> ${time}</li>
-                      <li><strong>Project/Task:</strong> ${project}</li>
-                      <li><strong>Flaggers:</strong> ${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</li>
-                      <li><strong>Police Officer Needed:</strong> ${policeOfficerNeeded ? 'Yes' : 'No'}</li>
-                      <li><strong>Equipment:</strong> ${equipment.join(', ')}</li>
-                      <li><strong>Job Site Address:</strong> ${address}, ${city}, ${state} ${zip}</li>
-                    </ul>
-                  </div>
-                  <h3>Additional Info:</h3>
-                  <p>Terms & Conditions: ${terms}</p>
-                  <p>${message}</p>
-                  <h3>Manage Your Job Dates:</h3>
-                  <p>You can reschedule or cancel individual dates using the links below:</p>
-                        <ul>${cancelLinks}</ul>
-                    <p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.
-                  <hr style="margin: 20px 0;">
-                  <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
-                </div>
-              </body>
-            </html>
-            `,
-                  attachments: [
-        {
-          filename: 'TBSPDF7.png',
-          path: path.join(__dirname, '..', 'public', 'TBSPDF7.png'),
-          cid: 'tbslogo',
-          contentDisposition: 'inline',
-          contentType: 'image/png'
-        }
-      ]
+<html>
+<body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e7e7e7;color:#000;">
+  <div style="max-width:640px;margin:auto;background:#fff;padding:24px;border-radius:8px;">
+    <div style="background:#17365D;border-radius:6px;margin:0 0 20px;padding:14px 20px;display:table;width:100%;box-sizing:border-box;">
+      <div style="display:table-cell;vertical-align:middle;width:130px;">
+        <img src="https://tbs-server.onrender.com/public/TBS%20New%20logo.svg" alt="TBS" width="120" style="display:block;" />
+      </div>
+      <div style="display:table-cell;vertical-align:middle;text-align:right;">
+        <div style="color:#fff;font-size:18px;font-weight:800;">TRAFFIC CONTROL JOB REQUEST</div>
+        <div style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:4px;">${name}</div>
+      </div>
+    </div>
+    ${additionalFlaggerNote}
+    ${policeOfficerNote}
+    <div style="background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:20px;">
+      <p style="margin:4px 0;">Hi <strong>${name}</strong>, your job has been scheduled on the following date(s):</p>
+      <ul style="margin:8px 0;">${newUser.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}</ul>
+      <p style="margin:4px 0;">If you have any questions or concerns, please call <strong>(706) 263-0175</strong>.</p>
+    </div>
+    <h3 style="background:#17365D;color:#fff;padding:8px 12px;border-radius:4px;margin:0 0 10px;">Job Summary</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px;">
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;width:50%;">Company</td><td style="padding:6px 10px;border:1px solid #ddd;">${company}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Coordinator</td><td style="padding:6px 10px;border:1px solid #ddd;">${name}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Coordinator Email</td><td style="padding:6px 10px;border:1px solid #ddd;">${email}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Coordinator Phone</td><td style="padding:6px 10px;border:1px solid #ddd;">${phone}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">On-Site Contact</td><td style="padding:6px 10px;border:1px solid #ddd;">${siteContact}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">On-Site Contact Email</td><td style="padding:6px 10px;border:1px solid #ddd;">${siteContactEmail || 'N/A'}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">On-Site Phone</td><td style="padding:6px 10px;border:1px solid #ddd;">${site}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Time</td><td style="padding:6px 10px;border:1px solid #ddd;">${time}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Project/Task</td><td style="padding:6px 10px;border:1px solid #ddd;">${project}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Flaggers</td><td style="padding:6px 10px;border:1px solid #ddd;">${flagger}${additionalFlaggers ? ` + Additional: ${additionalFlaggerCount}` : ''}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Police Officer Needed</td><td style="padding:6px 10px;border:1px solid #ddd;">${policeOfficerNeeded ? 'Yes' : 'No'}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Equipment</td><td style="padding:6px 10px;border:1px solid #ddd;">${equipment.join(', ')}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Job Site Address</td><td style="padding:6px 10px;border:1px solid #ddd;">${address}, ${city}, ${state} ${zip}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Terms & Conditions</td><td style="padding:6px 10px;border:1px solid #ddd;">${terms}</td></tr>
+      ${message ? `<tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Message</td><td style="padding:6px 10px;border:1px solid #ddd;">${message}</td></tr>` : ''}
+    </table>
+    <h3 style="background:#17365D;color:#fff;padding:8px 12px;border-radius:4px;margin:0 0 10px;">Manage Your Job Dates</h3>
+    <p style="margin:0 0 8px;">You can reschedule or cancel individual dates using the links below:</p>
+    <ul style="margin:0 0 20px;">${cancelLinks}</ul>
+    <div style="text-align:center;border-top:2px solid #17365D;padding-top:16px;margin-top:24px;">
+      <p style="margin:4px 0;font-size:13px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468.</p>
+      <p style="margin:4px 0;font-weight:bold;">Traffic &amp; Barrier Solutions, LLC</p>
+      <p style="margin:4px 0;">1995 Dews Pond Rd SE, Calhoun, GA 30701 &nbsp;|&nbsp; (706) 263-0175</p>
+      <p style="margin:4px 0;"><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+    </div>
+  </div>
+</body>
+</html>
+            `
           };
           
         // Send email
@@ -389,48 +381,51 @@ const confirmAdditionalFlagger = async (req, res) => {
         ],
         subject: 'TRAFFIC CONTROL JOB REQUEST - WITH ADDITIONAL FLAGGERS',
         html: `
-        <html>
-          <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
-            <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #efad76; color: black; padding: 15px; border-radius: 6px;">${newUser.name} has scheduled a job with additional flaggers</h1>
-              <p><strong>${newUser.name}, ${newUser.email} has selected YES to approve additional flaggers.</strong></p>
-              <p>Hi <strong>${newUser.name},</strong></p>
-              <p>Your traffic control job has been confirmed with <strong>${additionalFlaggerCount} additional flagger(s)</strong>.</p>
-              <p>Your job has been scheduled on the following date(s):</p>
-              <ul>
-                ${newUser.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}
-              </ul>
-              
-              <h3>Summary:</h3>
-              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Company:</strong> ${newUser.company}</li>
-                      <li><strong>Coordinator:</strong> ${newUser.coordinator}</li>
-                      <li><strong>Coordinator Phone:</strong> ${newUser.phone}</li>
-                      <li><strong>On-Site Contact:</strong> ${newUser.siteContact}</li>
-                      <li><strong>On-Site Phone:</strong> ${newUser.site}</li>
-                    </ul>
-                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Time:</strong> ${newUser.time}</li>
-                      <li><strong>Project/Task:</strong> ${newUser.project}</li>
-                      <li><strong>Flaggers:</strong> ${newUser.flagger} + Additional: ${additionalFlaggerCount}</li>
-                      <li><strong>Equipment:</strong> ${newUser.equipment.join(', ')}</li>
-                      <li><strong>Job Site Address:</strong> ${newUser.address}, ${newUser.city}, ${newUser.state} ${newUser.zip}</li>
-                    </ul>
-                  </div>
-              <h3>Additional Info:</h3>
-              <p>Terms & Conditions: ${newUser.terms}</p>
-              <p>${newUser.message}</p>
-              
-              <h3>Manage Your Job Dates:</h3>
-              <p>You can reschedule or cancel individual dates:</p>
-              <ul>${cancelLinks}</ul>
-<p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.
-                  <hr style="margin: 20px 0;">
-                  <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
-            </div>
-          </body>
-        </html>
+<html>
+<body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e7e7e7;color:#000;">
+  <div style="max-width:640px;margin:auto;background:#fff;padding:24px;border-radius:8px;">
+    <div style="background:#17365D;border-radius:6px;margin:0 0 20px;padding:14px 20px;display:table;width:100%;box-sizing:border-box;">
+      <div style="display:table-cell;vertical-align:middle;width:130px;">
+        <img src="https://tbs-server.onrender.com/public/TBS%20New%20logo%20White.svg" alt="TBS" width="120" style="display:block;" />
+      </div>
+      <div style="display:table-cell;vertical-align:middle;text-align:right;">
+        <div style="color:#fff;font-size:18px;font-weight:800;">JOB CONFIRMED — WITH ADDITIONAL FLAGGERS</div>
+        <div style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:4px;">${newUser.name}</div>
+      </div>
+    </div>
+    <div style="background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:20px;">
+      <p style="margin:4px 0;"><strong>${newUser.name}</strong> (${newUser.email}) has selected <strong>YES</strong> to approve additional flaggers.</p>
+      <p style="margin:4px 0;">Hi <strong>${newUser.name}</strong>, your traffic control job has been confirmed with <strong>${additionalFlaggerCount} additional flagger(s)</strong>.</p>
+      <p style="margin:4px 0;">Scheduled date(s):</p>
+      <ul style="margin:8px 0;">${newUser.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}</ul>
+    </div>
+    <h3 style="background:#17365D;color:#fff;padding:8px 12px;border-radius:4px;margin:0 0 10px;">Job Summary</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px;">
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;width:50%;">Company</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.company}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Coordinator</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.coordinator}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Coordinator Phone</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.phone}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">On-Site Contact</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.siteContact}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">On-Site Phone</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.site}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Time</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.time}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Project/Task</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.project}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Flaggers</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.flagger} + Additional: ${additionalFlaggerCount}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Equipment</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.equipment.join(', ')}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Job Site Address</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.address}, ${newUser.city}, ${newUser.state} ${newUser.zip}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Terms & Conditions</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.terms}</td></tr>
+      ${newUser.message ? `<tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Message</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.message}</td></tr>` : ''}
+    </table>
+    <h3 style="background:#17365D;color:#fff;padding:8px 12px;border-radius:4px;margin:0 0 10px;">Manage Your Job Dates</h3>
+    <p style="margin:0 0 8px;">You can reschedule or cancel individual dates:</p>
+    <ul style="margin:0 0 20px;">${cancelLinks}</ul>
+    <div style="text-align:center;border-top:2px solid #17365D;padding-top:16px;margin-top:24px;">
+      <p style="margin:4px 0;font-size:13px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468.</p>
+      <p style="margin:4px 0;font-weight:bold;">Traffic &amp; Barrier Solutions, LLC</p>
+      <p style="margin:4px 0;">1995 Dews Pond Rd SE, Calhoun, GA 30701 &nbsp;|&nbsp; (706) 263-0175</p>
+      <p style="margin:4px 0;"><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+    </div>
+  </div>
+</body>
+</html>
         `
       };
       
@@ -491,47 +486,51 @@ const confirmAdditionalFlagger = async (req, res) => {
         ],
         subject: 'TRAFFIC CONTROL JOB REQUEST - NO ADDITIONAL FLAGGERS',
         html: `
-        <html>
-          <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #e7e7e7; color: #000;">
-            <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px;">
-              <h1 style="text-align: center; background-color: #efad76; padding: 15px; border-radius: 6px;">TRAFFIC CONTROL JOB REQUEST</h1>
-              <p><strong>${newUser.name}, ${newUser.email} has selected NO for additional flaggers. But job is still scheduled.</strong></p>
-              <p>Hi <strong>${newUser.name},</strong></p>
-              <p>Your traffic control job has been confirmed without additional flaggers.</p>
-              <p>Your job has been scheduled on the following date(s):</p>
-              <ul>
-                ${newUser.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}
-              </ul>
-              
-              <h3>Summary:</h3>
-              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Company:</strong> ${newUser.company}</li>
-                      <li><strong>Coordinator:</strong> ${newUser.coordinator}</li>
-                      <li><strong>Coordinator Phone:</strong> ${newUser.phone}</li>
-                      <li><strong>On-Site Contact:</strong> ${newUser.siteContact}</li>
-                      <li><strong>On-Site Phone:</strong> ${newUser.site}</li>
-                    </ul>
-                    <ul style="flex: 1; min-width: 250px; margin: 0; padding-left: 20px;">
-                      <li><strong>Time:</strong> ${newUser.time}</li>
-                      <li><strong>Project/Task:</strong> ${newUser.project}</li>
-                      <li><strong>Flaggers:</strong> ${newUser.flagger}</li>
-                      <li><strong>Equipment:</strong> ${newUser.equipment.join(', ')}</li>
-                      <li><strong>Job Site Address:</strong> ${newUser.address}, ${newUser.city}, ${newUser.state} ${newUser.zip}</li>
-                    </ul>
-                  </div>
-              <h3>Additional Info:</h3>
-              <p>Terms & Conditions: ${newUser.terms}</p>
-              <p>${newUser.message}</p>
-              <h3>Manage Your Job Dates:</h3>
-              <p>You can reschedule or cancel individual dates:</p>
-              <ul>${cancelLinks}</ul>
-              <p style="font-size: 14px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468 to note to the crew.
-              <hr style="margin: 20px 0;">
-              <p style="font-size: 14px;">Traffic & Barrier Solutions, LLC<br>1995 Dews Pond Rd SE, Calhoun, GA 30701<br>Phone: (706) 263-0175<br><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
-            </div>
-          </body>
-        </html>
+<html>
+<body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e7e7e7;color:#000;">
+  <div style="max-width:640px;margin:auto;background:#fff;padding:24px;border-radius:8px;">
+    <div style="background:#17365D;border-radius:6px;margin:0 0 20px;padding:14px 20px;display:table;width:100%;box-sizing:border-box;">
+      <div style="display:table-cell;vertical-align:middle;width:130px;">
+        <img src="https://tbs-server.onrender.com/public/TBS%20New%20logo%20White.svg" alt="TBS" width="120" style="display:block;" />
+      </div>
+      <div style="display:table-cell;vertical-align:middle;text-align:right;">
+        <div style="color:#fff;font-size:18px;font-weight:800;">TRAFFIC CONTROL JOB REQUEST</div>
+        <div style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:4px;">${newUser.name}</div>
+      </div>
+    </div>
+    <div style="background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:20px;">
+      <p style="margin:4px 0;"><strong>${newUser.name}</strong> (${newUser.email}) has selected <strong>NO</strong> for additional flaggers. Job is still scheduled.</p>
+      <p style="margin:4px 0;">Hi <strong>${newUser.name}</strong>, your traffic control job has been confirmed without additional flaggers.</p>
+      <p style="margin:4px 0;">Scheduled date(s):</p>
+      <ul style="margin:8px 0;">${newUser.jobDates.map(d => `<li>${new Date(d.date).toLocaleDateString('en-US')}</li>`).join('')}</ul>
+    </div>
+    <h3 style="background:#17365D;color:#fff;padding:8px 12px;border-radius:4px;margin:0 0 10px;">Job Summary</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px;">
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;width:50%;">Company</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.company}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Coordinator</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.coordinator}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Coordinator Phone</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.phone}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">On-Site Contact</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.siteContact}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">On-Site Phone</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.site}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Time</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.time}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Project/Task</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.project}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Flaggers</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.flagger}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Equipment</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.equipment.join(', ')}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Job Site Address</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.address}, ${newUser.city}, ${newUser.state} ${newUser.zip}</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Terms & Conditions</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.terms}</td></tr>
+      ${newUser.message ? `<tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:bold;">Message</td><td style="padding:6px 10px;border:1px solid #ddd;">${newUser.message}</td></tr>` : ''}
+    </table>
+    <h3 style="background:#17365D;color:#fff;padding:8px 12px;border-radius:4px;margin:0 0 10px;">Manage Your Job Dates</h3>
+    <p style="margin:0 0 8px;">You can reschedule or cancel individual dates:</p>
+    <ul style="margin:0 0 20px;">${cancelLinks}</ul>
+    <div style="text-align:center;border-top:2px solid #17365D;padding-top:16px;margin-top:24px;">
+      <p style="margin:4px 0;font-size:13px;">If you have any concerns for how your job needs to be set up, please call Carson Speer (706) 581-4465 or Salvador Gonzalez (706) 659-5468.</p>
+      <p style="margin:4px 0;font-weight:bold;">Traffic &amp; Barrier Solutions, LLC</p>
+      <p style="margin:4px 0;">1995 Dews Pond Rd SE, Calhoun, GA 30701 &nbsp;|&nbsp; (706) 263-0175</p>
+      <p style="margin:4px 0;"><a href="http://www.trafficbarriersolutions.com">www.trafficbarriersolutions.com</a></p>
+    </div>
+  </div>
+</body>
+</html>
         `
       };
       
