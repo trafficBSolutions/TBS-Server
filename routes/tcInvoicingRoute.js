@@ -2,10 +2,28 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const { Readable } = require('stream');
+const cloudinary = require('cloudinary').v2;
 const TcInvoice = require('../models/tcInvoice');
 const WorkOrder = require('../models/workorder');
 const { transporter7 } = require('../utils/emailConfig');
 const puppeteer = require('puppeteer');
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+async function uploadPdfToCloudinary(buffer, publicId) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: 'raw', public_id: publicId, format: 'pdf', overwrite: true },
+      (err, result) => err ? reject(err) : resolve(result.secure_url)
+    );
+    Readable.from(buffer).pipe(stream);
+  });
+}
 
 const TBS_LOGO_SVG = (() => {
   try {
@@ -236,7 +254,7 @@ router.post('/send', async (req, res) => {
       images, extraPdfs,
     } = req.body;
 
-    if (!workOrderIds?.length && !req.body.isPaperWorkOrder) return res.status(400).json({ message: 'workOrderIds required' });
+    if (!workOrderIds?.length && !isPaperWorkOrder) return res.status(400).json({ message: 'workOrderIds required' });
     if (!client)        return res.status(400).json({ message: 'client required' });
     if (!clientEmail)   return res.status(400).json({ message: 'clientEmail required' });
     if (!invoiceNumber) return res.status(400).json({ message: 'invoiceNumber required' });
@@ -253,17 +271,25 @@ router.post('/send', async (req, res) => {
       total: Number(total) || 0,
     });
 
+    const safeClient = (client || 'client').replace(/[^a-z0-9]+/gi, '-');
     const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr: wosData || [] });
+
     let invoicePdfBuffer = null;
     try { invoicePdfBuffer = await generatePdf(invoiceHtml); } catch (e) { console.error('[tc-invoicing] PDF err:', e.message); }
 
-    const safeClient = (client || 'client').replace(/[^a-z0-9]+/gi, '-');
-    const attachments = [];
+    // Upload invoice PDF to Cloudinary
+    let invoicePdfUrl = '';
+    if (invoicePdfBuffer) {
+      try {
+        invoicePdfUrl = await uploadPdfToCloudinary(invoicePdfBuffer, `tc-invoices/${invoiceNumber}-${safeClient}`);
+        await TcInvoice.findByIdAndUpdate(invoice._id, { $set: { invoicePdfUrl } });
+      } catch (e) { console.error('[tc-invoicing] Cloudinary err:', e.message); }
+    }
 
+    const attachments = [];
     if (invoicePdfBuffer) {
       attachments.push({ filename: `tc-invoice-${invoiceNumber}-${safeClient}.pdf`, content: invoicePdfBuffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
     }
-
     if (Array.isArray(images)) {
       images.forEach((img, i) => {
         const match = img?.dataUrl?.match(/^data:([^;]+);base64,(.+)$/);
@@ -271,7 +297,6 @@ router.post('/send', async (req, res) => {
         attachments.push({ filename: img.name || `image-${i + 1}.jpg`, content: Buffer.from(match[2], 'base64'), contentType: match[1], contentDisposition: 'attachment' });
       });
     }
-
     if (Array.isArray(extraPdfs)) {
       extraPdfs.forEach((pdf, i) => {
         const match = pdf?.dataUrl?.match(/^data:([^;]+);base64,(.+)$/);
@@ -281,17 +306,13 @@ router.post('/send', async (req, res) => {
     }
 
     const html = buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr: wosData || [] });
-
     await transporter7.sendMail({
-      from: FROM_EMAIL,
-      to: clientEmail,
-      cc: CC_EMAIL,
+      from: FROM_EMAIL, to: clientEmail, cc: CC_EMAIL,
       subject: `Traffic Control Invoice ${invoiceNumber} — ${client}`,
-      html,
-      attachments,
+      html, attachments,
     });
 
-    res.status(201).json(invoice);
+    res.status(201).json({ ...invoice.toObject(), invoicePdfUrl });
   } catch (e) {
     console.error('[tc-invoicing/send] error:', e);
     res.status(500).json({ message: 'Failed to send invoice', error: e.message });
@@ -313,15 +334,26 @@ router.put('/:id', async (req, res) => {
   try {
     const { client, clientEmail, clientCompany, clientAddress, clientCity, clientZip,
             description, invoiceNumber, projectNumber, invoiceDate, notes, rows, total } = req.body;
+    const updatedRows = (rows || []).map(r => ({ description: r.description || '', hours: r.hours ?? '', rate: r.rate ?? '', amount: Number(r.amount) || 0 }));
     const invoice = await TcInvoice.findByIdAndUpdate(
       req.params.id,
       { $set: { client, clientEmail, clientCompany, clientAddress, clientCity, clientZip,
                 description, invoiceNumber, projectNumber, invoiceDate, notes,
-                rows: (rows || []).map(r => ({ description: r.description || '', hours: r.hours ?? '', rate: r.rate ?? '', amount: Number(r.amount) || 0 })),
-                total: Number(total) || 0 } },
+                rows: updatedRows, total: Number(total) || 0 } },
       { new: true }
     ).lean();
     if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+
+    // Regenerate and re-upload PDF to Cloudinary
+    try {
+      const safeClient = (client || 'client').replace(/[^a-z0-9]+/gi, '-');
+      const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows: updatedRows, total, notes, wosArr: invoice.wosData || [] });
+      const pdfBuffer = await generatePdf(invoiceHtml);
+      const invoicePdfUrl = await uploadPdfToCloudinary(pdfBuffer, `tc-invoices/${invoiceNumber}-${safeClient}`);
+      await TcInvoice.findByIdAndUpdate(req.params.id, { $set: { invoicePdfUrl } });
+      invoice.invoicePdfUrl = invoicePdfUrl;
+    } catch (e) { console.error('[tc-invoicing PUT] PDF/Cloudinary err:', e.message); }
+
     res.json(invoice);
   } catch (e) {
     res.status(500).json({ message: 'Failed to update invoice', error: e.message });
@@ -338,12 +370,20 @@ router.post('/:id/resend', async (req, res) => {
     const { invoiceNumber, invoiceDate, client, clientCompany, clientAddress, clientCity,
             clientZip, description, projectNumber, rows, total, notes, wosData } = invoice;
     const wosArr = wosData || [];
+    const safeClient = (client || 'client').replace(/[^a-z0-9]+/gi, '-');
 
     const invoiceHtml = buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, clientEmail, clientAddress, clientCity, clientZip, description, projectNumber, rows, total, notes, wosArr });
     let invoicePdfBuffer = null;
     try { invoicePdfBuffer = await generatePdf(invoiceHtml); } catch (e) { console.error('[tc-invoicing resend] PDF err:', e.message); }
 
-    const safeClient = (client || 'client').replace(/[^a-z0-9]+/gi, '-');
+    // Re-upload updated PDF to Cloudinary
+    if (invoicePdfBuffer) {
+      try {
+        const invoicePdfUrl = await uploadPdfToCloudinary(invoicePdfBuffer, `tc-invoices/${invoiceNumber}-${safeClient}`);
+        await TcInvoice.findByIdAndUpdate(req.params.id, { $set: { invoicePdfUrl } });
+      } catch (e) { console.error('[tc-invoicing resend] Cloudinary err:', e.message); }
+    }
+
     const attachments = [];
     if (invoicePdfBuffer) {
       attachments.push({ filename: `tc-invoice-${invoiceNumber}-${safeClient}.pdf`, content: invoicePdfBuffer, contentType: 'application/pdf', contentDisposition: 'attachment' });
