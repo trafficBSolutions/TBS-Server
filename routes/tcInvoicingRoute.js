@@ -79,10 +79,12 @@ function buildInvoiceHtml({ invoiceNumber, invoiceDate, client, clientCompany, c
 </table>`;
   }).join('');
 
+  const fmtQty = (v) => { if (v == null || v === '') return '\u2014'; const n = Number(v); return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, ''); };
+
   const rowsHtml = (rows || []).map(r =>
     `<tr>
       <td style="padding:8px 12px;border:1px solid #ddd;word-break:break-word;white-space:normal;max-width:280px;">${r.description || ''}</td>
-      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.hours != null && r.hours !== '' ? Number(r.hours).toFixed(2) : '\u2014'}</td>
+      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${fmtQty(r.hours)}</td>
       <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.rate != null && r.rate !== '' ? '$' + Number(r.rate).toFixed(2) : '\u2014'}</td>
       <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">$${Number(r.amount || 0).toFixed(2)}</td>
     </tr>`
@@ -140,19 +142,18 @@ ${notes ? `<div class="notes"><strong>Notes:</strong> ${notes}</div>` : ''}
     <td style="width:50%;vertical-align:top;padding-right:16px;">
       <div style="background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 14px;">
         <strong>Bill To:</strong><br/>
-        ${clientCompany ? `<strong>Company:</strong> ${clientCompany}<br/>` : ''}
-        <strong>Representative:</strong> ${client}<br/>
-        <strong>Email:</strong> ${clientEmail}
+        ${clientCompany ? `${clientCompany}<br/>` : ''}
+        ${client}<br/>
+        ${clientAddress ? `${clientAddress}<br/>` : ''}
+        ${(clientCity || clientZip) ? `${[clientCity, clientZip].filter(Boolean).join(', ')}<br/>` : ''}
+        ${clientEmail}
         ${projectNumber ? `<br/><br/><strong>Project/Task #:</strong> ${projectNumber}` : ''}
       </div>
     </td>
     <td style="width:50%;vertical-align:top;">
-      ${clientAddress ? `
+      ${description ? `
       <div style="background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 14px;">
-        <strong>Job Site:</strong><br/>
-        ${clientAddress}<br/>
-        ${(clientCity || clientZip) ? `${clientCity || ''}${clientCity && clientZip ? ', ' : ''}${clientZip || ''}` : ''}
-        ${description ? `<br/><em style="color:#555;">${description}</em>` : ''}
+        <em style="color:#555;">${description}</em>
       </div>` : ''}
     </td>
   </tr>
@@ -186,10 +187,12 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, cli
     </table>`;
   }).join('');
 
+  const fmtQty = (v) => { if (v == null || v === '') return '\u2014'; const n = Number(v); return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, ''); };
+
   const rowsHtml = (rows || []).map(r =>
     `<tr>
       <td style="padding:8px 12px;border:1px solid #ddd;">${r.description || ''}</td>
-      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.hours != null && r.hours !== '' ? Number(r.hours).toFixed(2) : '\u2014'}</td>
+      <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${fmtQty(r.hours)}</td>
       <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">${r.rate != null && r.rate !== '' ? '$' + Number(r.rate).toFixed(2) : '\u2014'}</td>
       <td style="padding:8px 12px;border:1px solid #ddd;text-align:right;">$${Number(r.amount || 0).toFixed(2)}</td>
     </tr>`
@@ -214,7 +217,7 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, cli
       <p style="margin:4px 0;"><strong>Invoice Date:</strong> ${invoiceDate || new Date().toLocaleDateString()}</p>
       ${clientCompany ? `<p style="margin:4px 0;"><strong>Company:</strong> ${clientCompany}</p>` : ''}
       <p style="margin:4px 0;"><strong>Representative:</strong> ${client}</p>
-      ${clientAddress ? `<p style="margin:4px 0;"><strong>Job Site:</strong> ${clientAddress}${clientCity || clientZip ? ', ' + [clientCity, clientZip].filter(Boolean).join(' ') : ''}</p>` : ''}
+      ${clientAddress ? `<p style="margin:4px 0;">${clientAddress}${clientCity || clientZip ? ', ' + [clientCity, clientZip].filter(Boolean).join(' ') : ''}</p>` : ''}
       ${description ? `<p style="margin:4px 0;"><strong>Description:</strong> ${description}</p>` : ''}
     </div>
     ${woTablesHtml}
