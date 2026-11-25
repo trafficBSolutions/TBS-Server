@@ -229,13 +229,13 @@ router.post('/send', async (req, res) => {
       images, extraPdfs,
     } = req.body;
 
-    if (!workOrderIds?.length) return res.status(400).json({ message: 'workOrderIds required' });
+    if (!workOrderIds?.length && !req.body.isPaperWorkOrder) return res.status(400).json({ message: 'workOrderIds required' });
     if (!client)        return res.status(400).json({ message: 'client required' });
     if (!clientEmail)   return res.status(400).json({ message: 'clientEmail required' });
     if (!invoiceNumber) return res.status(400).json({ message: 'invoiceNumber required' });
 
     const invoice = await TcInvoice.create({
-      workOrderId: workOrderIds[0],
+      workOrderId: workOrderIds?.[0] || null,
       workOrderIds,
       invoiceNumber, invoiceDate, client, clientCompany, clientEmail,
       clientAddress, clientCity, clientZip, description, projectNumber,
