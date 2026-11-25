@@ -14,6 +14,13 @@ const TBS_LOGO_SVG = (() => {
   } catch { return null; }
 })();
 
+const TBS_LOGO_PNG_B64 = (() => {
+  try {
+    const buf = fs.readFileSync(path.join(__dirname, '../public/TBSPDF7.png'));
+    return `data:image/png;base64,${buf.toString('base64')}`;
+  } catch { return null; }
+})();
+
 const FROM_EMAIL = 'trafficandbarriersolutions.ap@gmail.com';
 const CC_EMAIL = 'tbsolutions9@gmail.com';
 
@@ -180,8 +187,8 @@ function buildEmailHtml({ invoiceNumber, invoiceDate, client, clientCompany, cli
   <div style="max-width:640px;margin:auto;background:#fff;padding:24px;border-radius:8px;">
     <div style="background:#17365D;border-radius:6px;margin:0 0 20px;padding:14px 20px;display:table;width:100%;box-sizing:border-box;">
       <div style="display:table-cell;vertical-align:middle;width:130px;">
-        ${TBS_LOGO_SVG
-          ? `<div style="width:120px;">${TBS_LOGO_SVG}</div>`
+        ${TBS_LOGO_PNG_B64
+          ? `<img src="${TBS_LOGO_PNG_B64}" alt="TBS Logo" width="120" style="display:block;" />`
           : `<span style="color:#fff;font-weight:900;font-size:18px;">TBS</span>`
         }
       </div>
